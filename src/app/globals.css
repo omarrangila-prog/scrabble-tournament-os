@@ -1,0 +1,392 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   SCRABBLE TOURNAMENT OS — "Premium Championship Glass" design system
+   --------------------------------------------------------------------------
+   Light mode is the primary experience. Dark mode is an optional operational
+   and broadcast theme, opted into via [data-theme="dark"] on <html>.
+
+   Token names are stable across themes: every surface, text and line token
+   resolves through a CSS variable, so a single theme switch re-skins the whole
+   product without touching component code.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Theme variables — light (default)
+   -------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light;
+
+  /* Canvas and surfaces */
+  --c-canvas: #f7f8fd;
+  --c-canvas-warm: #fcfbff;
+  --c-surface: 255 255 255 / 0.82;
+  --c-surface-strong: 255 255 255 / 0.94;
+  --c-surface-soft: 246 247 253 / 0.72;
+  --c-surface-solid: #ffffff;
+
+  /* Ambient illumination */
+  --glow-lavender: 132 99 255 / 0.16;
+  --glow-pink: 255 144 203 / 0.12;
+  --glow-sky: 95 184 255 / 0.14;
+  --glow-cyan: 68 218 227 / 0.1;
+  --glow-peach: 255 184 137 / 0.1;
+
+  /* Text */
+  --c-ink: #12172a;
+  --c-muted: #667085;
+  --c-faint: #98a2b3;
+  --c-inverse: #ffffff;
+
+  /* Lines */
+  --c-line: 45 57 89 / 0.08;
+  --c-line-strong: 101 87 245 / 0.18;
+
+  /* Glass composition */
+  --glass-bg: 255 255 255 / 0.74;
+  --glass-bg-strong: 255 255 255 / 0.9;
+  --glass-border: 255 255 255 / 0.76;
+  --glass-inner: inset 0 1px 0 rgb(255 255 255 / 0.72);
+  --glass-blur: blur(22px) saturate(135%);
+
+  /* Elevation */
+  --sh-card: 0 2px 6px rgb(20 27 56 / 0.03), 0 16px 42px rgb(39 48 92 / 0.08);
+  --sh-card-hover: 0 4px 10px rgb(20 27 56 / 0.04), 0 22px 52px rgb(39 48 92 / 0.11);
+  --sh-float: 0 28px 80px rgb(32 38 75 / 0.16);
+
+  /* Nav active treatment */
+  --nav-active-bg: linear-gradient(
+    100deg,
+    rgb(115 87 246 / 0.14),
+    rgb(57 135 248 / 0.1)
+  );
+  --nav-active-ink: #5741da;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --c-canvas: #090b1a;
+  --c-canvas-warm: #0c0f22;
+  --c-surface: 19 21 49 / 0.8;
+  --c-surface-strong: 24 27 58 / 0.92;
+  --c-surface-soft: 17 20 42 / 0.7;
+  --c-surface-solid: #11142a;
+
+  --glow-lavender: 132 99 255 / 0.24;
+  --glow-pink: 255 144 203 / 0.1;
+  --glow-sky: 95 184 255 / 0.18;
+  --glow-cyan: 68 218 227 / 0.16;
+  --glow-peach: 255 184 137 / 0.06;
+
+  --c-ink: #f7f7ff;
+  --c-muted: #a7acca;
+  --c-faint: #7d83a6;
+  --c-inverse: #0b0d1c;
+
+  --c-line: 130 111 255 / 0.26;
+  --c-line-strong: 130 111 255 / 0.4;
+
+  --glass-bg: 19 21 49 / 0.8;
+  --glass-bg-strong: 26 29 62 / 0.9;
+  --glass-border: 130 111 255 / 0.26;
+  --glass-inner: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --glass-blur: blur(22px) saturate(135%);
+
+  --sh-card: 0 2px 8px rgb(0 0 0 / 0.3), 0 18px 46px rgb(0 0 0 / 0.4);
+  --sh-card-hover: 0 4px 12px rgb(0 0 0 / 0.34), 0 24px 58px rgb(0 0 0 / 0.46);
+  --sh-float: 0 30px 84px rgb(0 0 0 / 0.55);
+
+  --nav-active-bg: linear-gradient(
+    100deg,
+    rgb(132 99 255 / 0.28),
+    rgb(85 201 232 / 0.16)
+  );
+  --nav-active-ink: #c9c2ff;
+}
+
+/* --------------------------------------------------------------------------
+   2. Tailwind theme mapping
+   -------------------------------------------------------------------------- */
+
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-canvas-soft: var(--c-canvas-warm);
+  --color-surface: rgb(var(--c-surface));
+  --color-surface-strong: rgb(var(--c-surface-strong));
+  --color-surface-soft: rgb(var(--c-surface-soft));
+  --color-surface-solid: var(--c-surface-solid);
+
+  /* Brand ramp */
+  --color-primary: #7357f6;
+  --color-primary-600: #5741da;
+  --color-primary-700: #4834b8;
+  --color-primary-050: #efecfe;
+  --color-primary-100: #e2ddfd;
+
+  --color-secondary: #3987f8;
+  --color-secondary-050: #e8f1fe;
+
+  --color-cyan: #55c9e8;
+  --color-cyan-050: #e6f7fc;
+
+  --color-gold: #e6a93d;
+  --color-gold-050: #fdf3e2;
+
+  --color-peach: #ff9b75;
+
+  /* Status */
+  --color-success: #20b982;
+  --color-success-050: #e3f8f0;
+  --color-warning: #f2a23b;
+  --color-warning-050: #fdf2e2;
+  --color-critical: #ea5572;
+  --color-critical-050: #fdebef;
+  --color-info: #3a85f7;
+  --color-info-050: #e8f1fe;
+
+  /* Text */
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-inverse: var(--c-inverse);
+
+  /* Lines */
+  --color-line: rgb(var(--c-line));
+  --color-line-strong: rgb(var(--c-line-strong));
+
+  /* Radii — 8px shape system */
+  --radius-control: 12px;
+  --radius-compact: 14px;
+  --radius-card: 18px;
+  --radius-feature: 22px;
+  --radius-hero: 28px;
+  --radius-panel: 30px;
+
+  /* Elevation */
+  --shadow-card: var(--sh-card);
+  --shadow-card-hover: var(--sh-card-hover);
+  --shadow-float: var(--sh-float);
+  --shadow-glass: var(--sh-card);
+  --shadow-glass-sm: 0 2px 6px rgb(20 27 56 / 0.03), 0 8px 22px rgb(39 48 92 / 0.06);
+  --shadow-glass-lg: var(--sh-float);
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* --------------------------------------------------------------------------
+   3. Base
+   -------------------------------------------------------------------------- */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--c-canvas);
+  color: var(--c-ink);
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  /* Ambient championship illumination — fixed so it never scroll-jitters. */
+  background-image:
+    radial-gradient(58rem 40rem at 10% -8%, rgb(var(--glow-lavender)), transparent 62%),
+    radial-gradient(52rem 36rem at 92% 2%, rgb(var(--glow-sky)), transparent 64%),
+    radial-gradient(44rem 32rem at 78% 98%, rgb(var(--glow-cyan)), transparent 62%),
+    radial-gradient(40rem 30rem at 4% 92%, rgb(var(--glow-pink)), transparent 62%),
+    radial-gradient(36rem 28rem at 50% 60%, rgb(var(--glow-peach)), transparent 70%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  overflow-x: hidden;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* --------------------------------------------------------------------------
+   4. Glass surfaces
+   -------------------------------------------------------------------------- */
+
+@utility glass {
+  background: rgb(var(--glass-bg));
+  border: 1px solid rgb(var(--glass-border));
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--sh-card), var(--glass-inner);
+}
+
+@utility glass-strong {
+  background: rgb(var(--glass-bg-strong));
+  border: 1px solid rgb(var(--glass-border));
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--sh-card), var(--glass-inner);
+}
+
+@utility glass-flat {
+  background: rgb(var(--c-surface-soft));
+  border: 1px solid rgb(var(--c-line));
+  box-shadow: var(--shadow-glass-sm);
+}
+
+@utility glass-raised {
+  background: rgb(var(--glass-bg-strong));
+  border: 1px solid rgb(var(--glass-border));
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--sh-float), var(--glass-inner);
+}
+
+/*
+ * Dense data surface. Deliberately no backdrop blur: blurring behind a large
+ * table costs a full-surface repaint on every scroll frame.
+ */
+@utility glass-data {
+  background: rgb(var(--c-surface-strong));
+  border: 1px solid rgb(var(--c-line));
+  box-shadow: var(--sh-card);
+}
+
+@utility board-motif {
+  background-image:
+    linear-gradient(rgb(var(--c-line)) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--c-line)) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Championship gradient text, used sparingly on hero headings. */
+@utility text-champion {
+  background: linear-gradient(100deg, #7357f6, #3987f8 52%, #55c9e8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   5. Focus, scrollbars, motion
+   -------------------------------------------------------------------------- */
+
+*:focus-visible {
+  outline: 2px solid var(--color-primary, #7357f6);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-line-strong)) transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-line-strong));
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Motion primitives
+   -------------------------------------------------------------------------- */
+
+@keyframes tos-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.86);
+  }
+}
+.pulse-dot {
+  animation: tos-pulse 2.1s ease-in-out infinite;
+}
+
+/* Standings row highlight after a verified score changes the order. */
+@keyframes tos-row-flash {
+  from {
+    background-color: rgb(32 185 130 / 0.2);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.row-flash {
+  animation: tos-row-flash 1.9s ease-out 1;
+}
+
+/* Marketing artwork drift — 3-6px only, per the motion spec. */
+@keyframes tos-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.float-soft {
+  animation: tos-float 6s ease-in-out infinite;
+}
+.float-soft-slow {
+  animation: tos-float 8.5s ease-in-out infinite;
+}
+
+/* Verification seal draw-on. */
+@keyframes tos-seal {
+  from {
+    stroke-dashoffset: var(--seal-length, 200);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.seal-draw {
+  animation: tos-seal 700ms ease-out forwards;
+}
+
+/* --------------------------------------------------------------------------
+   7. Print — strip glass so reports and certificates print cleanly
+   -------------------------------------------------------------------------- */
+
+@media print {
+  body {
+    background: #fff;
+    background-image: none;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .glass,
+  .glass-strong,
+  .glass-flat,
+  .glass-raised,
+  .glass-data {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: 1px solid #d0d5dd !important;
+    backdrop-filter: none !important;
+  }
+}
