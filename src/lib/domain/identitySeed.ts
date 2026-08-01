@@ -111,7 +111,7 @@ export function buildIdentitySeed() {
     to: i.category,
     kind: "initial" as const,
     reason: "Category assigned at first registration.",
-    decidedBy: "Sir Tariq Pervaiz",
+    decidedBy: "Sir Hani",
     at: i.registeredAt,
   }));
 
@@ -126,7 +126,7 @@ export function buildIdentitySeed() {
       kind: "promotion",
       reason:
         "Sustained 71% win rate with a positive spread across five events. Promotion approved by the Tournament Director.",
-      decidedBy: "Sir Tariq Pervaiz",
+      decidedBy: "Sir Hani",
       at: "2025-11-18T16:30:00+05:00",
     });
   }
@@ -241,14 +241,14 @@ export function buildIdentitySeed() {
         reference: `TX-885${i}`,
         proofFileName: `transfer-${i + 1}.jpg`,
         receivedAt: T(8, 20 + i),
-        verifiedBy: "Sir Tariq Pervaiz",
+        verifiedBy: "Sir Hani",
       },
       submittedAt: T(8, 15 + i),
       decidedAt: T(8, 40 + i),
-      decidedBy: "Sir Tariq Pervaiz",
+      decidedBy: "Sir Hani",
       timeline: [
         { at: T(8, 15 + i), by: `${p.firstName} ${p.lastName}`, entry: "Registration submitted." },
-        { at: T(8, 40 + i), by: "Sir Tariq Pervaiz", entry: "Approved. Existing identity linked." },
+        { at: T(8, 40 + i), by: "Sir Hani", entry: "Approved. Existing identity linked." },
       ],
     });
   }

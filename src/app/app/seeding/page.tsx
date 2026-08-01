@@ -37,6 +37,10 @@ import {
 import { useStore } from "@/lib/store/useStore";
 import { DivisionId, Player } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
+import { SeedListPanel } from "@/components/seeding/SeedListPanel";
+import { useGuidedDemo } from "@/lib/store/guidedDemo";
+import { Sparkles } from "lucide-react";
+import { Tabs } from "@/components/ui";
 
 const ACCENT: Record<string, string> = {
   masters: "#6D5DFB",
@@ -47,6 +51,7 @@ const ACCENT: Record<string, string> = {
 
 export default function SeedingPage() {
   const store = useStore();
+  const startDemo = useGuidedDemo((s) => s.start);
   const { players, divisions } = store;
 
   const [query, setQuery] = React.useState("");
@@ -55,6 +60,7 @@ export default function SeedingPage() {
   const [history, setHistory] = React.useState<{ label: string; undo: () => void }[]>([]);
   const [moveTarget, setMoveTarget] = React.useState<Player | null>(null);
   const [recommendations, setRecommendations] = React.useState<Recommendation[] | null>(null);
+  const [view, setView] = React.useState("seedlist");
 
   const byDivision = (id: DivisionId) =>
     players
@@ -165,6 +171,13 @@ export default function SeedingPage() {
           <>
             <Button
               variant="secondary"
+              icon={<Sparkles className="size-4" />}
+              onClick={() => startDemo("seeding")}
+            >
+              Seeding walkthrough
+            </Button>
+            <Button
+              variant="secondary"
               icon={<Undo2 className="size-4" />}
               disabled={history.length === 0}
               onClick={() => {
@@ -188,6 +201,20 @@ export default function SeedingPage() {
       />
 
       {/* Distribution ---------------------------------------------------- */}
+      <Tabs
+        tabs={[
+          { id: "seedlist", label: "Seed List" },
+          { id: "board", label: "Division Board" },
+        ]}
+        value={view}
+        onChange={setView}
+        className="mb-4"
+      />
+
+      {view === "seedlist" ? <SeedListPanel /> : null}
+
+      {view === "board" ? (
+        <>
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader
@@ -387,6 +414,9 @@ export default function SeedingPage() {
             ))}
           </ul>
         </Card>
+      ) : null}
+
+        </>
       ) : null}
 
       <MovePlayerModal player={moveTarget} onClose={() => setMoveTarget(null)} onMove={move} />

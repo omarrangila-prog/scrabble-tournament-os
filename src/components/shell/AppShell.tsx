@@ -238,7 +238,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="grid size-10 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white">
                   <LayoutGrid className="size-5" />
                 </span>
-                <p className="text-[14.5px] font-extrabold text-ink">Tournament OS</p>
+                <p className="text-[14.5px] font-extrabold text-ink">Bluffy Alphabattle</p>
               </div>
               <button
                 onClick={() => setMobileNav(false)}
@@ -320,7 +320,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Button
                 size="sm"
                 variant={demoActive ? "primary" : "secondary"}
-                onClick={startDemo}
+                onClick={() => startDemo("tournament")}
                 icon={<Sparkles className="size-3.5" />}
                 className="hidden sm:inline-flex"
               >

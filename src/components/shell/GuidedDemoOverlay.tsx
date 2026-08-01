@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui";
-import { DEMO_STEPS, useGuidedDemo } from "@/lib/store/guidedDemo";
+import { useGuidedDemo } from "@/lib/store/guidedDemo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,10 +14,10 @@ import { cn } from "@/lib/utils";
  * without blocking interaction — the presenter still drives the real interface.
  */
 export function GuidedDemoOverlay() {
-  const { active, step, next, prev, stop, finish } = useGuidedDemo();
+  const { active, step, next, prev, stop, finish, steps } = useGuidedDemo();
   const router = useRouter();
   const pathname = usePathname();
-  const current = DEMO_STEPS[step];
+  const current = steps[step];
   const [rect, setRect] = React.useState<DOMRect | null>(null);
 
   // Move to the step's route when it differs from the current one.
@@ -45,7 +45,7 @@ export function GuidedDemoOverlay() {
   }, [active, current]);
 
   if (!active || !current) return null;
-  const last = step === DEMO_STEPS.length - 1;
+  const last = step === steps.length - 1;
 
   return (
     <>
@@ -84,7 +84,7 @@ export function GuidedDemoOverlay() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-primary">
-                  Step {step + 1} of {DEMO_STEPS.length}
+                  Step {step + 1} of {steps.length}
                 </p>
                 <span className="text-[12px] text-muted">·</span>
                 <p className="text-[12.5px] font-medium text-ink">{current.title}</p>
@@ -97,7 +97,7 @@ export function GuidedDemoOverlay() {
               ) : null}
 
               <div className="mt-3 flex items-center gap-1">
-                {DEMO_STEPS.map((s, i) => (
+                {steps.map((s, i) => (
                   <span
                     key={s.id}
                     className={cn(
@@ -202,7 +202,7 @@ export function GuidedDemoSummary() {
           )}
         </ul>
         <p className="mt-5 text-[15px] font-medium text-ink">
-          Tournament OS is ready to run your next championship.
+          Bluffy Alphabattle is ready to run your next championship.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button

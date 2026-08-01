@@ -88,7 +88,7 @@ export default function TournamentsPage() {
   const hour = 14; // Fixed reference hour keeps the greeting stable in the demo.
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   /*
-   * Greet by the first given name, keeping any honorific attached — "Sir Tariq"
+   * Greet by the first given name, keeping any honorific attached — "Sir Hani"
    * rather than the bare "Sir" a naive first-word split would produce.
    */
   const HONORIFICS = ["sir", "dr", "mr", "mrs", "ms", "prof", "madam"];
@@ -403,7 +403,7 @@ interface WizardState {
 
 const INITIAL: WizardState = {
   name: "",
-  organizer: "National Scrabble Federation",
+  organizer: "Bluffy Alphabattle",
   venue: "",
   city: "Karachi",
   startDate: "2026-09-12",

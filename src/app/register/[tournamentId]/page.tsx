@@ -823,7 +823,7 @@ function PublicHeader() {
             <LayoutGrid className="size-4.5" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-ink">Tournament OS</p>
+            <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-ink">Bluffy Alphabattle</p>
             <p className="truncate text-[11.5px] text-muted">Player registration</p>
           </div>
         </Link>

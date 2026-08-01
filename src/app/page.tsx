@@ -114,7 +114,7 @@ export default function LandingPage() {
             </span>
             <div className="min-w-0">
               <p className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-ink">
-                Scrabble Tournament OS
+                Bluffy Alphabattle
               </p>
               <p className="hidden text-[11.5px] text-muted sm:block">
                 Official Tournament Platform
@@ -382,7 +382,7 @@ export default function LandingPage() {
       <footer className="border-t border-line px-5 py-8 sm:px-8">
         <div className="mx-auto flex max-w-[1680px] flex-col items-center gap-2 text-center">
           <p className="text-[12.5px] text-muted">
-            Scrabble Tournament OS · Championship management for federations, clubs and schools
+            Bluffy Alphabattle · Championship management for federations, clubs and schools
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-[12px] text-faint">
             <span className="inline-flex items-center gap-1.5">

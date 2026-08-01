@@ -48,7 +48,7 @@ export function DigitalPlayerCard({
         <div className="relative flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
-              Scrabble Tournament OS
+              Bluffy Alphabattle
             </p>
             <p className="text-[13.5px] font-semibold tracking-[-0.01em] text-white">
               Official Player Identity

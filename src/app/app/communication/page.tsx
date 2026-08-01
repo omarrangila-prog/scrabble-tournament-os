@@ -66,8 +66,8 @@ const AUDIENCES = [
   "All players",
   "Masters",
   "Open",
-  "Youth U18",
-  "Junior U14",
+  "Recreational",
+  "Novice",
   "Selected players",
   "Organizers",
   "Volunteers",
@@ -234,7 +234,7 @@ export default function CommunicationPage() {
                     <Bell className="size-4" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-[12.5px] font-semibold text-ink">Tournament OS</p>
+                    <p className="truncate text-[12.5px] font-semibold text-ink">Bluffy Alphabattle</p>
                     <p className="text-[11px] text-muted">now</p>
                   </div>
                 </div>

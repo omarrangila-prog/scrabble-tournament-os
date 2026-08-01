@@ -22,7 +22,7 @@ export interface DemoStep {
   action?: string;
 }
 
-export const DEMO_STEPS: DemoStep[] = [
+export const TOURNAMENT_STEPS: DemoStep[] = [
   {
     id: 1,
     route: "/app",
@@ -104,11 +104,150 @@ export const DEMO_STEPS: DemoStep[] = [
   },
 ];
 
+
+/**
+ * Seeding walkthrough — the fifteen-step story a director follows when setting
+ * up a division from scratch, ending with the seeded order building round one.
+ */
+export const SEEDING_STEPS: DemoStep[] = [
+  {
+    id: 1,
+    route: "/app/seeding",
+    title: "Open the Masters division",
+    message: "Every division is seeded independently, with its own rating band.",
+    action: "Select Masters in the division selector.",
+    anchor: "seed-list",
+  },
+  {
+    id: 2,
+    route: "/app/seeding",
+    title: "32 players",
+    message: "The full Masters field, ready to be ordered.",
+    anchor: "seed-list",
+  },
+  {
+    id: 3,
+    route: "/app/seeding",
+    title: "Rating-Based Seeding",
+    message: "The simplest policy: strict descending rating.",
+    action: "Choose Rating-Based Seeding as the method.",
+    anchor: "seed-list",
+  },
+  {
+    id: 4,
+    route: "/app/seeding",
+    title: "Generate Draft",
+    message: "Nothing is applied to players until the order is published.",
+    action: "Click Generate Draft.",
+    anchor: "seed-list",
+  },
+  {
+    id: 5,
+    route: "/app/seeding",
+    title: "The ordered seed list",
+    message: "Seed 1 through 32, with each player's rating alongside.",
+    anchor: "seed-list",
+  },
+  {
+    id: 6,
+    route: "/app/seeding",
+    title: "Why this seed?",
+    message: "Every position can be explained, factor by factor.",
+    action: "Open \u201cWhy this seed?\u201d on any player.",
+    anchor: "seed-list",
+  },
+  {
+    id: 7,
+    route: "/app/seeding",
+    title: "Same-school warnings",
+    message:
+      "Adjacent seeds from one organization are flagged \u2014 a Swiss draw often pairs neighbours in round one.",
+    anchor: "seed-list",
+  },
+  {
+    id: 8,
+    route: "/app/seeding",
+    title: "Switch to Hybrid Seeding",
+    message: "The same rating order, with same-organization neighbours separated.",
+    action: "Change the method to Hybrid Seeding.",
+    anchor: "seed-list",
+  },
+  {
+    id: 9,
+    route: "/app/seeding",
+    title: "Fewer warnings, rating order intact",
+    message:
+      "The comparison strip shows the warning count falling. No player moves more than three places, so the rating order stays visible.",
+    anchor: "seed-list",
+  },
+  {
+    id: 10,
+    route: "/app/seeding",
+    title: "Move a protected player",
+    message: "The director can override any position by hand.",
+    action: "Use the move control on a player to change their seed.",
+    anchor: "seed-list",
+  },
+  {
+    id: 11,
+    route: "/app/seeding",
+    title: "Record the reason",
+    message: "A manual seeding change always requires a reason.",
+    action: "Enter an override reason and apply it.",
+    anchor: "seed-list",
+  },
+  {
+    id: 12,
+    route: "/app/seeding",
+    title: "Run validation",
+    message: "Duplicate seeds, gaps, overrides and remaining warnings are all checked.",
+    action: "Click Run Validation.",
+    anchor: "seed-list",
+  },
+  {
+    id: 13,
+    route: "/app/seeding",
+    title: "Lock the order",
+    message: "Locked seeds survive any later regeneration.",
+    action: "Click Lock all seeds.",
+    anchor: "seed-list",
+  },
+  {
+    id: 14,
+    route: "/app/seeding",
+    title: "Publish the seeding",
+    message: "The order is written to every player record and released for pairing.",
+    action: "Click Publish Seeding.",
+    anchor: "seed-list",
+  },
+  {
+    id: 15,
+    route: "/app/pairings?tab=preview",
+    title: "Round one from the seed list",
+    message:
+      "Seed 1 meets seed 17, seed 2 meets seed 18, and so on \u2014 the approved order builds the opening round.",
+    anchor: "pairing-preview",
+  },
+];
+
+/** Demo tracks the presenter can choose between. */
+export const DEMO_TRACKS = {
+  tournament: { label: "Full tournament story", steps: TOURNAMENT_STEPS },
+  seeding: { label: "Seeding walkthrough", steps: SEEDING_STEPS },
+} as const;
+
+export type DemoTrackId = keyof typeof DEMO_TRACKS;
+
+/** Backwards-compatible default export used by the overlay. */
+export const DEMO_STEPS = TOURNAMENT_STEPS;
+
 interface GuidedState {
   active: boolean;
   step: number;
   completed: boolean;
-  start: () => void;
+  track: DemoTrackId;
+  steps: DemoStep[];
+  start: (track?: DemoTrackId) => void;
   stop: () => void;
   next: () => void;
   prev: () => void;
@@ -120,14 +259,17 @@ export const useGuidedDemo = create<GuidedState>((set, get) => ({
   active: false,
   step: 0,
   completed: false,
-  start: () => set({ active: true, step: 0, completed: false }),
+  track: "tournament",
+  steps: TOURNAMENT_STEPS,
+  start: (track = "tournament") =>
+    set({ active: true, step: 0, completed: false, track, steps: DEMO_TRACKS[track].steps }),
   stop: () => set({ active: false }),
   next: () => {
-    const { step } = get();
-    if (step >= DEMO_STEPS.length - 1) set({ completed: true, active: false });
+    const { step, steps } = get();
+    if (step >= steps.length - 1) set({ completed: true, active: false });
     else set({ step: step + 1 });
   },
   prev: () => set({ step: Math.max(0, get().step - 1) }),
-  goTo: (step) => set({ step: Math.max(0, Math.min(DEMO_STEPS.length - 1, step)) }),
+  goTo: (step) => set({ step: Math.max(0, Math.min(get().steps.length - 1, step)) }),
   finish: () => set({ completed: true, active: false }),
 }));

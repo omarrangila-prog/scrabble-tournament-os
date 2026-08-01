@@ -47,7 +47,7 @@ const T = (h: number, m: number) =>
 
 export const ORGANIZATION: Organization = {
   id: "org-federation",
-  name: "National Scrabble Federation",
+  name: "Bluffy Alphabattle",
   country: "Pakistan",
   contactEmail: "info@tournamentos.demo",
 };
@@ -64,13 +64,13 @@ export const VENUE: Venue = {
 
 export const DIVISIONS: Division[] = [
   { id: "masters", name: "Masters", shortName: "MST", ratingFloor: 1750, ratingCeiling: 2200, accent: "primary" },
-  { id: "open", name: "Open", shortName: "OPN", ratingFloor: 1300, ratingCeiling: 1800, accent: "secondary" },
-  { id: "youth-u18", name: "Youth U18", shortName: "U18", ratingFloor: 1100, ratingCeiling: 1650, maxAge: 18, accent: "success" },
-  { id: "junior-u14", name: "Junior U14", shortName: "U14", ratingFloor: 800, ratingCeiling: 1350, maxAge: 14, accent: "warning" },
+  { id: "open", name: "Advance", shortName: "ADV", ratingFloor: 1300, ratingCeiling: 1800, accent: "secondary" },
+  { id: "youth-u18", name: "Recreational", shortName: "REC", ratingFloor: 1100, ratingCeiling: 1650, maxAge: 18, accent: "success" },
+  { id: "junior-u14", name: "Novice", shortName: "NOV", ratingFloor: 800, ratingCeiling: 1350, maxAge: 14, accent: "warning" },
 ];
 
 export const USERS: User[] = [
-  { id: "u-dir", name: "Sir Tariq Pervaiz", email: "director@tournamentos.demo", role: "director", organizationId: "org-federation", initials: "TP" },
+  { id: "u-dir", name: "Sir Hani", email: "director@tournamentos.demo", role: "director", organizationId: "org-federation", initials: "SH" },
   { id: "u-score", name: "Sana Malik", email: "scorekeeper@tournamentos.demo", role: "scorekeeper", organizationId: "org-federation", initials: "SM" },
   { id: "u-check", name: "Bilal Ahmed", email: "checkin@tournamentos.demo", role: "checkin", organizationId: "org-federation", initials: "BA" },
   { id: "u-arb", name: "Farah Qureshi", email: "arbiter@tournamentos.demo", role: "arbiter", organizationId: "org-federation", initials: "FQ" },
@@ -79,8 +79,8 @@ export const USERS: User[] = [
 
 export const TOURNAMENT: Tournament = {
   id: "t-pnsc-2026",
-  name: "Pakistan National Scrabble Championship 2026 — Demo",
-  organizer: "National Scrabble Federation",
+  name: "Bluffy Alphabattle Championship 2026 — Demo",
+  organizer: "Bluffy Alphabattle",
   organizationId: "org-federation",
   venueId: "venue-nseh",
   city: "Karachi",
@@ -720,7 +720,7 @@ function buildDisputes(players: Player[]): Dispute[] {
       description: "Player arrived 12 minutes after the round start. Director decision required on inclusion in round 6.",
       evidence: ["Check-in timestamp"],
       ruleReference: "Rule 2.6 — Late arrival",
-      assignedArbiter: "Sir Tariq Pervaiz",
+      assignedArbiter: "Sir Hani",
       priority: "normal",
       status: "open",
       appealAllowed: true,
@@ -740,7 +740,7 @@ function buildAnnouncements(): Announcement[] {
       audience: "All players",
       channels: ["in-app", "public-screen"],
       publishedAt: T(11, 15),
-      author: "Sir Tariq Pervaiz",
+      author: "Sir Hani",
       pinned: true,
     },
     {
@@ -751,15 +751,15 @@ function buildAnnouncements(): Announcement[] {
       audience: "All players",
       channels: ["in-app", "whatsapp"],
       publishedAt: T(10, 40),
-      author: "Sir Tariq Pervaiz",
+      author: "Sir Hani",
       pinned: false,
     },
     {
       id: "a-3",
       tournamentId: TOURNAMENT.id,
-      title: "Junior U14 prize ceremony",
-      body: "The Junior U14 ceremony will take place in Hall B at 17:00 on the final day.",
-      audience: "Junior U14",
+      title: "Novice prize ceremony",
+      body: "The Novice ceremony will take place in Hall B at 17:00 on the final day.",
+      audience: "Novice",
       channels: ["in-app", "email"],
       publishedAt: T(9, 5),
       author: "Sana Malik",
@@ -780,10 +780,10 @@ function buildCampaigns(): MessageCampaign[] {
 
 function buildAudit(): AuditEntry[] {
   return [
-    { id: "au-1", tournamentId: TOURNAMENT.id, at: T(11, 0), user: "Sir Tariq Pervaiz", role: "director", action: "Round published", target: "Round 5", newValue: "65 pairings", device: "Desktop · Chrome", reason: "Scheduled round start" },
-    { id: "au-2", tournamentId: TOURNAMENT.id, at: T(11, 20), user: "Sir Tariq Pervaiz", role: "director", action: "Board reassigned", target: "Board 27", previousValue: "Board 27", newValue: "Board 63", reason: "Table damaged during setup", device: "Desktop · Chrome" },
+    { id: "au-1", tournamentId: TOURNAMENT.id, at: T(11, 0), user: "Sir Hani", role: "director", action: "Round published", target: "Round 5", newValue: "65 pairings", device: "Desktop · Chrome", reason: "Scheduled round start" },
+    { id: "au-2", tournamentId: TOURNAMENT.id, at: T(11, 20), user: "Sir Hani", role: "director", action: "Board reassigned", target: "Board 27", previousValue: "Board 27", newValue: "Board 63", reason: "Table damaged during setup", device: "Desktop · Chrome" },
     { id: "au-3", tournamentId: TOURNAMENT.id, at: T(12, 6), user: "Sana Malik", role: "scorekeeper", action: "Result verified", target: "Board 7", newValue: "441 – 398", device: "Tablet · Safari" },
-    { id: "au-4", tournamentId: TOURNAMENT.id, at: T(12, 14), user: "Sir Tariq Pervaiz", role: "director", action: "Score corrected", target: "Board 41 (Round 4)", previousValue: "412 – 389", newValue: "412 – 398", reason: "Transcription error on the result slip", device: "Desktop · Chrome" },
+    { id: "au-4", tournamentId: TOURNAMENT.id, at: T(12, 14), user: "Sir Hani", role: "director", action: "Score corrected", target: "Board 41 (Round 4)", previousValue: "412 – 389", newValue: "412 – 398", reason: "Transcription error on the result slip", device: "Desktop · Chrome" },
     { id: "au-5", tournamentId: TOURNAMENT.id, at: T(9, 42), user: "Bilal Ahmed", role: "checkin", action: "Player checked in", target: "PK-071", newValue: "Checked in via QR", device: "Mobile · Android" },
   ];
 }
@@ -791,10 +791,10 @@ function buildAudit(): AuditEntry[] {
 function buildActivity(): ActivityEntry[] {
   return [
     { id: "ac-1", at: T(12, 6), user: "Sana Malik", message: "Board 3 result verified", kind: "result" },
-    { id: "ac-2", at: T(11, 2), user: "Sir Tariq Pervaiz", message: "Round 5 pairings published", kind: "pairing" },
+    { id: "ac-2", at: T(11, 2), user: "Sir Hani", message: "Round 5 pairings published", kind: "pairing" },
     { id: "ac-3", at: T(9, 42), user: "Bilal Ahmed", message: "Player checked in through QR", kind: "checkin" },
-    { id: "ac-4", at: T(11, 20), user: "Sir Tariq Pervaiz", message: "Board 27 reassigned", kind: "board" },
-    { id: "ac-5", at: T(12, 14), user: "Sir Tariq Pervaiz", message: "Director corrected a score", kind: "correction" },
+    { id: "ac-4", at: T(11, 20), user: "Sir Hani", message: "Board 27 reassigned", kind: "board" },
+    { id: "ac-5", at: T(12, 14), user: "Sir Hani", message: "Director corrected a score", kind: "correction" },
     { id: "ac-6", at: T(12, 20), user: "System", message: "Public standings synchronized", kind: "sync" },
   ];
 }

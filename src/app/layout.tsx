@@ -12,7 +12,7 @@ const manrope = Manrope({
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Scrabble Tournament OS — Championship Management Platform",
+  title: "Bluffy Alphabattle",
   description:
     "Registration, seating, pairings, scoring and live results — beautifully connected.",
 };
