@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarDays,
   Bell,
   CalendarClock,
   CircleHelp,
@@ -33,6 +34,7 @@ export interface NavItem {
 /** Primary operational navigation, ordered by tournament workflow. */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Command Centre", icon: Gauge },
+  { href: "/app/events", label: "Events", icon: CalendarDays },
   { href: "/app/tournaments", label: "Tournaments", icon: Trophy },
   { href: "/app/registrations", label: "Registration", icon: IdCard, badgeKey: "registrations" },
   { href: "/app/check-in", label: "Check-in", icon: UserCheck, badgeKey: "live" },
