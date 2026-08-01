@@ -70,7 +70,7 @@ export const DIVISIONS: Division[] = [
 ];
 
 export const USERS: User[] = [
-  { id: "u-dir", name: "Imran Sheikh", email: "director@tournamentos.demo", role: "director", organizationId: "org-psa", initials: "IS" },
+  { id: "u-dir", name: "Sir Tariq Pervaiz", email: "director@tournamentos.demo", role: "director", organizationId: "org-psa", initials: "TP" },
   { id: "u-score", name: "Sana Malik", email: "scorekeeper@tournamentos.demo", role: "scorekeeper", organizationId: "org-psa", initials: "SM" },
   { id: "u-check", name: "Bilal Ahmed", email: "checkin@tournamentos.demo", role: "checkin", organizationId: "org-psa", initials: "BA" },
   { id: "u-arb", name: "Farah Qureshi", email: "arbiter@tournamentos.demo", role: "arbiter", organizationId: "org-psa", initials: "FQ" },
@@ -720,7 +720,7 @@ function buildDisputes(players: Player[]): Dispute[] {
       description: "Player arrived 12 minutes after the round start. Director decision required on inclusion in round 6.",
       evidence: ["Check-in timestamp"],
       ruleReference: "Rule 2.6 — Late arrival",
-      assignedArbiter: "Imran Sheikh",
+      assignedArbiter: "Sir Tariq Pervaiz",
       priority: "normal",
       status: "open",
       appealAllowed: true,
@@ -740,7 +740,7 @@ function buildAnnouncements(): Announcement[] {
       audience: "All players",
       channels: ["in-app", "public-screen"],
       publishedAt: T(11, 15),
-      author: "Imran Sheikh",
+      author: "Sir Tariq Pervaiz",
       pinned: true,
     },
     {
@@ -751,7 +751,7 @@ function buildAnnouncements(): Announcement[] {
       audience: "All players",
       channels: ["in-app", "whatsapp"],
       publishedAt: T(10, 40),
-      author: "Imran Sheikh",
+      author: "Sir Tariq Pervaiz",
       pinned: false,
     },
     {
@@ -780,10 +780,10 @@ function buildCampaigns(): MessageCampaign[] {
 
 function buildAudit(): AuditEntry[] {
   return [
-    { id: "au-1", tournamentId: TOURNAMENT.id, at: T(11, 0), user: "Imran Sheikh", role: "director", action: "Round published", target: "Round 5", newValue: "65 pairings", device: "Desktop · Chrome", reason: "Scheduled round start" },
-    { id: "au-2", tournamentId: TOURNAMENT.id, at: T(11, 20), user: "Imran Sheikh", role: "director", action: "Board reassigned", target: "Board 27", previousValue: "Board 27", newValue: "Board 63", reason: "Table damaged during setup", device: "Desktop · Chrome" },
+    { id: "au-1", tournamentId: TOURNAMENT.id, at: T(11, 0), user: "Sir Tariq Pervaiz", role: "director", action: "Round published", target: "Round 5", newValue: "65 pairings", device: "Desktop · Chrome", reason: "Scheduled round start" },
+    { id: "au-2", tournamentId: TOURNAMENT.id, at: T(11, 20), user: "Sir Tariq Pervaiz", role: "director", action: "Board reassigned", target: "Board 27", previousValue: "Board 27", newValue: "Board 63", reason: "Table damaged during setup", device: "Desktop · Chrome" },
     { id: "au-3", tournamentId: TOURNAMENT.id, at: T(12, 6), user: "Sana Malik", role: "scorekeeper", action: "Result verified", target: "Board 7", newValue: "441 – 398", device: "Tablet · Safari" },
-    { id: "au-4", tournamentId: TOURNAMENT.id, at: T(12, 14), user: "Imran Sheikh", role: "director", action: "Score corrected", target: "Board 41 (Round 4)", previousValue: "412 – 389", newValue: "412 – 398", reason: "Transcription error on the result slip", device: "Desktop · Chrome" },
+    { id: "au-4", tournamentId: TOURNAMENT.id, at: T(12, 14), user: "Sir Tariq Pervaiz", role: "director", action: "Score corrected", target: "Board 41 (Round 4)", previousValue: "412 – 389", newValue: "412 – 398", reason: "Transcription error on the result slip", device: "Desktop · Chrome" },
     { id: "au-5", tournamentId: TOURNAMENT.id, at: T(9, 42), user: "Bilal Ahmed", role: "checkin", action: "Player checked in", target: "PK-071", newValue: "Checked in via QR", device: "Mobile · Android" },
   ];
 }
@@ -791,10 +791,10 @@ function buildAudit(): AuditEntry[] {
 function buildActivity(): ActivityEntry[] {
   return [
     { id: "ac-1", at: T(12, 6), user: "Sana Malik", message: "Board 3 result verified", kind: "result" },
-    { id: "ac-2", at: T(11, 2), user: "Imran Sheikh", message: "Round 5 pairings published", kind: "pairing" },
+    { id: "ac-2", at: T(11, 2), user: "Sir Tariq Pervaiz", message: "Round 5 pairings published", kind: "pairing" },
     { id: "ac-3", at: T(9, 42), user: "Bilal Ahmed", message: "Player checked in through QR", kind: "checkin" },
-    { id: "ac-4", at: T(11, 20), user: "Imran Sheikh", message: "Board 27 reassigned", kind: "board" },
-    { id: "ac-5", at: T(12, 14), user: "Imran Sheikh", message: "Director corrected a score", kind: "correction" },
+    { id: "ac-4", at: T(11, 20), user: "Sir Tariq Pervaiz", message: "Board 27 reassigned", kind: "board" },
+    { id: "ac-5", at: T(12, 14), user: "Sir Tariq Pervaiz", message: "Director corrected a score", kind: "correction" },
     { id: "ac-6", at: T(12, 20), user: "System", message: "Public standings synchronized", kind: "sync" },
   ];
 }

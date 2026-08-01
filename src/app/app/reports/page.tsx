@@ -460,7 +460,7 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   const winner = players.find((p) => p.id === table[0]?.playerId);
   const recipient =
     type === "Organizer appreciation"
-      ? "Imran Sheikh"
+      ? "Sir Tariq Pervaiz"
       : type === "Volunteer appreciation"
         ? "Tournament Volunteer"
         : winner?.fullName ?? "Player name";

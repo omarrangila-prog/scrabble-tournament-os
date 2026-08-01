@@ -87,7 +87,16 @@ export default function TournamentsPage() {
 
   const hour = 14; // Fixed reference hour keeps the greeting stable in the demo.
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = (currentUser?.name ?? "there").split(" ")[0];
+  /*
+   * Greet by the first given name, keeping any honorific attached — "Sir Tariq"
+   * rather than the bare "Sir" a naive first-word split would produce.
+   */
+  const HONORIFICS = ["sir", "dr", "mr", "mrs", "ms", "prof", "madam"];
+  const nameParts = (currentUser?.name ?? "there").split(" ");
+  const firstName =
+    nameParts.length > 1 && HONORIFICS.includes(nameParts[0].toLowerCase().replace(".", ""))
+      ? `${nameParts[0]} ${nameParts[1]}`
+      : nameParts[0];
 
   return (
     <div>
