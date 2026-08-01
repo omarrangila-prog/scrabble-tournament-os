@@ -5,7 +5,6 @@ import { Check, PenLine, QrCode, Upload } from "lucide-react";
 import { Badge, Button, Textarea } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { Pairing } from "@/lib/domain/types";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { cn, formatDateTime } from "@/lib/utils";
 
 /**
@@ -35,9 +34,7 @@ export function ResultSlip({ pairing }: { pairing: Pairing }) {
       {/* Slip header */}
       <div className="rounded-compact border border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-strong))] p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <PsaLogo variant="mark" size={34} />
-            <div className="min-w-0">
+          <div className="min-w-0">
             <p className="truncate text-[13px] font-semibold text-ink">
               {tournament.name.replace(" — Demo", "")}
             </p>
@@ -45,7 +42,6 @@ export function ResultSlip({ pairing }: { pairing: Pairing }) {
               Round {pairing.round} · Board {pairing.board} ·{" "}
               <span className="capitalize">{pairing.division.replace(/-/g, " ")}</span>
             </p>
-            </div>
           </div>
           <span className="grid size-14 shrink-0 place-items-center rounded-control border border-line-strong bg-white">
             <QrCode className="size-9 text-ink" />

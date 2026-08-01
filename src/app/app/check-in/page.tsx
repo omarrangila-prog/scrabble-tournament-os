@@ -35,7 +35,6 @@ import { useStore } from "@/lib/store/useStore";
 import { Player } from "@/lib/domain/types";
 import { cn, formatTime } from "@/lib/utils";
 import { KioskMode } from "@/components/checkin/KioskMode";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { Maximize2 } from "lucide-react";
 
 export default function CheckInPage() {
@@ -548,12 +547,6 @@ function PlayerCardDrawer({ player, onClose }: { player: Player | null; onClose:
     >
       <div className="overflow-hidden rounded-card border border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-strong))]">
         <div className="board-motif relative bg-primary/95 px-5 py-4 text-white">
-          <div className="mb-2 flex items-center gap-2.5">
-            <PsaLogo variant="mark" size={34} plate />
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.08em]">
-              Pakistan Scrabble Association
-            </p>
-          </div>
           <p className="text-[11px] uppercase tracking-[0.08em] opacity-85">
             Pakistan National Scrabble Championship 2026
           </p>

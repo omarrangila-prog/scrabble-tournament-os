@@ -27,7 +27,6 @@ import { useGuidedDemo } from "@/lib/store/guidedDemo";
 import { ROLE_SUMMARY } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
 import { ChampionshipScene } from "@/components/art/ScrabbleArt";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { Role } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 
@@ -110,10 +109,12 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-line bg-[rgb(var(--c-surface))] backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1680px] items-center gap-4 px-5 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <PsaLogo variant="mark" size={44} plate />
+            <span className="grid size-10 shrink-0 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white shadow-[0_8px_22px_rgba(115,87,246,0.34)]">
+              <LayoutGrid className="size-5" />
+            </span>
             <div className="min-w-0">
               <p className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-ink">
-                Pakistan Scrabble Association
+                Scrabble Tournament OS
               </p>
               <p className="hidden text-[11.5px] text-muted sm:block">
                 Official Tournament Platform
@@ -240,10 +241,6 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="glass-raised sticky top-[96px] rounded-panel p-6 sm:p-8"
           >
-            <div className="mb-5 flex justify-center">
-              <PsaLogo variant="stacked" size={72} />
-            </div>
-
             <h2 className="text-center text-[26px] font-extrabold tracking-[-0.025em] text-ink">
               Welcome Back
             </h2>
@@ -385,7 +382,7 @@ export default function LandingPage() {
       <footer className="border-t border-line px-5 py-8 sm:px-8">
         <div className="mx-auto flex max-w-[1680px] flex-col items-center gap-2 text-center">
           <p className="text-[12.5px] text-muted">
-            Pakistan Scrabble Association · Official championship management platform
+            Scrabble Tournament OS · Championship management for federations, clubs and schools
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-[12px] text-faint">
             <span className="inline-flex items-center gap-1.5">

@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronLeft,
   Cloud,
+  LayoutGrid,
   LogOut,
   Menu,
   Moon,
@@ -25,7 +26,6 @@ import { ROLE_LABEL } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
 import { cn, formatTime } from "@/lib/utils";
 import { EXTRA_NAV, NAV_ITEMS } from "./nav";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { CommandPalette } from "./CommandPalette";
 import { Toaster } from "./Toaster";
 import { GuidedDemoOverlay, GuidedDemoSummary } from "./GuidedDemoOverlay";
@@ -194,15 +194,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <Link href="/app" className="flex min-w-0 items-center gap-2.5" title={organization.name}>
-            <PsaLogo variant="mark" size={40} plate />
+            <span className="grid size-10 shrink-0 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white shadow-[0_8px_22px_rgba(115,87,246,0.32)]">
+              <LayoutGrid className="size-5" />
+            </span>
             {!collapsed ? (
               <span className="min-w-0">
-                <span className="block truncate text-[14px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                  Pakistan Scrabble
+                <span className="block truncate text-[14.5px] font-extrabold tracking-[-0.02em] text-ink">
+                  Tournament OS
                 </span>
-                <span className="block truncate text-[14px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-                  Association
-                </span>
+                <span className="block truncate text-[11px] text-muted">{organization.name}</span>
               </span>
             ) : null}
           </Link>
@@ -234,7 +234,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="relative flex h-full w-[88%] max-w-[300px] flex-col border-r border-line bg-[rgb(var(--c-surface-strong))] backdrop-blur-2xl">
             <div className="flex items-center justify-between px-4 py-4">
-              <PsaLogo variant="lockup" size={38} plate />
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-10 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white">
+                  <LayoutGrid className="size-5" />
+                </span>
+                <p className="text-[14.5px] font-extrabold text-ink">Tournament OS</p>
+              </div>
               <button
                 onClick={() => setMobileNav(false)}
                 aria-label="Close navigation"

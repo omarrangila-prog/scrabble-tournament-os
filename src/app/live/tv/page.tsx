@@ -6,7 +6,6 @@ import { Grid3x3, Megaphone, Pause, Play, Timer, Trophy } from "lucide-react";
 import { Avatar, Badge, Button } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { cn, signed } from "@/lib/utils";
 
 type PanelId = "standings" | "pairings" | "announcements" | "sponsors" | "countdown";
@@ -84,7 +83,6 @@ export default function TvDisplayPage() {
     <div className="flex min-h-dvh flex-col">
       {/* Header */}
       <header className="flex flex-wrap items-center gap-4 border-b border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-soft))] px-6 py-4 backdrop-blur-xl sm:px-10">
-        <PsaLogo variant="mark" size={56} plate />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[24px] font-semibold tracking-[-0.02em] text-ink sm:text-[32px]">
             {tournament.name.replace(" — Demo", "")}

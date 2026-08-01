@@ -46,8 +46,8 @@ const T = (h: number, m: number) =>
   new Date(`${DEMO_DATE}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00+05:00`).toISOString();
 
 export const ORGANIZATION: Organization = {
-  id: "org-psa",
-  name: "Pakistan Scrabble Association",
+  id: "org-federation",
+  name: "National Scrabble Federation",
   country: "Pakistan",
   contactEmail: "info@tournamentos.demo",
 };
@@ -70,18 +70,18 @@ export const DIVISIONS: Division[] = [
 ];
 
 export const USERS: User[] = [
-  { id: "u-dir", name: "Sir Tariq Pervaiz", email: "director@tournamentos.demo", role: "director", organizationId: "org-psa", initials: "TP" },
-  { id: "u-score", name: "Sana Malik", email: "scorekeeper@tournamentos.demo", role: "scorekeeper", organizationId: "org-psa", initials: "SM" },
-  { id: "u-check", name: "Bilal Ahmed", email: "checkin@tournamentos.demo", role: "checkin", organizationId: "org-psa", initials: "BA" },
-  { id: "u-arb", name: "Farah Qureshi", email: "arbiter@tournamentos.demo", role: "arbiter", organizationId: "org-psa", initials: "FQ" },
-  { id: "u-disp", name: "Hamza Nawaz", email: "display@tournamentos.demo", role: "display", organizationId: "org-psa", initials: "HN" },
+  { id: "u-dir", name: "Sir Tariq Pervaiz", email: "director@tournamentos.demo", role: "director", organizationId: "org-federation", initials: "TP" },
+  { id: "u-score", name: "Sana Malik", email: "scorekeeper@tournamentos.demo", role: "scorekeeper", organizationId: "org-federation", initials: "SM" },
+  { id: "u-check", name: "Bilal Ahmed", email: "checkin@tournamentos.demo", role: "checkin", organizationId: "org-federation", initials: "BA" },
+  { id: "u-arb", name: "Farah Qureshi", email: "arbiter@tournamentos.demo", role: "arbiter", organizationId: "org-federation", initials: "FQ" },
+  { id: "u-disp", name: "Hamza Nawaz", email: "display@tournamentos.demo", role: "display", organizationId: "org-federation", initials: "HN" },
 ];
 
 export const TOURNAMENT: Tournament = {
   id: "t-pnsc-2026",
   name: "Pakistan National Scrabble Championship 2026 — Demo",
-  organizer: "Pakistan Scrabble Association",
-  organizationId: "org-psa",
+  organizer: "National Scrabble Federation",
+  organizationId: "org-federation",
   venueId: "venue-nseh",
   city: "Karachi",
   startDate: "2026-07-29",

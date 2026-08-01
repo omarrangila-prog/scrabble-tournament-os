@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Calendar,
   Grid3x3,
+  LayoutGrid,
   Info,
   Link2,
   MapPin,
@@ -29,7 +30,6 @@ import {
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { cn, formatDate, formatTime, signed } from "@/lib/utils";
 
 const NAV = [
@@ -96,7 +96,9 @@ export default function PublicSitePage() {
       {/* Public header --------------------------------------------------- */}
       <header className="sticky top-0 z-40 border-b border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface))] backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
-          <PsaLogo variant="mark" size={40} plate />
+          <span className="grid size-9 shrink-0 place-items-center rounded-control bg-primary text-white">
+            <LayoutGrid className="size-4.5" />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-ink">
               {tournament.name.replace(" — Demo", "")}
@@ -491,7 +493,7 @@ export default function PublicSitePage() {
       <footer className="border-t border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-soft))] px-4 py-6 sm:px-6">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center gap-2 text-center">
           <p className="text-[12.5px] text-muted">
-            Pakistan Scrabble Association · Official championship results
+            {tournament.organizer} · Powered by Tournament OS
           </p>
           <Link href="/" className="text-[12px] text-primary underline underline-offset-2">
             Organizer sign in

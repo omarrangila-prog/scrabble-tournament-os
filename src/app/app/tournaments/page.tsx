@@ -403,7 +403,7 @@ interface WizardState {
 
 const INITIAL: WizardState = {
   name: "",
-  organizer: "Pakistan Scrabble Association",
+  organizer: "National Scrabble Federation",
   venue: "",
   city: "Karachi",
   startDate: "2026-09-12",

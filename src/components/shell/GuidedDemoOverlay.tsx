@@ -202,7 +202,7 @@ export function GuidedDemoSummary() {
           )}
         </ul>
         <p className="mt-5 text-[15px] font-medium text-ink">
-          Pakistan Scrabble Association is ready to run your next championship.
+          Tournament OS is ready to run your next championship.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button

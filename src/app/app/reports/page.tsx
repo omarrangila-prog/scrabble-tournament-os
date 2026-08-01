@@ -25,7 +25,6 @@ import {
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
-import { PsaDocumentHeader, PsaLogo } from "@/components/brand/PsaLogo";
 import { cn, downloadFile, formatDate, formatDateTime, signed, toCsv } from "@/lib/utils";
 
 interface ReportDef {
@@ -405,10 +404,12 @@ function ReportPreview({
   return (
     <div>
       <div className="mb-3 rounded-compact bg-[rgb(var(--c-surface))] p-4">
-        <PsaDocumentHeader
-          documentTitle="Official Tournament Report"
-          subtitle={`${store.tournament.name.replace(" — Demo", "")} · ${def.name} · generated ${formatDateTime(new Date().toISOString())}`}
-        />
+        <p className="text-[15px] font-semibold text-ink">
+          {store.tournament.name.replace(" — Demo", "")}
+        </p>
+        <p className="text-[12.5px] text-muted">
+          {def.name} · generated {formatDateTime(new Date().toISOString())}
+        </p>
       </div>
 
       {rows.length === 0 ? (
@@ -514,12 +515,8 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
         <div className="board-motif relative px-8 py-10 text-center">
           <div className="pointer-events-none absolute inset-3 rounded-compact border-2 border-primary/25" />
           <div className="relative">
-            <PsaLogo variant="mark" size={68} className="mx-auto" />
-            <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
-              Pakistan Scrabble Association
-            </p>
-            <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted">
-              Official Certificate
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
+              {store.organization.name}
             </p>
             <p className="mt-3 text-[13px] uppercase tracking-[0.16em] text-muted">Certificate of</p>
             <p className="mt-1 text-[26px] font-semibold tracking-[-0.02em] text-ink">{type}</p>

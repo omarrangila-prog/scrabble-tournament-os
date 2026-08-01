@@ -12,7 +12,7 @@ const manrope = Manrope({
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Pakistan Scrabble Association — Tournament OS",
+  title: "Scrabble Tournament OS — Championship Management Platform",
   description:
     "Registration, seating, pairings, scoring and live results — beautifully connected.",
 };

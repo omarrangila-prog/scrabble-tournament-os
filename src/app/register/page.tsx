@@ -11,10 +11,10 @@ import {
   MapPin,
   Trophy,
   Users,
+  LayoutGrid,
 } from "lucide-react";
 import { Badge, Button, Card, Progress } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { PsaLogo } from "@/components/brand/PsaLogo";
 import { useIdentityStore } from "@/lib/store/useIdentityStore";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/domain/identity";
 import { cn, formatDate } from "@/lib/utils";
@@ -49,7 +49,7 @@ export default function TournamentDiscoveryPage() {
       <header className="sticky top-0 z-40 border-b border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface))] backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
           <span className="grid size-9 shrink-0 place-items-center rounded-control bg-primary text-white">
-            <PsaLogo variant="mark" size={36} />
+            <LayoutGrid className="size-4.5" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-semibold tracking-[-0.01em] text-ink">
@@ -230,7 +230,7 @@ export default function TournamentDiscoveryPage() {
 
       <footer className="border-t border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-soft))] px-4 py-6 text-center sm:px-6">
         <p className="text-[12.5px] text-muted">
-          Pakistan Scrabble Association · Pakistan Scrabble Association
+          Scrabble Tournament OS · Scrabble Tournament OS
         </p>
       </footer>
     </div>
