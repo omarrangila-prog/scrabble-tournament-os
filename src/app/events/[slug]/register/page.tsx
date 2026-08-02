@@ -25,7 +25,6 @@ import {
 } from "@/components/ui";
 import { FieldRenderer } from "@/components/forms/FieldRenderer";
 import {
-  computeFee,
   registrationStatusOf,
   selectEventBySlug,
   selectForm,
@@ -45,6 +44,13 @@ import {
   validateStep,
   visibleFields,
 } from "@/lib/domain/formSteps";
+import {
+  buildHistory,
+  DEFAULT_LOYALTY,
+  loyaltyReward,
+  NO_REWARD,
+  priceRegistration,
+} from "@/lib/engine/loyalty";
 import { PaymentMethod, PlayerCategory } from "@/lib/domain/identity";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { cn } from "@/lib/utils";
@@ -129,7 +135,6 @@ export default function RegisterPage() {
   const discount = store.discounts.find(
     (d) => d.eventId === event.id && d.active && d.code === appliedCode,
   );
-  const fee = computeFee(event.fee, event.currency, discount);
 
   const steps = buildSteps(form);
   const step = steps[stepIndex];
@@ -149,6 +154,48 @@ export default function RegisterPage() {
 
   const returning =
     !dismissedReturning && values.email ? findReturning(values.email, history) : null;
+
+  /*
+   * Loyalty is derived at render from completed entries rather than stored, so
+   * it cannot go stale or be granted twice. Approved entries only — a rejected
+   * registration is not participation.
+   */
+  const email = (values.email ?? "").trim().toLowerCase();
+  const priorEntries = email
+    ? store.registrations
+        .filter((r) => r.email.trim().toLowerCase() === email && r.eventId !== event.id)
+        .map((r) => ({
+          status: r.status,
+          eventName: store.events.find((e) => e.id === r.eventId)?.name ?? "a previous event",
+          submittedAt: r.submittedAt,
+        }))
+    : [];
+
+  const participantHistory = buildHistory(priorEntries);
+  const reward = email
+    ? loyaltyReward(DEFAULT_LOYALTY, participantHistory, event.fee)
+    : NO_REWARD;
+
+  const pricing = priceRegistration(
+    event.fee,
+    event.currency,
+    reward,
+    discount
+      ? {
+          code: discount.code,
+          name: discount.label,
+          percentOff: discount.kind === "percentage" ? discount.value : 0,
+          // A free-entry code takes the whole fee off; a fixed code takes its
+          // own value. Both are clamped to the fee by priceRegistration.
+          amountOff:
+            discount.kind === "free-entry"
+              ? event.fee
+              : discount.kind === "fixed"
+                ? discount.value
+                : 0,
+        }
+      : undefined,
+  );
 
   const set = (id: string, v: string) => {
     setValues((s) => ({ ...s, [id]: v }));
@@ -247,9 +294,9 @@ export default function RegisterPage() {
       paymentMethod: METHOD_VALUE[values["paymentMethod"] ?? "Bank transfer"] ?? "bank-transfer",
       paymentReference: values["reference"],
       receiptFileName: receiptName ?? undefined,
-      amountDue: fee.amountDue,
+      amountDue: pricing.payable,
       discountCode: appliedCode ?? undefined,
-      discountAmount: fee.discountAmount,
+      discountAmount: pricing.totalOff,
       currency: event.currency,
     });
 
@@ -266,7 +313,7 @@ export default function RegisterPage() {
         email={values["email"] ?? ""}
         eventName={event.name}
         slug={event.slug}
-        amountDue={fee.amountDue}
+        amountDue={pricing.payable}
         currency={event.currency}
         paidByCash={values["paymentMethod"] === "Cash at venue"}
         hasReceipt={!!receiptName}
@@ -384,7 +431,7 @@ export default function RegisterPage() {
                 steps={steps}
                 values={values}
                 onEdit={(index) => goTo(index)}
-                fee={fee}
+                fee={{ amountDue: pricing.payable, discountAmount: pricing.totalOff }}
                 currency={event.currency}
                 receiptName={receiptName}
               />
@@ -410,21 +457,34 @@ export default function RegisterPage() {
                 </p>
 
                 <div className="mt-2 space-y-1.5">
-                  <Row label="Entry fee" value={`${event.currency} ${event.fee.toLocaleString("en-PK")}`} />
-                  {fee.discountAmount > 0 ? (
+                  {pricing.lines.map((line, i) => (
                     <Row
-                      label={`Discount (${appliedCode})`}
-                      value={`− ${event.currency} ${fee.discountAmount.toLocaleString("en-PK")}`}
-                      tone="success"
+                      key={i}
+                      label={line.label}
+                      value={`${line.amount < 0 ? "− " : ""}${event.currency} ${Math.abs(line.amount).toLocaleString("en-PK")}`}
+                      tone={line.amount < 0 ? "success" : undefined}
                     />
-                  ) : null}
+                  ))}
                   <div className="border-t border-line pt-1.5">
                     <Row
                       label="Amount due"
-                      value={`${event.currency} ${fee.amountDue.toLocaleString("en-PK")}`}
+                      value={`${event.currency} ${pricing.payable.toLocaleString("en-PK")}`}
                     />
                   </div>
                 </div>
+
+                {pricing.freeGames > 0 ? (
+                  <p className="mt-2 text-[12px] text-[#12855c]">
+                    {pricing.freeGames} free game{pricing.freeGames === 1 ? "" : "s"} included.
+                  </p>
+                ) : null}
+
+                {pricing.pendingApproval ? (
+                  <p className="mt-2 text-[12px] leading-relaxed text-[#a76d16]">
+                    Your returning-participant discount is applied here, and the organizer confirms
+                    it when they review your entry.
+                  </p>
+                ) : null}
 
                 {!appliedCode ? (
                   <div className="mt-3">
