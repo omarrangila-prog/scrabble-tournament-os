@@ -9,25 +9,19 @@ import {
   CalendarCheck,
   CheckCircle2,
   CloudUpload,
-  Gavel,
   Globe,
   LayoutGrid,
   Lock,
   Moon,
-  Radio,
-  ScanLine,
   ShieldCheck,
   Sparkles,
   Sun,
-  Trophy,
-  Users,
 } from "lucide-react";
 import { Badge, Button, Field, Input, Select } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { useGuidedDemo } from "@/lib/store/guidedDemo";
 import { ROLE_SUMMARY } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
-import { ChampionshipScene } from "@/components/art/ScrabbleArt";
 import { Role } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 
@@ -49,20 +43,6 @@ const ROLE_EMAIL: Record<Role, string> = {
 };
 
 /** Floating capability cards that frame the hero artwork. */
-const LEFT_CARDS = [
-  { icon: Users, title: "Fair Pairing", detail: "Swiss pairings with conflict detection" },
-  { icon: Trophy, title: "Live Rankings", detail: "Standings recalculated on verification" },
-  { icon: ShieldCheck, title: "Verified Results", detail: "Two-sided player confirmation" },
-  { icon: ScanLine, title: "QR Check-in", detail: "Seamless player registration" },
-];
-
-const RIGHT_CARDS = [
-  { icon: LayoutGrid, title: "Tournament Director", detail: "Manage the event end to end" },
-  { icon: Sparkles, title: "Tournament Copilot", detail: "Answers from live tournament data" },
-  { icon: Radio, title: "Live Broadcast", detail: "Venue screens and public results" },
-  { icon: Gavel, title: "Arbiter Support", detail: "Cases, evidence and rulings" },
-];
-
 /** Demo-safe capability claims — no fabricated player or country counts. */
 const CAPABILITIES = [
   "Multi-Division Support",
@@ -192,34 +172,92 @@ export default function LandingPage() {
 
           </motion.div>
 
-          {/* Artwork with floating capability cards */}
-          <div className="relative mt-10 lg:mt-14">
-            <div className="grid grid-cols-1 items-center gap-6 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-              {/* Left cards */}
-              <div className="order-2 grid grid-cols-2 gap-2.5 xl:order-1 xl:grid-cols-1">
-                {LEFT_CARDS.map((c, i) => (
-                  <FeatureCard key={c.title} {...c} delay={i * 0.08} />
-                ))}
-              </div>
+          {/*
+            Product previews rather than decoration. Each panel is a real screen
+            from the app, so what a visitor sees is what they get.
+          */}
+          <div className="relative mt-10 lg:mt-12">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PreviewPanel
+                title="Event workspace"
+                caption="Everything for one tournament in one place, with the next action named."
+                className="sm:col-span-2"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 border-b border-line pb-2">
+                    {["Overview", "Registrations", "Payments", "Live Event"].map((t, i) => (
+                      <span
+                        key={t}
+                        className={cn(
+                          "rounded-control px-2 py-1 text-[10.5px] font-semibold",
+                          i === 0 ? "bg-primary-050 text-primary" : "text-muted",
+                        )}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[12.5px] font-bold text-ink">Registration is open.</p>
+                  <p className="text-[11.5px] text-muted">Share the link so people can register.</p>
+                  <div className="flex gap-1.5 pt-1">
+                    <span className="rounded-control bg-primary px-2.5 py-1 text-[10.5px] font-semibold text-white">
+                      Share registration
+                    </span>
+                    <span className="rounded-control border border-line px-2.5 py-1 text-[10.5px] font-semibold text-muted">
+                      View registrations
+                    </span>
+                  </div>
+                </div>
+              </PreviewPanel>
 
-              {/* Scene */}
-              <div className="order-1 flex justify-center xl:order-2">
-                <ChampionshipScene className="w-full max-w-[420px]" />
-              </div>
+              <PreviewPanel
+                title="Receipt review"
+                caption="A receipt is a claim. Only a verified payment counts."
+              >
+                <div className="space-y-1.5">
+                  {[
+                    ["Hunain Ahmed", "Receipt under review", "warning"],
+                    ["Ayesha Khan", "Duplicate transaction", "critical"],
+                    ["Bilal Iqbal", "Payment verified", "success"],
+                  ].map(([name, status, tone]) => (
+                    <div key={name} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[11.5px] text-ink">{name}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          tone === "success"
+                            ? "bg-success-050 text-[#12855c]"
+                            : tone === "critical"
+                              ? "bg-critical-050 text-critical"
+                              : "bg-warning-050 text-[#a76d16]",
+                        )}
+                      >
+                        {status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </PreviewPanel>
 
-              {/* Right cards */}
-              <div className="order-3 grid grid-cols-2 gap-2.5 xl:grid-cols-1">
-                {RIGHT_CARDS.map((c, i) => (
-                  <FeatureCard key={c.title} {...c} delay={0.32 + i * 0.08} />
-                ))}
-              </div>
-            </div>
-
-            {/* Live operational readouts */}
-            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <MiniMetric label="Round completion" value="82%" tone="primary" progress={82} />
-              <MiniMetric label="Active boards" value="61" tone="success" progress={95} />
-              <MiniMetric label="Pairing health" value="98%" tone="info" progress={98} />
+              <PreviewPanel
+                title="Live standings"
+                caption="Derived from verified results, never entered by hand."
+              >
+                <div className="space-y-1.5">
+                  {[
+                    ["1", "Ahmad Raza", "8", "+1,204"],
+                    ["2", "Sana Malik", "7", "+842"],
+                    ["3", "Usman Tariq", "7", "+610"],
+                  ].map(([rank, name, wins, spread]) => (
+                    <div key={rank} className="flex items-center gap-2 text-[11.5px]">
+                      <span className="num w-4 font-bold text-muted">{rank}</span>
+                      <span className="min-w-0 flex-1 truncate text-ink">{name}</span>
+                      <span className="num font-semibold text-success">{wins}</span>
+                      <span className="num w-[52px] text-right text-muted">{spread}</span>
+                    </div>
+                  ))}
+                </div>
+              </PreviewPanel>
             </div>
 
             {/* Capability band — demo-safe claims, no fabricated statistics. */}
@@ -407,61 +445,30 @@ export default function LandingPage() {
 
 /* -------------------------------------------------------------------------- */
 
-function FeatureCard({
-  icon: Icon,
+/**
+ * A framed glimpse of a real screen.
+ *
+ * Deliberately built from the same tokens as the app rather than a screenshot,
+ * so it cannot drift out of date the way an exported image would.
+ */
+function PreviewPanel({
   title,
-  detail,
-  delay = 0,
+  caption,
+  className,
+  children,
 }: {
-  icon: React.ElementType;
   title: string;
-  detail: string;
-  delay?: number;
+  caption: string;
+  className?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="glass rounded-compact p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--sh-card-hover)]"
-    >
-      <span className="grid size-8 place-items-center rounded-[10px] bg-gradient-to-br from-primary-050 to-secondary-050 text-primary">
-        <Icon className="size-4" />
-      </span>
-      <p className="mt-2 text-[13px] font-bold leading-tight text-ink">{title}</p>
-      <p className="mt-0.5 text-[11.5px] leading-snug text-muted">{detail}</p>
-    </motion.div>
-  );
-}
-
-function MiniMetric({
-  label,
-  value,
-  tone,
-  progress,
-}: {
-  label: string;
-  value: string;
-  tone: "primary" | "success" | "info";
-  progress: number;
-}) {
-  return (
-    <div className="glass rounded-compact p-4">
-      <div className="flex items-baseline justify-between">
-        <p className="text-[12.5px] font-semibold text-muted">{label}</p>
-        <p className="num text-[19px] font-extrabold tracking-[-0.02em] text-ink">{value}</p>
+    <div className={cn("glass-raised rounded-feature p-4", className)}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{title}</p>
+      <div className="mt-2.5 rounded-control bg-[rgb(var(--c-surface-strong))] p-3">
+        {children}
       </div>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[rgb(var(--c-line))]">
-        <div
-          className={cn(
-            "h-full rounded-full",
-            tone === "primary" && "bg-gradient-to-r from-primary to-secondary",
-            tone === "success" && "bg-gradient-to-r from-success to-cyan",
-            tone === "info" && "bg-gradient-to-r from-secondary to-cyan",
-          )}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-faint">{caption}</p>
     </div>
   );
 }
