@@ -30,6 +30,7 @@ import {
   Toggle,
 } from "@/components/ui";
 import { LetterTile } from "@/components/art/ScrabbleArt";
+import { FormatPicker } from "@/components/forms/FormatPicker";
 import { useStore } from "@/lib/store/useStore";
 import {
   DivisionId,
@@ -660,14 +661,13 @@ function CreateTournamentWizard({ open, onClose }: { open: boolean; onClose: () 
                 invalid={!!errors.totalRounds}
               />
             </Field>
-            <Field label="Pairing system" required>
-              <Select value={form.system} onChange={(e) => set("system", e.target.value as PairingSystem)}>
-                <option value="swiss">Swiss</option>
-                <option value="round-robin">Round Robin</option>
-                <option value="knockout">Knockout</option>
-                <option value="king-of-the-hill">King of the Hill</option>
-                <option value="manual">Manual / custom pairing</option>
-              </Select>
+            <Field label="Pairing format" required>
+              <FormatPicker
+                value={form.system}
+                onChange={(system) => set("system", system)}
+                players={form.capacity}
+                rounds={form.totalRounds}
+              />
             </Field>
             <Field label="Game time (minutes)">
               <Input type="number" value={form.gameMinutes} onChange={(e) => set("gameMinutes", Number(e.target.value))} className="num" />
