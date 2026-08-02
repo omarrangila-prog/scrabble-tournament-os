@@ -46,8 +46,8 @@ describe("feeTotals", () => {
     expect(t.collected).toBe(0);
   });
 
-  it("treats under-review the same as an uploaded receipt", () => {
-    const t = feeTotals([reg({ paymentStatus: "under-review" })]);
+  it("treats review-required the same as an uploaded receipt", () => {
+    const t = feeTotals([reg({ paymentStatus: "review-required" })]);
     expect(t.pendingVerification).toBe(1000);
     expect(t.collected).toBe(0);
   });
@@ -76,7 +76,7 @@ describe("feeTotals", () => {
   it("expected equals collected plus pending plus outstanding", () => {
     const t = feeTotals([
       reg({ paymentStatus: "verified", amountDue: 500 }),
-      reg({ paymentStatus: "under-review", amountDue: 700 }),
+      reg({ paymentStatus: "review-required", amountDue: 700 }),
       reg({ paymentStatus: "not-submitted", amountDue: 900 }),
     ]);
     expect(t.expected).toBe(t.collected + t.pendingVerification + t.outstanding);

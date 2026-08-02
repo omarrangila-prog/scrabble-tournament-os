@@ -54,23 +54,32 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 const PAYMENT_TONE: Record<GuestPaymentStatus, "success" | "warning" | "critical" | "neutral" | "info"> = {
   "not-submitted": "neutral",
   "receipt-uploaded": "warning",
-  "under-review": "warning",
+  processing: "warning",
+  "review-required": "warning",
+  "partially-paid": "warning",
   verified: "success",
   "amount-mismatch": "critical",
+  "duplicate-transaction": "critical",
+  "invalid-receipt": "critical",
   rejected: "critical",
   complimentary: "info",
-  discounted: "info",
+  refunded: "info",
 };
 
+/** Plain language — participants read these too. */
 const PAYMENT_LABEL: Record<GuestPaymentStatus, string> = {
-  "not-submitted": "Not submitted",
-  "receipt-uploaded": "Receipt uploaded",
-  "under-review": "Under review",
-  verified: "Verified",
-  "amount-mismatch": "Amount mismatch",
-  rejected: "Rejected",
-  complimentary: "Complimentary",
-  discounted: "Discounted",
+  "not-submitted": "Waiting for payment",
+  "receipt-uploaded": "Receipt under review",
+  processing: "Being processed",
+  "review-required": "Needs a closer look",
+  "partially-paid": "Partially paid",
+  verified: "Payment verified",
+  "amount-mismatch": "Amount does not match",
+  "duplicate-transaction": "Duplicate transaction",
+  "invalid-receipt": "Receipt not readable",
+  rejected: "Receipt rejected",
+  complimentary: "Complimentary entry",
+  refunded: "Refunded",
 };
 
 /**

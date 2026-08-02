@@ -44,15 +44,26 @@ export const EVENT_STORAGE_KEY = "bluffy-events-v1";
 /* Guest registration                                                          */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Payment status.
+ *
+ * Mirrors `PaymentStatus` in the payments engine so a review decision can be
+ * recorded without translation. Every state except `verified` and
+ * `complimentary` means money has not been confirmed as received.
+ */
 export type GuestPaymentStatus =
   | "not-submitted"
   | "receipt-uploaded"
-  | "under-review"
+  | "processing"
+  | "review-required"
   | "verified"
   | "amount-mismatch"
+  | "duplicate-transaction"
+  | "invalid-receipt"
   | "rejected"
+  | "partially-paid"
   | "complimentary"
-  | "discounted";
+  | "refunded";
 
 export type GuestRegistrationStatus =
   | "submitted"
@@ -538,7 +549,10 @@ export function registrationSummary(registrations: GuestRegistration[]) {
 
     paymentVerified: registrations.filter((r) => r.paymentStatus === "verified").length,
     paymentPending: registrations.filter(
-      (r) => r.paymentStatus === "receipt-uploaded" || r.paymentStatus === "under-review",
+      (r) =>
+        r.paymentStatus === "receipt-uploaded" ||
+        r.paymentStatus === "review-required" ||
+        r.paymentStatus === "processing",
     ).length,
     paymentMissing: registrations.filter((r) => r.paymentStatus === "not-submitted").length,
     complimentary: registrations.filter((r) => r.paymentStatus === "complimentary").length,

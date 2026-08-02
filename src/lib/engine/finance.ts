@@ -125,7 +125,11 @@ export function feeTotals(registrations: FeeRecord[]): FeeTotals {
     if (NON_PAYING_STATUS.has(r.status) || NON_PAYING_PAYMENT.has(r.paymentStatus)) continue;
 
     if (r.paymentStatus === "verified") collected += r.amountDue;
-    else if (r.paymentStatus === "receipt-uploaded" || r.paymentStatus === "under-review")
+    else if (
+      r.paymentStatus === "receipt-uploaded" ||
+      r.paymentStatus === "review-required" ||
+      r.paymentStatus === "processing"
+    )
       pending += r.amountDue;
     else outstanding += r.amountDue;
   }

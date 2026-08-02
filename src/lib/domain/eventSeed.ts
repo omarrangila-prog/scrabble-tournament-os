@@ -198,7 +198,7 @@ function buildRegistrations(): GuestRegistration[] {
       paymentStatus = "receipt-uploaded";
     } else if (s < 0.2) {
       status = "under-review";
-      paymentStatus = "under-review";
+      paymentStatus = "review-required";
     } else if (s < 0.24) {
       status = "submitted";
       paymentStatus = "not-submitted";
