@@ -441,10 +441,10 @@ export function defaultForm(eventId: string): RegistrationForm {
         required: false,
         hint: "PSA, WESPA or another recognised rating. Leave blank if unrated.",
       }),
-      f("division", "select", "Preferred division", {
+      f("division", "select", "Preferred playing level", {
         mapsTo: "category",
-        options: ["Beginner", "Recreational", "Advance", "Masters"],
-        hint: "The organizer confirms your final division after review.",
+        options: ["Beginner", "Recreational", "Advanced", "Masters"],
+        hint: "Your preferred level is a request. Final placement is confirmed using tournament history, rating and organizer approval.",
       }),
       f("previousEvents", "textarea", "Previous tournaments played", { required: false }),
 
