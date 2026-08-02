@@ -26,7 +26,7 @@ import { ROLE_LABEL } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
 import { cn, formatTime } from "@/lib/utils";
 import { EventSwitcher } from "./EventSwitcher";
-import { EXTRA_NAV, NAV_ITEMS } from "./nav";
+import { ALL_ROUTES, EXTRA_NAV, NAV_ITEMS } from "./nav";
 import { CommandPalette } from "./CommandPalette";
 import { Toaster } from "./Toaster";
 import { GuidedDemoOverlay, GuidedDemoSummary } from "./GuidedDemoOverlay";
@@ -169,12 +169,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push("/");
   };
 
-  /** Breadcrumb from the active nav entry. */
+  /**
+   * Breadcrumb for the current page. Matched longest-href first so a nested
+   * route such as /app/events/new reports itself rather than its parent.
+   */
   const crumb =
-    [...NAV_ITEMS, ...EXTRA_NAV].find((i) => {
-      const base = i.href.split("#")[0];
-      return base === "/app" ? pathname === "/app" : pathname.startsWith(base);
-    })?.label ?? "Command Centre";
+    [...ALL_ROUTES]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((i) =>
+        i.href === "/app" ? pathname === "/app" : pathname.startsWith(i.href),
+      )?.label ?? "Command Centre";
 
   return (
     <div className="flex min-h-dvh">

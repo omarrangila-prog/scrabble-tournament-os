@@ -15,7 +15,7 @@ import {
 import { useStore } from "@/lib/store/useStore";
 import { Avatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "./nav";
+import { ALL_ROUTES } from "./nav";
 
 export interface SearchResult {
   id: string;
@@ -153,7 +153,7 @@ export function useGlobalSearch(query: string): SearchResult[] {
       }
     }
 
-    for (const item of NAV_ITEMS) {
+    for (const item of ALL_ROUTES) {
       if (item.label.toLowerCase().includes(q)) {
         out.push({
           id: `page-${item.href}`,
