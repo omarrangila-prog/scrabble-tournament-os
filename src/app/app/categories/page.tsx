@@ -36,7 +36,7 @@ import {
   Th,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { useIdentityStore } from "@/lib/store/useIdentityStore";
+import { selectEventsPlayed, useIdentityStore } from "@/lib/store/useIdentityStore";
 import { buildEvidence, evaluatePlayer } from "@/lib/engine/category";
 import {
   CATEGORY_LABEL,
@@ -49,7 +49,7 @@ import {
 import { cn, formatDateTime } from "@/lib/utils";
 
 const CATEGORY_COLOR: Record<PlayerCategory, string> = {
-  novice: "#F5A94A",
+  beginner: "#F5A94A",
   recreational: "#32C997",
   advanced: "#4BA8FF",
   masters: "#6D5DFB",
@@ -245,8 +245,8 @@ export default function CategoriesPage() {
             <RuleCard
               icon={<ShieldAlert className="size-4" />}
               tone="critical"
-              title="Novice protection"
-              body="Novice is for beginners aged 6–18. A player is never moved into it for poor results or inactivity alone."
+              title="Beginner protection"
+              body="Beginner is for beginners aged 6–18. A player is never moved into it for poor results or inactivity alone."
             />
           </div>
         </Card>
@@ -604,7 +604,9 @@ function ManualChangeModal({ playerId, onClose }: { playerId: string | null; onC
 
   if (!playerId || !record) return null;
 
-  const check = categoryEligibility(to, record.dateOfBirth);
+  const check = categoryEligibility(to, {
+    eventsPlayed: selectEventsPlayed(identity, record.playerId),
+  });
   const blocked = !check.eligible && !override;
 
   return (

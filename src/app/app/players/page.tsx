@@ -295,7 +295,7 @@ function AddPlayerModal({ open, onClose }: { open: boolean; onClose: () => void 
   const store = useStore();
   const { players, divisions } = store;
   const [form, setForm] = React.useState({
-    fullName: "", city: "", club: "", division: "open" as DivisionId,
+    fullName: "", city: "", club: "", division: "advanced" as DivisionId,
     rating: "", email: "", phone: "", emergencyName: "", accommodation: "",
   });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -354,7 +354,7 @@ function AddPlayerModal({ open, onClose }: { open: boolean; onClose: () => void 
       description: `${form.fullName} was added to the ${form.division.replace(/-/g, " ")} division.`,
       tone: "success",
     });
-    setForm({ fullName: "", city: "", club: "", division: "open", rating: "", email: "", phone: "", emergencyName: "", accommodation: "" });
+    setForm({ fullName: "", city: "", club: "", division: "advanced", rating: "", email: "", phone: "", emergencyName: "", accommodation: "" });
     onClose();
   };
 

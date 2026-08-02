@@ -234,8 +234,11 @@ export const useIdentityStore = create<IdentityStore>()(
         if (identity.category === to)
           return { ok: false, message: `This player is already in the ${to} category.` };
 
-        // Novice keeps its age rule unless an administrator overrides it.
-        const eligibility = categoryEligibility(to, identity.dateOfBirth);
+        // Beginner keeps its experience limit unless an administrator overrides
+        // it. Events played is derived from approved registrations rather than
+        // stored on the identity, so it cannot drift out of date.
+        const eventsPlayed = selectEventsPlayed(get(), playerId);
+        const eligibility = categoryEligibility(to, { eventsPlayed });
         if (!eligibility.eligible && !options?.override) {
           return { ok: false, message: eligibility.reason ?? "This category is not available." };
         }
@@ -253,8 +256,8 @@ export const useIdentityStore = create<IdentityStore>()(
               to,
               kind:
                 options?.kind ??
-                (["novice", "recreational", "advanced", "masters"].indexOf(to) >
-                ["novice", "recreational", "advanced", "masters"].indexOf(from)
+                (["beginner", "recreational", "advanced", "masters"].indexOf(to) >
+                ["beginner", "recreational", "advanced", "masters"].indexOf(from)
                   ? "promotion"
                   : "demotion"),
               reason: options?.override ? `${reason} (administrator override)` : reason,
@@ -314,3 +317,15 @@ export const useIdentityStore = create<IdentityStore>()(
     },
   ),
 );
+
+/**
+ * Rated events a player has completed, derived from approved registrations.
+ *
+ * Not stored on the identity: an identity that carried its own count would
+ * drift the moment a registration was approved or withdrawn elsewhere. This is
+ * the single definition used by Beginner eligibility everywhere.
+ */
+export function selectEventsPlayed(s: IdentityStore, playerId: string | null): number {
+  if (!playerId) return 0;
+  return s.registrations.filter((r) => r.playerId === playerId && r.status === "approved").length;
+}

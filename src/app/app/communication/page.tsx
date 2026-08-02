@@ -67,7 +67,7 @@ const AUDIENCES = [
   "Masters",
   "Open",
   "Recreational",
-  "Novice",
+  "Beginner",
   "Selected players",
   "Organizers",
   "Volunteers",

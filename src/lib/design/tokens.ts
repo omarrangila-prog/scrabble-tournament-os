@@ -45,8 +45,8 @@ export const CHART_SERIES = [
 export const DIVISION_COLOR: Record<string, string> = {
   masters: COLOR.violet,
   open: COLOR.blue,
-  "youth-u18": COLOR.mint,
-  "junior-u14": COLOR.gold,
+  "recreational": COLOR.mint,
+  "beginner": COLOR.gold,
 };
 
 /** Semantic result colours for win/loss/draw across tables, charts and heatmaps. */

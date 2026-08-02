@@ -66,7 +66,6 @@ const signed = (n: number) => (n > 0 ? `+${Math.round(n)}` : String(Math.round(n
  */
 export function evaluatePlayer(
   ev: CategoryEvidence,
-  now = new Date(),
 ): Omit<CategoryRecommendation, "id" | "status" | "createdAt"> | null {
   /* ---- Inactivity ---------------------------------------------------- */
   // Checked first: a long absence outweighs older performance figures.
@@ -160,10 +159,10 @@ export function evaluatePlayer(
       { label: "Rating", value: String(ev.rating || "Unrated"), supports: false },
     ];
 
-    // Novice exists for beginners. A player is never demoted into it on results
-    // alone; the age rule must also be satisfied.
-    if (down === "novice") {
-      const eligibility = categoryEligibility("novice", ev.dateOfBirth, now);
+    // Beginner exists for players new to competitive play. An established
+    // player is never demoted into it on a poor run alone.
+    if (down === "beginner") {
+      const eligibility = categoryEligibility("beginner", { eventsPlayed: ev.eventsPlayed });
       if (!eligibility.eligible) {
         return {
           playerId: ev.playerId,
@@ -171,7 +170,7 @@ export function evaluatePlayer(
           current: ev.category,
           proposed: down,
           kind: "demotion",
-          rationale: `Performance would suggest a move to ${label(down)}, but Novice is reserved for beginners and this player does not meet its eligibility rules. No change is recommended.`,
+          rationale: `Performance would suggest a move to ${label(down)}, but Beginner is reserved for players new to competitive play. No change is recommended.`,
           factors: demotionFactors,
           confidence: 40,
           blockedBy: eligibility.reason,

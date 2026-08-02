@@ -443,7 +443,7 @@ export function defaultForm(eventId: string): RegistrationForm {
       }),
       f("division", "select", "Preferred division", {
         mapsTo: "category",
-        options: ["Novice", "Recreational", "Advance", "Masters"],
+        options: ["Beginner", "Recreational", "Advance", "Masters"],
         hint: "The organizer confirms your final division after review.",
       }),
       f("previousEvents", "textarea", "Previous tournaments played", { required: false }),

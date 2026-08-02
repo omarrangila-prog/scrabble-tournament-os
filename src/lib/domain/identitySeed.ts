@@ -12,7 +12,6 @@ import {
   PlayerIdentity,
   Registration,
 } from "./identity";
-import { DivisionId } from "./types";
 
 const PROVINCE_OF: Record<string, string> = {
   Karachi: "Sindh",
@@ -33,18 +32,10 @@ const PROVINCE_OF: Record<string, string> = {
   Quetta: "Balochistan",
 };
 
-/** Divisions map onto playing categories for the demo field. */
-const CATEGORY_OF_DIVISION: Record<DivisionId, PlayerCategory> = {
-  masters: "masters",
-  open: "advanced",
-  "youth-u18": "recreational",
-  "junior-u14": "novice",
-};
-
-/** Birth year band per category, keeping Novice inside its 6–18 rule. */
+/** Birth year band per category, giving the demo field a plausible age spread. */
 function birthDateFor(category: PlayerCategory, r: () => number): string {
   const spans: Record<PlayerCategory, [number, number]> = {
-    novice: [2010, 2018],
+    beginner: [2010, 2018],
     recreational: [2008, 2012],
     advanced: [1985, 2005],
     masters: [1978, 2002],
@@ -62,7 +53,8 @@ export function buildIdentitySeed() {
 
   const identities: PlayerIdentity[] = seed.players.map((p) => {
     const parts = p.fullName.split(" ");
-    const category = CATEGORY_OF_DIVISION[p.division];
+    // Divisions and playing categories share one vocabulary.
+    const category: PlayerCategory = p.division;
     const dob = birthDateFor(category, r);
     const handle = p.fullName.toLowerCase().replace(/\s+/g, ".");
 
@@ -91,7 +83,7 @@ export function buildIdentitySeed() {
       identityDocument:
         p.seed <= 20
           ? {
-              kind: category === "novice" || category === "recreational" ? "student-card" : "cnic",
+              kind: category === "beginner" || category === "recreational" ? "student-card" : "cnic",
               verified: p.seed <= 12,
               fileName: `${p.playerId.toLowerCase()}-id.pdf`,
             }
@@ -144,7 +136,7 @@ export function buildIdentitySeed() {
   }[] = [
     { first: "Hina", last: "Sattar", father: "Abdul Sattar", city: "Lahore", category: "recreational", dob: "2009-03-14", method: "easypaisa", status: "payment-review", gender: "female" },
     { first: "Talha", last: "Bashir", father: "Muhammad Bashir", city: "Karachi", category: "advanced", dob: "1997-11-02", method: "bank-transfer", status: "payment-review", gender: "male" },
-    { first: "Zoya", last: "Kamal", father: "Kamal Ahmed", city: "Islamabad", category: "novice", dob: "2014-06-21", method: "jazzcash", status: "submitted", gender: "female" },
+    { first: "Zoya", last: "Kamal", father: "Kamal Ahmed", city: "Islamabad", category: "beginner", dob: "2014-06-21", method: "jazzcash", status: "submitted", gender: "female" },
   ];
 
   applicants.forEach((a, idx) => {
@@ -173,7 +165,7 @@ export function buildIdentitySeed() {
         photo: { uploadedAt: T(10, 12 + idx), verified: false, fileName: `${a.first.toLowerCase()}-portrait.jpg` },
         identityDocument:
           idx < 2
-            ? { kind: a.category === "novice" ? "student-card" : "cnic", verified: false, fileName: `${a.first.toLowerCase()}-id.pdf` }
+            ? { kind: a.category === "beginner" ? "student-card" : "cnic", verified: false, fileName: `${a.first.toLowerCase()}-id.pdf` }
             : undefined,
         category: a.category,
         club: idx === 0 ? "Lahore Word Masters" : idx === 1 ? "Karachi Scrabble Club" : "Roots International",

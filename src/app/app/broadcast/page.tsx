@@ -186,7 +186,7 @@ export default function BroadcastPage() {
               </Field>
               <Field label="Audience">
                 <Select value={audience} onChange={(e) => setAudience(e.target.value)}>
-                  {["All players", "Masters", "Open", "Recreational", "Novice", "Spectators"].map((a) => (
+                  {["All players", "Masters", "Open", "Recreational", "Beginner", "Spectators"].map((a) => (
                     <option key={a} value={a}>{a}</option>
                   ))}
                 </Select>

@@ -429,13 +429,13 @@ function ReviewDrawer({
   const reviewer = app.currentUser?.name ?? "Tournament Director";
 
   const [note, setNote] = React.useState("");
-  const [division, setDivision] = React.useState<PlayerCategory>("novice");
+  const [division, setDivision] = React.useState<PlayerCategory>("beginner");
 
   const [last, setLast] = React.useState(registration);
   if (last !== registration) {
     setLast(registration);
     setNote("");
-    setDivision(registration?.confirmedDivision ?? registration?.preferredDivision ?? "novice");
+    setDivision(registration?.confirmedDivision ?? registration?.preferredDivision ?? "beginner");
   }
 
   if (!registration) return null;
@@ -556,7 +556,7 @@ function ReviewDrawer({
           <div className="space-y-3 px-4 pb-4">
             <Field label="Confirmed division" hint="The organizer's decision overrides the player's preference.">
               <Select value={division} onChange={(e) => setDivision(e.target.value as PlayerCategory)}>
-                {(["novice", "recreational", "advanced", "masters"] as PlayerCategory[]).map((d) => (
+                {(["beginner", "recreational", "advanced", "masters"] as PlayerCategory[]).map((d) => (
                   <option key={d} value={d}>
                     {CATEGORY_LABEL[d]}
                   </option>

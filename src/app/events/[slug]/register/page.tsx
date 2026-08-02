@@ -48,7 +48,7 @@ const METHOD_VALUE: Record<string, PaymentMethod> = {
 };
 
 const DIVISION_VALUE: Record<string, PlayerCategory> = {
-  Novice: "novice",
+  Beginner: "beginner",
   Recreational: "recreational",
   Advance: "advanced",
   Masters: "masters",
@@ -174,7 +174,7 @@ export default function RegisterPage() {
       club: values["club"] ?? "Unaffiliated",
       experience: values["experience"] ?? "",
       selfRating: values["rating"] ? Number(values["rating"]) : undefined,
-      preferredDivision: DIVISION_VALUE[values["division"] ?? "Novice"] ?? "novice",
+      preferredDivision: DIVISION_VALUE[values["division"] ?? "Beginner"] ?? "beginner",
       previousEvents: values["previousEvents"],
       guardianName: values["guardianName"],
       guardianPhone: values["guardianPhone"],

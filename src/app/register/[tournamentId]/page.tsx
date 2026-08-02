@@ -189,7 +189,7 @@ export default function RegistrationPage() {
   };
 
   const age = form.dateOfBirth ? ageOn(form.dateOfBirth) : 0;
-  const eligibility = categoryEligibility(form.category, form.dateOfBirth);
+  const eligibility = categoryEligibility(form.category, {});
 
   /* ---- Validation ------------------------------------------------------ */
   const validate = (target: number): boolean => {
@@ -579,7 +579,7 @@ export default function RegistrationPage() {
 
                   <div className="grid gap-2.5 sm:grid-cols-2">
                     {CATEGORY_ORDER.map((c) => {
-                      const check = categoryEligibility(c, form.dateOfBirth);
+                      const check = categoryEligibility(c, {});
                       const disabled = !check.eligible;
                       return (
                         <button

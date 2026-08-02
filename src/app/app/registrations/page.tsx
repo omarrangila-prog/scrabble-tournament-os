@@ -25,7 +25,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { useIdentityStore } from "@/lib/store/useIdentityStore";
+import { selectEventsPlayed, useIdentityStore } from "@/lib/store/useIdentityStore";
 import {
   CATEGORY_LABEL,
   PAYMENT_METHOD_LABEL,
@@ -149,7 +149,9 @@ export default function RegistrationsPage() {
           {list.map((r) => {
             const p = r.playerId ? players.find((x) => x.playerId === r.playerId) : undefined;
             const name = fullNameOf(r.applicant);
-            const check = categoryEligibility(r.category, r.applicant.dateOfBirth);
+            const check = categoryEligibility(r.category, {
+              eventsPlayed: selectEventsPlayed(identity, r.playerId),
+            });
             return (
               <motion.button
                 key={r.id}
@@ -290,7 +292,9 @@ function ReviewDrawer({
   const r = registration;
   const name = fullNameOf(r.applicant);
   const age = ageOn(r.applicant.dateOfBirth);
-  const check = categoryEligibility(r.category, r.applicant.dateOfBirth);
+  const check = categoryEligibility(r.category, {
+    eventsPlayed: selectEventsPlayed(identity, r.playerId),
+  });
   const openForDecision = ["submitted", "payment-pending", "payment-review", "waitlisted"].includes(r.status);
 
   return (
@@ -353,7 +357,7 @@ function ReviewDrawer({
 
           {!check.eligible ? (
             <p className="mt-2.5 rounded-control bg-warning-050/70 px-3 py-2.5 text-[12px] leading-relaxed text-[#b4741f]">
-              Approving will record an administrator exception against the Novice age rule.
+              Approving will record an administrator exception against the Beginner age rule.
             </p>
           ) : null}
         </div>

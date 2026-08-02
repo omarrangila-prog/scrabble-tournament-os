@@ -7,7 +7,7 @@
  * without reshaping the UI layer.
  */
 
-export type DivisionId = "masters" | "open" | "youth-u18" | "junior-u14";
+export type DivisionId = "masters" | "advanced" | "recreational" | "beginner";
 
 export type Role =
   | "director"

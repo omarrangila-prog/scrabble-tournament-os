@@ -32,7 +32,7 @@ const EVENT: PublicEvent = {
   shortDescription:
     "A one-day rated tournament across four divisions, played over six rounds.",
   description:
-    "Karachi Scrabble Sunday brings together players of every level for a friendly but seriously contested one-day event. Six rounds of tournament Scrabble, four divisions, and prizes in each. New players are genuinely welcome — the Novice division exists for exactly that reason.",
+    "Karachi Scrabble Sunday brings together players of every level for a friendly but seriously contested one-day event. Six rounds of tournament Scrabble, four divisions, and prizes in each. New players are genuinely welcome — the Beginner division exists for exactly that reason.",
   bannerCaption: "Six rounds · Four divisions · One Sunday",
 
   organizer: "Bluffy Alphabattle",
@@ -64,7 +64,7 @@ const EVENT: PublicEvent = {
   rounds: 6,
   roundMinutes: 45,
   breakMinutes: 15,
-  divisions: ["novice", "recreational", "advanced", "masters"],
+  divisions: ["beginner", "recreational", "advanced", "masters"],
 
   prizes: [
     { place: "Champion", award: "PKR 15,000" },
@@ -150,7 +150,7 @@ const EXPERIENCE = [
   "3–5 years",
   "More than 5 years",
 ];
-const DIVISIONS: PlayerCategory[] = ["novice", "recreational", "advanced", "masters"];
+const DIVISIONS: PlayerCategory[] = ["beginner", "recreational", "advanced", "masters"];
 const METHODS: PaymentMethod[] = ["bank-transfer", "easypaisa", "jazzcash", "cash"];
 
 /** 84 registrations against a 100-place event, with realistic status spread. */

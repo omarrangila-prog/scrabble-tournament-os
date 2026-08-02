@@ -7,31 +7,41 @@
  * Nothing here is ever deleted; category changes append to a ledger.
  */
 
-export type PlayerCategory = "novice" | "recreational" | "advanced" | "masters";
+export type PlayerCategory = "beginner" | "recreational" | "advanced" | "masters";
 
 export const CATEGORY_ORDER: PlayerCategory[] = [
-  "novice",
+  "beginner",
   "recreational",
   "advanced",
   "masters",
 ];
 
 export const CATEGORY_LABEL: Record<PlayerCategory, string> = {
-  novice: "Novice",
+  beginner: "Beginner",
   recreational: "Recreational",
   advanced: "Advanced",
   masters: "Masters",
 };
 
 export const CATEGORY_DESCRIPTION: Record<PlayerCategory, string> = {
-  novice: "For beginners still learning the game. Age 6–18.",
+  beginner: "New to competitive play, still learning the game.",
   recreational: "Club-level players competing regularly for enjoyment.",
   advanced: "Experienced competitors playing at a high standard.",
   masters: "The strongest field — national and international level.",
 };
 
-/** Novice is a beginners' category, restricted by age rather than by results. */
-export const NOVICE_AGE_RANGE = { min: 6, max: 18 };
+/**
+ * Beginner exists for players new to competitive play, so it is bounded by
+ * experience rather than by age. A player who has completed more than this many
+ * rated events is no longer a beginner, whatever their results say.
+ *
+ * Set above the demotion rule's four-event minimum on purpose: if it were
+ * lower, a demotion into Beginner could never fire and the guard below would be
+ * unreachable. This leaves a real window — a player four to six events in and
+ * struggling can still be moved back — while protecting anyone with a longer
+ * record from being demoted into the beginners' category.
+ */
+export const BEGINNER_MAX_EVENTS = 6;
 
 export type RegistrationStatus =
   | "draft"
@@ -189,28 +199,35 @@ export interface EligibilityResult {
   overridable?: boolean;
 }
 
+/** What a player has done, as far as eligibility is concerned. */
+export interface EligibilityContext {
+  /** Rated events completed. Undefined when the player is new to the system. */
+  eventsPlayed?: number;
+}
+
 /**
- * Category eligibility. Novice carries an age rule because it exists for
- * beginners — it is never a demotion target for poor results or inactivity.
+ * Category eligibility.
+ *
+ * Only Beginner is restricted, and it is restricted by experience: it exists
+ * for players new to competitive play, so it is never a demotion target for an
+ * established player having a poor run. Every restriction is overridable by an
+ * administrator, because a genuine exception is the organizer's call to make.
  */
 export function categoryEligibility(
   category: PlayerCategory,
-  dateOfBirth: string,
-  reference = new Date(),
+  context: EligibilityContext = {},
 ): EligibilityResult {
-  if (category !== "novice") return { eligible: true };
+  if (category !== "beginner") return { eligible: true };
 
-  const age = ageOn(dateOfBirth, reference);
-  if (age === 0) {
-    return { eligible: false, reason: "A date of birth is required for the Novice category.", overridable: true };
-  }
-  if (age < NOVICE_AGE_RANGE.min || age > NOVICE_AGE_RANGE.max) {
+  const played = context.eventsPlayed;
+  if (played !== undefined && played > BEGINNER_MAX_EVENTS) {
     return {
       eligible: false,
-      reason: `Novice is for beginners aged ${NOVICE_AGE_RANGE.min}–${NOVICE_AGE_RANGE.max}. This player is ${age}. An administrator may approve an exception.`,
+      reason: `Beginner is for players new to competitive play. This player has completed ${played} rated events, more than the limit of ${BEGINNER_MAX_EVENTS}. An administrator may approve an exception.`,
       overridable: true,
     };
   }
+
   return { eligible: true };
 }
 

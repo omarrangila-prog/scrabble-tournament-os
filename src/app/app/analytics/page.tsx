@@ -29,8 +29,8 @@ const TOOLTIP = {
 const DIVISION_COLOR: Record<string, string> = {
   masters: "#6D5DFB",
   open: "#4BA8FF",
-  "youth-u18": "#32C997",
-  "junior-u14": "#F5A94A",
+  "recreational": "#32C997",
+  "beginner": "#F5A94A",
 };
 
 export default function AnalyticsPage() {

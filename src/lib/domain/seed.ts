@@ -64,9 +64,9 @@ export const VENUE: Venue = {
 
 export const DIVISIONS: Division[] = [
   { id: "masters", name: "Masters", shortName: "MST", ratingFloor: 1750, ratingCeiling: 2200, accent: "primary" },
-  { id: "open", name: "Advance", shortName: "ADV", ratingFloor: 1300, ratingCeiling: 1800, accent: "secondary" },
-  { id: "youth-u18", name: "Recreational", shortName: "REC", ratingFloor: 1100, ratingCeiling: 1650, maxAge: 18, accent: "success" },
-  { id: "junior-u14", name: "Novice", shortName: "NOV", ratingFloor: 800, ratingCeiling: 1350, maxAge: 14, accent: "warning" },
+  { id: "advanced", name: "Advanced", shortName: "ADV", ratingFloor: 1300, ratingCeiling: 1800, accent: "secondary" },
+  { id: "recreational", name: "Recreational", shortName: "REC", ratingFloor: 1100, ratingCeiling: 1650, maxAge: 18, accent: "success" },
+  { id: "beginner", name: "Beginner", shortName: "NOV", ratingFloor: 800, ratingCeiling: 1350, maxAge: 14, accent: "warning" },
 ];
 
 export const USERS: User[] = [
@@ -91,7 +91,7 @@ export const TOURNAMENT: Tournament = {
   system: "swiss",
   totalRounds: 9,
   currentRound: 5,
-  divisions: ["masters", "open", "youth-u18", "junior-u14"],
+  divisions: ["masters", "advanced", "recreational", "beginner"],
   rankingRules: ["wins", "spread", "head-to-head"],
   constraints: {
     avoidRepeatOpponents: true,
@@ -115,9 +115,9 @@ export const TOURNAMENT: Tournament = {
 /** Division sizes total 128. */
 const DIVISION_PLAN: { id: DivisionId; count: number; base: number; spread: number }[] = [
   { id: "masters", count: 32, base: 1980, spread: 210 },
-  { id: "open", count: 48, base: 1560, spread: 240 },
-  { id: "youth-u18", count: 30, base: 1380, spread: 230 },
-  { id: "junior-u14", count: 18, base: 1080, spread: 210 },
+  { id: "advanced", count: 48, base: 1560, spread: 240 },
+  { id: "recreational", count: 30, base: 1380, spread: 230 },
+  { id: "beginner", count: 18, base: 1080, spread: 210 },
 ];
 
 /**
@@ -133,7 +133,7 @@ function buildPlayers(): Player[] {
   let n = 0;
 
   for (const plan of DIVISION_PLAN) {
-    const isYouth = plan.id === "youth-u18" || plan.id === "junior-u14";
+    const isYouth = plan.id === "recreational" || plan.id === "beginner";
     for (let i = 0; i < plan.count; i++) {
       n += 1;
       const female = r() < (isYouth ? 0.42 : 0.3);
@@ -757,9 +757,9 @@ function buildAnnouncements(): Announcement[] {
     {
       id: "a-3",
       tournamentId: TOURNAMENT.id,
-      title: "Novice prize ceremony",
-      body: "The Novice ceremony will take place in Hall B at 17:00 on the final day.",
-      audience: "Novice",
+      title: "Beginner prize ceremony",
+      body: "The Beginner ceremony will take place in Hall B at 17:00 on the final day.",
+      audience: "Beginner",
       channels: ["in-app", "email"],
       publishedAt: T(9, 5),
       author: "Sana Malik",

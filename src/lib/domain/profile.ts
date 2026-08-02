@@ -258,7 +258,7 @@ export function documents(player: Player): ProfileDocument[] {
     },
   ];
 
-  if (player.division === "youth-u18" || player.division === "junior-u14") {
+  if (player.division === "recreational" || player.division === "beginner") {
     base.push({
       id: "doc-consent",
       name: "Parental consent form",

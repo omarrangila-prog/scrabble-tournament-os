@@ -45,8 +45,8 @@ import { Tabs } from "@/components/ui";
 const ACCENT: Record<string, string> = {
   masters: "#6D5DFB",
   open: "#4BA8FF",
-  "youth-u18": "#32C997",
-  "junior-u14": "#F5A94A",
+  "recreational": "#32C997",
+  "beginner": "#F5A94A",
 };
 
 export default function SeedingPage() {
@@ -104,7 +104,7 @@ export default function SeedingPage() {
     const division = divisions.find((d) => d.id === target);
 
     // Age/category validation — youth divisions have an upper age band only.
-    if (division?.maxAge && (from === "masters" || from === "open")) {
+    if (division?.maxAge && (from === "masters" || from === "advanced")) {
       store.toast({
         title: "Category check",
         description: `${player.fullName} is registered in an adult division. Confirm eligibility before moving them to ${division.name}.`,
@@ -452,7 +452,7 @@ function buildRecommendations(
   const byId = new Map(stats.map((s) => [s.id, s]));
 
   // A player rated well above their division average is a candidate to move up.
-  const order: DivisionId[] = ["junior-u14", "youth-u18", "open", "masters"];
+  const order: DivisionId[] = ["beginner", "recreational", "advanced", "masters"];
   for (let i = 0; i < order.length - 1; i++) {
     const from = order[i];
     const to = order[i + 1];
@@ -562,7 +562,7 @@ function MovePlayerModal({
   onMove: (p: Player, target: DivisionId) => void;
 }) {
   const divisions = useStore((s) => s.divisions);
-  const [target, setTarget] = React.useState<DivisionId>("open");
+  const [target, setTarget] = React.useState<DivisionId>("advanced");
   const [reason, setReason] = React.useState("");
 
   const [lastPlayer, setLastPlayer] = React.useState(player);

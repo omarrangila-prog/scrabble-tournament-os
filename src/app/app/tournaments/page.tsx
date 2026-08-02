@@ -413,7 +413,7 @@ const INITIAL: WizardState = {
   sponsors: "",
 
   totalRounds: 9,
-  divisions: ["masters", "open"],
+  divisions: ["masters", "advanced"],
   system: "swiss",
   finalPlayoff: true,
   gameMinutes: 50,
