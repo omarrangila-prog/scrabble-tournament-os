@@ -179,15 +179,26 @@ describe("certificateSummary", () => {
 });
 
 describe("verificationUrl", () => {
-  it("builds a public URL from a normalised code", () => {
-    expect(verificationUrl("https://example.com", "abcd efgh jkmn")).toBe(
-      "https://example.com/verify/ABCD-EFGH-JKMN",
+  it("does not double the slash", () => {
+    expect(verificationUrl("https://example.com/", "ABCDEFGHJKMN")).toBe(
+      "https://example.com/verify/certificate/ABCD-EFGH-JKMN",
     );
   });
 
-  it("does not double the slash", () => {
-    expect(verificationUrl("https://example.com/", "ABCDEFGHJKMN")).toBe(
-      "https://example.com/verify/ABCD-EFGH-JKMN",
+  /**
+   * The code is CSPRNG-generated and carries no information about the
+   * recipient, the event, or any internal record. A URL exposing a database id
+   * would let one certificate be found from another, or edited.
+   */
+  it("carries only the opaque code, never a record id", () => {
+    const url = verificationUrl("https://example.com", "ABCD-EFGH-JKMN");
+    expect(url).toBe("https://example.com/verify/certificate/ABCD-EFGH-JKMN");
+    expect(url).not.toMatch(/cert-|reg-|evt-/);
+  });
+
+  it("normalises a loosely typed code into the canonical path", () => {
+    expect(verificationUrl("https://example.com", "abcd efgh jkmn")).toBe(
+      "https://example.com/verify/certificate/ABCD-EFGH-JKMN",
     );
   });
 });

@@ -19,6 +19,12 @@ import {
   verifyCertificate,
   VerificationResult,
 } from "../engine/certificates";
+import {
+  buildCitation,
+  PerformanceRecord,
+  tierFor,
+  titlesFor,
+} from "../engine/citations";
 
 export const CERTIFICATE_STORAGE_KEY = "bluffy-certificates-v1";
 
@@ -56,6 +62,15 @@ interface CertificateActions {
     eventId: string,
     people: { id: string; name: string; division?: string }[],
   ) => number;
+
+  /**
+   * Prepares a full set from final standings: podium certificates with derived
+   * citations, and a personalised participation certificate for everyone else.
+   */
+  prepareFromStandings: (
+    eventId: string,
+    records: PerformanceRecord[],
+  ) => { winners: number; participation: number; skipped: number };
 
   resetCertificates: () => void;
 }
@@ -170,6 +185,65 @@ export const useCertificateStore = create<CertificateStore>()(
 
         set((s) => ({ certificates: [...s.certificates, ...prepared] }));
         return prepared.length;
+      },
+
+      prepareFromStandings: (eventId, records) => {
+        const existing = new Set(
+          get()
+            .certificates.filter((c) => c.eventId === eventId)
+            .map((c) => `${c.recipientId}:${c.kind}`),
+        );
+
+        const prepared: Certificate[] = [];
+        let winners = 0;
+        let participation = 0;
+        let skipped = 0;
+
+        for (const record of records) {
+          const tier = tierFor(record);
+          const kind: CertificateKind =
+            tier === "champion"
+              ? "champion"
+              : tier === "runner-up"
+                ? "runner-up"
+                : tier === "third"
+                  ? "third"
+                  : "participation";
+
+          if (existing.has(`${record.playerId}:${kind}`)) {
+            skipped += 1;
+            continue;
+          }
+
+          const citation = buildCitation(record, tier);
+          // Wording comes from the record. A podium certificate states the
+          // placing; everyone else gets the title their own figures earned.
+          const statement =
+            kind === "participation"
+              ? titlesFor(record)[0].title
+              : `${record.rank === 1 ? "1st" : record.rank === 2 ? "2nd" : "3rd"} place, ${record.division} division`;
+
+          prepared.push({
+            id: `cert-${uid()}`,
+            eventId,
+            code: generateCertificateCode(),
+            kind,
+            recipientId: record.playerId,
+            recipientName: record.playerName,
+            division: record.division,
+            statement,
+            detail: citation.text,
+            status: "draft",
+          });
+
+          if (kind === "participation") participation += 1;
+          else winners += 1;
+        }
+
+        if (prepared.length)
+          set((s) => ({ certificates: [...s.certificates, ...prepared] }));
+
+        return { winners, participation, skipped };
       },
 
       resetCertificates: () => set({ ...fresh(), hydrated: true }),

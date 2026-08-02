@@ -252,7 +252,13 @@ export function certificateSummary(certificates: Certificate[]): CertificateSumm
   };
 }
 
-/** The public URL a certificate's QR code points at. */
+/**
+ * The public URL a certificate's QR code points at.
+ *
+ * The path carries the opaque verification code, never a record id — a
+ * certificate URL must not expose anything about the platform's internals or
+ * let one code be guessed from another.
+ */
 export function verificationUrl(origin: string, code: string): string {
-  return `${origin.replace(/\/$/, "")}/verify/${encodeURIComponent(normaliseCode(code))}`;
+  return `${origin.replace(/\/$/, "")}/verify/certificate/${encodeURIComponent(normaliseCode(code))}`;
 }
