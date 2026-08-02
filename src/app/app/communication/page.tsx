@@ -26,6 +26,7 @@ import {
   Textarea,
   Th,
 } from "@/components/ui";
+import { AnnouncementComposer } from "@/components/forms/AnnouncementComposer";
 import { useStore } from "@/lib/store/useStore";
 import { MessageCampaign } from "@/lib/domain/types";
 import { cn, formatDateTime, formatTime } from "@/lib/utils";
@@ -157,12 +158,15 @@ export default function CommunicationPage() {
         tabs={[
           { id: "compose", label: "Compose" },
           { id: "delivery", label: "Delivery status", count: campaigns.length },
+          { id: "announce", label: "Announce event" },
           { id: "announcements", label: "Announcements", count: announcements.length },
         ]}
         value={tab}
         onChange={setTab}
         className="mb-4"
       />
+
+      {tab === "announce" ? <AnnouncementComposer /> : null}
 
       {tab === "compose" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
