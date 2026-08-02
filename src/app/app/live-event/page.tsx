@@ -33,7 +33,11 @@ import {
   Stat,
   Textarea,
 } from "@/components/ui";
-import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import {
+  selectActiveEvent,
+  selectScopedRegistrations,
+  useEventStore,
+} from "@/lib/store/useEventStore";
 import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useStore } from "@/lib/store/useStore";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
@@ -70,8 +74,8 @@ export default function LiveEventPage() {
   const live = useLiveStore();
   const app = useStore();
 
-  const event = events.events[0];
-  const registrations = event ? selectRegistrations(events, event.id) : [];
+  const event = selectActiveEvent(events);
+  const registrations = selectScopedRegistrations(events);
 
   const origin = React.useSyncExternalStore(
     () => () => {},

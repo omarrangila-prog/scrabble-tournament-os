@@ -27,6 +27,15 @@ import {
   TokenKind,
 } from "../domain/events";
 import { PaymentMethod, PlayerCategory } from "../domain/identity";
+import {
+  activeEvent as resolveActiveEvent,
+  isStale,
+  Scope,
+  scoped,
+  scopedToOrg,
+  ScopeStatus,
+  scopeStatus,
+} from "../domain/scope";
 import { buildEventSeed } from "../domain/eventSeed";
 
 export const EVENT_STORAGE_KEY = "bluffy-events-v1";
@@ -105,6 +114,12 @@ export interface GuestRegistration {
 
 interface EventState_ {
   hydrated: boolean;
+  /**
+   * The event every scoped screen reads from. Persisted, so a reload returns
+   * the organizer to the event they were working in.
+   */
+  activeEventId: string | null;
+  activeOrganizationId: string | null;
   events: PublicEvent[];
   forms: RegistrationForm[];
   discounts: Discount[];
@@ -113,6 +128,11 @@ interface EventState_ {
 }
 
 interface EventActions {
+  /** Selects the event all scoped screens read from. */
+  setActiveEvent: (eventId: string | null) => void;
+  scope: () => Scope;
+  status: () => ScopeStatus;
+
   createEvent: (draft: Omit<PublicEvent, "id" | "slug" | "createdAt" | "state">) => PublicEvent;
   updateEvent: (eventId: string, patch: Partial<PublicEvent>) => void;
   publishEvent: (eventId: string) => void;
@@ -162,8 +182,13 @@ const now = () => new Date().toISOString();
 
 function freshState(): EventState_ {
   const seed = buildEventSeed();
+  // A fresh install opens on the seeded event rather than no selection, so the
+  // demo has something to show before the organizer creates anything.
+  const first = seed.events[0];
   return {
     hydrated: false,
+    activeEventId: first?.id ?? null,
+    activeOrganizationId: first?.organizationId ?? null,
     events: seed.events,
     forms: seed.forms,
     discounts: seed.discounts,
@@ -176,6 +201,28 @@ export const useEventStore = create<EventStore>()(
   persist(
     (set, get) => ({
       ...freshState(),
+
+      /* ---- Scope ---------------------------------------------------- */
+
+      setActiveEvent: (eventId) =>
+        set((s) => {
+          if (eventId === null) return { activeEventId: null };
+          const event = s.events.find((e) => e.id === eventId);
+          // Selecting an unknown event would leave the app pointing at nothing
+          // while claiming a selection; ignore it instead.
+          if (!event) return s;
+          return {
+            activeEventId: event.id,
+            activeOrganizationId: event.organizationId,
+          };
+        }),
+
+      scope: () => ({
+        organizationId: get().activeOrganizationId,
+        eventId: get().activeEventId,
+      }),
+
+      status: () => scopeStatus(get().events, get().scope(), get().hydrated),
 
       /* ---- Events -------------------------------------------------- */
 
@@ -191,6 +238,10 @@ export const useEventStore = create<EventStore>()(
         set((s) => ({
           events: [event, ...s.events],
           forms: [defaultForm(id), ...s.forms],
+          // Creating an event selects it. The organizer is taken straight into
+          // its workspace and must never have to find it again.
+          activeEventId: id,
+          activeOrganizationId: event.organizationId,
         }));
         return event;
       },
@@ -421,7 +472,14 @@ export const useEventStore = create<EventStore>()(
         return rest as unknown as EventStore;
       },
       onRehydrateStorage: () => (state) => {
-        if (state) state.hydrated = true;
+        if (!state) return;
+        state.hydrated = true;
+        // A persisted selection can outlive its event. Drop it rather than
+        // leaving the app pointing at an id that resolves to nothing.
+        if (isStale(state.events, { organizationId: state.activeOrganizationId, eventId: state.activeEventId })) {
+          state.activeEventId = null;
+          state.activeOrganizationId = null;
+        }
       },
     },
   ),
@@ -442,6 +500,31 @@ export const selectRegistrations = (s: EventStore, eventId: string) =>
 
 export const selectEventToken = (s: EventStore, eventId: string) =>
   s.tokens.find((t) => t.kind === "event" && t.eventId === eventId && !t.revoked);
+
+/* -------------------------------------------------------------------------- */
+/* Scoped selectors                                                            */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Prefer these over the id-taking selectors above on any screen that follows
+ * the active event. They return nothing when no event is selected, so a screen
+ * shows its empty state rather than another event's data.
+ */
+
+/** The event every scoped screen is about, or undefined. */
+export const selectActiveEvent = (s: EventStore) =>
+  resolveActiveEvent(s.events, s.scope());
+
+/** Events belonging to the active organization. */
+export const selectOrgEvents = (s: EventStore) => scopedToOrg(s.events, s.scope());
+
+export const selectScopedRegistrations = (s: EventStore) =>
+  scoped(s.registrations, s.scope());
+
+export const selectScopedForm = (s: EventStore) => scoped(s.forms, s.scope())[0];
+
+export const selectScopedTokens = (s: EventStore) =>
+  scoped(s.tokens, s.scope()).filter((t) => !t.revoked);
 
 /** Headline counts for the organizer review queue. */
 export function registrationSummary(registrations: GuestRegistration[]) {

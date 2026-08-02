@@ -25,6 +25,7 @@ import { useGuidedDemo } from "@/lib/store/guidedDemo";
 import { ROLE_LABEL } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
 import { cn, formatTime } from "@/lib/utils";
+import { EventSwitcher } from "./EventSwitcher";
 import { EXTRA_NAV, NAV_ITEMS } from "./nav";
 import { CommandPalette } from "./CommandPalette";
 import { Toaster } from "./Toaster";
@@ -206,6 +207,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             ) : null}
           </Link>
+        </div>
+
+        <div className="pb-3">
+          <EventSwitcher collapsed={collapsed} />
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3 scroll-slim">

@@ -33,7 +33,11 @@ import {
   Textarea,
   Th,
 } from "@/components/ui";
-import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import {
+  selectActiveEvent,
+  selectScopedRegistrations,
+  useEventStore,
+} from "@/lib/store/useEventStore";
 import { usePromotionStore } from "@/lib/store/usePromotionStore";
 import { useStore } from "@/lib/store/useStore";
 import {
@@ -68,7 +72,7 @@ export default function PromotionsPage() {
   const promos = usePromotionStore();
   const app = useStore();
 
-  const event = events.events[0];
+  const event = selectActiveEvent(events);
 
   const eventId = event?.id;
   const seeded = promos.seeded;
@@ -88,7 +92,7 @@ export default function PromotionsPage() {
     );
   }
 
-  const registrations = selectRegistrations(events, event.id);
+  const registrations = selectScopedRegistrations(events);
   const campaigns = promos.campaignsFor(event.id);
   const rewards = promos.rewardsFor(event.id);
   const summary = rewardSummary(rewards);

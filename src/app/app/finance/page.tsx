@@ -42,7 +42,11 @@ import {
   Td,
   Th,
 } from "@/components/ui";
-import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import {
+  selectActiveEvent,
+  selectScopedRegistrations,
+  useEventStore,
+} from "@/lib/store/useEventStore";
 import { useFinanceStore } from "@/lib/store/useFinanceStore";
 import { useStore } from "@/lib/store/useStore";
 import {
@@ -95,7 +99,7 @@ export default function FinancePage() {
   const finance = useFinanceStore();
   const app = useStore();
 
-  const event = events.events[0];
+  const event = selectActiveEvent(events);
 
   // Populate a demo ledger the first time this page is opened. Guarded by the
   // store's own `seeded` flag, so it runs exactly once per browser.
@@ -117,7 +121,7 @@ export default function FinancePage() {
     );
   }
 
-  const registrations = selectRegistrations(events, event.id);
+  const registrations = selectScopedRegistrations(events);
   const expenses = finance.expensesFor(event.id);
   const income = finance.incomeFor(event.id);
 

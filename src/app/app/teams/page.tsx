@@ -30,7 +30,11 @@ import {
   Th,
   Toggle,
 } from "@/components/ui";
-import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import {
+  selectActiveEvent,
+  selectScopedRegistrations,
+  useEventStore,
+} from "@/lib/store/useEventStore";
 import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useTeamStore } from "@/lib/store/useTeamStore";
 import { useStore } from "@/lib/store/useStore";
@@ -60,7 +64,7 @@ export default function TeamsPage() {
   const teamStore = useTeamStore();
   const app = useStore();
 
-  const event = events.events[0];
+  const event = selectActiveEvent(events);
 
   const [tab, setTab] = React.useState("standings");
   const [createOpen, setCreateOpen] = React.useState(false);
@@ -74,7 +78,7 @@ export default function TeamsPage() {
     );
   }
 
-  const registrations = selectRegistrations(events, event.id);
+  const registrations = selectScopedRegistrations(events);
   const nameOf = (id: string) => registrations.find((r) => r.id === id)?.fullName ?? "Unknown";
 
   const teams = teamStore.teamsFor(event.id);

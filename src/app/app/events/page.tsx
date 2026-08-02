@@ -42,7 +42,8 @@ import {
   GuestPaymentStatus,
   GuestRegistration,
   registrationSummary,
-  selectRegistrations,
+  selectActiveEvent,
+  selectScopedRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
 import { useStore } from "@/lib/store/useStore";
@@ -92,8 +93,8 @@ export default function EventsPage() {
     () => "",
   );
 
-  const event = store.events[0];
-  const registrations = event ? selectRegistrations(store, event.id) : [];
+  const event = selectActiveEvent(store);
+  const registrations = selectScopedRegistrations(store);
   const summary = registrationSummary(registrations);
 
   if (!event) {

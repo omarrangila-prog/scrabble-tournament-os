@@ -33,7 +33,11 @@ import {
   Textarea,
   Th,
 } from "@/components/ui";
-import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import {
+  selectActiveEvent,
+  selectScopedRegistrations,
+  useEventStore,
+} from "@/lib/store/useEventStore";
 import { useCertificateStore } from "@/lib/store/useCertificateStore";
 import { usePromotionStore } from "@/lib/store/usePromotionStore";
 import { useStore } from "@/lib/store/useStore";
@@ -69,7 +73,7 @@ export default function CertificatesPage() {
   const promos = usePromotionStore();
   const app = useStore();
 
-  const event = events.events[0];
+  const event = selectActiveEvent(events);
 
   const [tab, setTab] = React.useState("all");
   const [query, setQuery] = React.useState("");
@@ -91,7 +95,7 @@ export default function CertificatesPage() {
     );
   }
 
-  const registrations = selectRegistrations(events, event.id);
+  const registrations = selectScopedRegistrations(events);
   const all = certs.certificatesFor(event.id);
   const summary = certificateSummary(all);
 
