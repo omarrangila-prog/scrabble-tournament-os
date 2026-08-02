@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CircleHelp,
   ClipboardList,
+  FileBadge,
   FileText,
   IdCard,
   Gauge,
@@ -15,11 +16,14 @@ import {
   ListOrdered,
   MapPinned,
   Radio,
+  Shield,
   ShieldCheck,
   Sparkles,
+  Ticket,
   Trophy,
   UserCheck,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -35,6 +39,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Command Centre", icon: Gauge },
   { href: "/app/events", label: "Events", icon: CalendarDays },
+  { href: "/app/live-event", label: "Live Event", icon: Radio },
   { href: "/app/tournaments", label: "Tournaments", icon: Trophy },
   { href: "/app/registrations", label: "Registration", icon: IdCard, badgeKey: "registrations" },
   { href: "/app/check-in", label: "Check-in", icon: UserCheck, badgeKey: "live" },
@@ -45,9 +50,13 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/pairings", label: "Pairing Lab", icon: Grid3x3 },
   { href: "/app/score-entry", label: "Score Entry", icon: ClipboardList, badgeKey: "pending" },
   { href: "/app/standings", label: "Live Standings", icon: ListOrdered },
+  { href: "/app/teams", label: "Teams", icon: Shield },
   { href: "/app/arbiter", label: "Arbiter Desk", icon: Gavel, badgeKey: "disputes" },
   { href: "/app/broadcast", label: "Broadcast", icon: Radio },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/app/certificates", label: "Certificates", icon: FileBadge },
+  { href: "/app/promotions", label: "Promotions", icon: Ticket },
+  { href: "/app/finance", label: "Finance", icon: Wallet },
   { href: "/app/reports", label: "Reports", icon: FileText },
   { href: "/app/communication", label: "Communication", icon: Bell },
 ];

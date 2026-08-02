@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -371,9 +372,9 @@ export default function LandingPage() {
             </div>
 
             <p className="mt-4 text-center text-[12px] text-faint">
-              <a href="/live" className="underline underline-offset-2 hover:text-muted">
+              <Link href="/live" className="underline underline-offset-2 hover:text-muted">
                 View the public championship site
-              </a>
+              </Link>
             </p>
           </motion.div>
         </section>
