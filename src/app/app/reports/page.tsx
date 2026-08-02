@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Award,
   FileSpreadsheet,
@@ -8,6 +9,7 @@ import {
   Link2,
   Printer,
   Table2,
+  ExternalLink,
 } from "lucide-react";
 import {
   Badge,
@@ -25,6 +27,8 @@ import {
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
+import { selectActiveEvent, useEventStore } from "@/lib/store/useEventStore";
+import { REPORT_PAGES } from "@/lib/engine/reporting";
 import { cn, downloadFile, formatDate, formatDateTime, signed, toCsv } from "@/lib/utils";
 
 interface ReportDef {
@@ -67,6 +71,7 @@ const CERTIFICATE_TYPES = [
 export default function ReportsPage() {
   const store = useStore();
   const { tournament, players, pairings, divisions, disputes, audit } = store;
+  const activeEvent = selectActiveEvent(useEventStore());
 
   const [group, setGroup] = React.useState("all");
   const [preview, setPreview] = React.useState<ReportDef | null>(null);
@@ -306,6 +311,42 @@ export default function ReportsPage() {
               <option value="withdrawn">Withdrawn</option>
             </Select>
           </Field>
+        </div>
+      </Card>
+
+      {/* The full tournament report, as a printable document. */}
+      <Card className="mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-4 p-5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-bold text-ink">Tournament report</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              Five pages opening with the event&apos;s condition at a glance, then participants,
+              play, finance and communication. It opens as a document — no navigation, no buttons —
+              so what you see is what prints and what a sponsor receives.
+            </p>
+            <ol className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+              {REPORT_PAGES.map((page, i) => (
+                <li key={page.id} className="text-[12px] text-muted">
+                  <span className="num font-semibold text-primary">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>{" "}
+                  {page.title}
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-[11.5px] text-faint">
+              Revenue counts verified payments only; play figures exclude boards without a verified
+              result. Each figure states what it leaves out.
+            </p>
+          </div>
+
+          {activeEvent ? (
+            <Link href={`/report/${activeEvent.id}`} target="_blank" rel="noreferrer">
+              <Button variant="primary" icon={<ExternalLink className="size-4" />}>
+                Open report
+              </Button>
+            </Link>
+          ) : null}
         </div>
       </Card>
 
