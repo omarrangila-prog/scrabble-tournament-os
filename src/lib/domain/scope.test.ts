@@ -136,3 +136,39 @@ describe("scopeStatus", () => {
     expect(scopeStatus([], scope("ev-bluffy"), false)).toBe("loading");
   });
 });
+
+/**
+ * Events and tournaments are separate records: an event exists from creation,
+ * its games only once a tournament is set up for it. An earlier awards screen
+ * read whichever tournament happened to be loaded, which would have written one
+ * event's certificates from another event's games once a second event existed.
+ */
+describe("event to tournament linkage", () => {
+  interface LinkedEvent {
+    id: string;
+    organizationId: string;
+    tournamentId?: string;
+  }
+
+  /** Mirrors the guard the awards screen applies. */
+  const resolveTournament = (event: LinkedEvent, loadedTournamentId: string) =>
+    event.tournamentId && event.tournamentId === loadedTournamentId
+      ? loadedTournamentId
+      : null;
+
+  it("resolves a tournament only when the event names it", () => {
+    const event = { id: "ev-a", organizationId: ORG, tournamentId: "t-1" };
+    expect(resolveTournament(event, "t-1")).toBe("t-1");
+  });
+
+  it("resolves nothing for an event with no tournament yet", () => {
+    const event = { id: "ev-new", organizationId: ORG };
+    expect(resolveTournament(event, "t-1")).toBeNull();
+  });
+
+  /** The bug this guards: borrowing another event's games. */
+  it("refuses a tournament the event does not name", () => {
+    const event = { id: "ev-b", organizationId: ORG, tournamentId: "t-2" };
+    expect(resolveTournament(event, "t-1")).toBeNull();
+  });
+});

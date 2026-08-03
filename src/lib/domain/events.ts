@@ -225,6 +225,17 @@ export interface PublicEvent {
 
   prizes: { place: string; award: string }[];
 
+  /**
+   * The tournament whose games back this event, once play has begun.
+   *
+   * Registration and play are separate records: an event exists from the moment
+   * it is created, but its games only exist once a tournament is set up for it.
+   * Undefined means no results exist yet — which is a normal state, not an
+   * error, and must read as "nothing to report" rather than being filled in
+   * from whatever tournament happens to be loaded.
+   */
+  tournamentId?: string;
+
   state: EventState;
   createdAt: string;
   createdBy: string;

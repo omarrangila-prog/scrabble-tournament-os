@@ -26,6 +26,9 @@ export const DEMO_EVENT_SLUG = "karachi-scrabble-sunday-2026";
 const EVENT: PublicEvent = {
   id: "evt-karachi-sunday",
   organizationId: "org-federation",
+  // The demo event's games live in the seeded tournament, so certificates and
+  // standings have a real record to read from.
+  tournamentId: "t-pnsc-2026",
   slug: DEMO_EVENT_SLUG,
 
   name: "Karachi Scrabble Sunday 2026",

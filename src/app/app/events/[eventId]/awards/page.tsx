@@ -93,14 +93,24 @@ export default function AwardsPage() {
   /*
    * Performance records come from the verified game record via the standings
    * engine. Nothing here is synthesised: a player with no verified game gets no
-   * record, and a tournament with no results yields no certificates.
+   * record, and an event with no tournament behind it yields no certificates.
+   *
+   * The event must name its own tournament. Reading whichever tournament
+   * happens to be loaded would let one event's certificates be written from
+   * another event's games — the same scoping mistake the workspace exists to
+   * prevent.
    */
-  const records = performanceRecordsFor(
-    app.players,
-    app.pairings,
-    app.tournament,
-    app.divisions.map((d) => d.id),
-  );
+  const linkedTournament =
+    event.tournamentId && event.tournamentId === app.tournament.id ? app.tournament : null;
+
+  const records = linkedTournament
+    ? performanceRecordsFor(
+        app.players,
+        app.pairings,
+        linkedTournament,
+        app.divisions.map((d) => d.id),
+      )
+    : [];
   const hasResults = records.length > 0;
 
   const filtered = all
@@ -200,9 +210,13 @@ export default function AwardsPage() {
         <div className="mt-3 flex items-start gap-3 rounded-feature bg-warning-050 px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-[#a76d16]" />
           <p className="text-[13px] leading-relaxed text-[#a76d16]">
-            <strong className="font-semibold">No verified results yet.</strong> Certificates state
-            what a player achieved, so there is nothing to prepare until games have been played and
-            verified. Nothing is generated from an unfinished tournament.
+            <strong className="font-semibold">
+              {event.tournamentId
+                ? "No verified results yet."
+                : "No tournament is linked to this event yet."}
+            </strong>{" "}
+            Certificates state what a player achieved, so there is nothing to prepare until games
+            have been played and verified. Nothing is generated from an unfinished tournament.
           </p>
         </div>
       ) : null}
