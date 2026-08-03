@@ -28,7 +28,7 @@ import {
   Tabs,
   Textarea,
 } from "@/components/ui";
-import { selectScopedRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import { useEventStore } from "@/lib/store/useEventStore";
 import { useCertificateStore } from "@/lib/store/useCertificateStore";
 import { useStore } from "@/lib/store/useStore";
 import { activeEvent } from "@/lib/domain/scope";
@@ -40,12 +40,8 @@ import {
   planBulkIssue,
   verificationUrl,
 } from "@/lib/engine/certificates";
-import {
-  buildCitation,
-  PerformanceRecord,
-  tierFor,
-  unsupportedClaims,
-} from "@/lib/engine/citations";
+import { buildCitation, PerformanceRecord, tierFor, unsupportedClaims } from "@/lib/engine/citations";
+import { performanceRecordsFor } from "@/lib/engine/standings";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { cn } from "@/lib/utils";
 
@@ -87,7 +83,6 @@ export default function AwardsPage() {
 
   if (!event) return null;
 
-  const registrations = selectScopedRegistrations(store);
   const all = certs.certificatesFor(event.id);
   const summary = certificateSummary(all);
 
@@ -96,25 +91,17 @@ export default function AwardsPage() {
   const plan = planBulkIssue(all, ctx);
 
   /*
-   * Performance records for everyone approved. In a live event these are the
-   * verified standings; the demo derives a plausible spread of results from the
-   * approved list. Either way the citation is computed from figures rather than
-   * typed by hand.
+   * Performance records come from the verified game record via the standings
+   * engine. Nothing here is synthesised: a player with no verified game gets no
+   * record, and a tournament with no results yields no certificates.
    */
-  const approved = registrations.filter((r) => r.status === "approved");
-  const records: PerformanceRecord[] = approved.map((r, i) => ({
-    playerId: r.id,
-    playerName: r.fullName,
-    division: (r.confirmedDivision ?? r.preferredDivision).replace(/-/g, " "),
-    rank: i + 1,
-    fieldSize: approved.length,
-    wins: Math.max(0, event.rounds - Math.floor(i / 2)),
-    losses: Math.min(event.rounds, Math.floor(i / 2)),
-    draws: 0,
-    spread: Math.max(-800, 900 - i * 60),
-    gamesPlayed: event.rounds,
-    roundsScheduled: event.rounds,
-  }));
+  const records = performanceRecordsFor(
+    app.players,
+    app.pairings,
+    app.tournament,
+    app.divisions.map((d) => d.id),
+  );
+  const hasResults = records.length > 0;
 
   const filtered = all
     .filter((c) => (tab === "all" ? true : c.status === tab))
@@ -171,7 +158,12 @@ export default function AwardsPage() {
         }
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" icon={<Wand2 className="size-4" />} onClick={generate}>
+            <Button
+              variant="secondary"
+              icon={<Wand2 className="size-4" />}
+              disabled={!hasResults}
+              onClick={generate}
+            >
               Prepare from standings
             </Button>
             <Button
@@ -200,6 +192,17 @@ export default function AwardsPage() {
             <strong className="font-semibold">Results are still provisional.</strong> Participation
             certificates can be issued now; placement certificates are held back until final review,
             so none asserts a placing that could still change.
+          </p>
+        </div>
+      ) : null}
+
+      {!hasResults ? (
+        <div className="mt-3 flex items-start gap-3 rounded-feature bg-warning-050 px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-[#a76d16]" />
+          <p className="text-[13px] leading-relaxed text-[#a76d16]">
+            <strong className="font-semibold">No verified results yet.</strong> Certificates state
+            what a player achieved, so there is nothing to prepare until games have been played and
+            verified. Nothing is generated from an unfinished tournament.
           </p>
         </div>
       ) : null}
@@ -322,11 +325,18 @@ export default function AwardsPage() {
             description={
               all.length
                 ? "Try a different search or tab."
-                : "Prepare a full set from the standings, with wording drawn from each player's own results."
+                : hasResults
+                  ? "Prepare a full set from the standings, with wording drawn from each player's own results."
+                  : "Certificates are written from verified results. Once games have been played and verified, a full set can be prepared here."
             }
             action={
               all.length ? undefined : (
-                <Button variant="primary" icon={<Wand2 className="size-4" />} onClick={generate}>
+                <Button
+                  variant="primary"
+                  icon={<Wand2 className="size-4" />}
+                  disabled={!hasResults}
+                  onClick={generate}
+                >
                   Prepare from standings
                 </Button>
               )

@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Banknote,
   Bell,
   CalendarClock,
   CalendarDays,
@@ -40,7 +41,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
   { href: "/app/registrations", label: "Registrations", icon: IdCard, badgeKey: "registrations" },
   { href: "/app/players", label: "Players", icon: Users },
-  { href: "/app/finance", label: "Payments", icon: Wallet },
+  { href: "/app/payments", label: "Payments", icon: Wallet },
+  { href: "/app/finance", label: "Finance", icon: Banknote },
   { href: "/app/certificates", label: "Awards", icon: Trophy },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
@@ -69,6 +71,7 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
 
   // Reachable from the event workspace rather than the sidebar.
   { href: "/app/events/new", label: "Create tournament" },
+  { href: "/app/payments", label: "Payments" },
   { href: "/app/tournaments", label: "Tournaments" },
   { href: "/app/check-in", label: "Check-in" },
   { href: "/app/categories", label: "Divisions" },

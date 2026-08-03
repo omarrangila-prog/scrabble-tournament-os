@@ -12,6 +12,7 @@ import {
   StandingsRow,
   Tournament,
 } from "../domain/types";
+import { PerformanceRecord } from "./citations";
 
 export interface PlayerRecord {
   playerId: string;
@@ -269,4 +270,65 @@ export function computeStandings(
     });
 
   return rows;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Certificate records                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Converts standings into the performance records certificates are written
+ * from.
+ *
+ * This adapter exists because an earlier awards screen synthesised records
+ * from list position — rank by array index, wins by arithmetic — and fed them
+ * into citation wording that presents itself as evidence-based. That produced
+ * certificates asserting "first place, eight victories" for whoever happened to
+ * sort first, with no game behind it.
+ *
+ * Going through computeStandings means a certificate can only ever restate
+ * what the verified game record already says. Players with nothing verified are
+ * excluded rather than given a placing they did not earn: a tournament with no
+ * results yields no certificates, which is the honest outcome.
+ *
+ * Ranking is per division, because that is the field a player actually
+ * competed in — ranking across divisions would place a Masters player fourth
+ * behind three Beginners and call it a finish.
+ */
+export function performanceRecordsFor(
+  players: Player[],
+  pairings: Pairing[],
+  tournament: Tournament,
+  divisions: string[],
+): PerformanceRecord[] {
+  const records: PerformanceRecord[] = [];
+
+  for (const division of divisions) {
+    const rows = computeStandings(players, pairings, tournament, { division });
+    // A player with no verified game has nothing to certify.
+    const played = rows.filter((r) => r.played > 0);
+
+    played.forEach((row, index) => {
+      const player = players.find((p) => p.id === row.playerId);
+      if (!player) return;
+
+      records.push({
+        playerId: player.id,
+        playerName: player.fullName,
+        division,
+        // Re-ranked over players who actually played, so a field of absentees
+        // does not leave gaps in the placings.
+        rank: index + 1,
+        fieldSize: played.length,
+        wins: row.wins,
+        losses: row.losses,
+        draws: row.draws,
+        spread: row.spread,
+        gamesPlayed: row.played,
+        roundsScheduled: tournament.totalRounds,
+      });
+    });
+  }
+
+  return records;
 }
