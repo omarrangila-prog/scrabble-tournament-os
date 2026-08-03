@@ -54,7 +54,15 @@ const OUTCOME: Record<
  */
 export default function VerifyPage() {
   const params = useParams<{ code?: string[] }>();
-  const fromUrl = params.code?.[0] ? decodeURIComponent(params.code[0]) : "";
+  /*
+   * Certificate QR codes point at /verify/certificate/{code}, which its own
+   * route handles. Next.js prefers that static segment over this catch-all, but
+   * if it ever fell through, code[0] would be the literal "certificate" and the
+   * scan would read as an unknown code. Take the last segment instead.
+   */
+  const segments = params.code ?? [];
+  const last = segments[segments.length - 1];
+  const fromUrl = last && last !== "certificate" ? decodeURIComponent(last) : "";
 
   const certs = useCertificateStore();
   const events = useEventStore();
