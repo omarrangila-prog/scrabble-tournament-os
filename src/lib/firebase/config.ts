@@ -30,6 +30,8 @@ export interface FirebaseSettings {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
+  /** Optional. Present only when Google Analytics is enabled on the project. */
+  measurementId?: string;
 }
 
 function readSettings(): Partial<FirebaseSettings> {
@@ -40,6 +42,7 @@ function readSettings(): Partial<FirebaseSettings> {
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
   };
 }
 
@@ -84,6 +87,29 @@ export function firestore(): Firestore | null {
   if (!app) return null;
   cachedDb = getFirestore(app);
   return cachedDb;
+}
+
+/**
+ * Starts Google Analytics, when the project has it and the browser supports it.
+ *
+ * Deliberately fire-and-forget and never awaited by anything that matters:
+ * analytics failing must not affect a participant mid-registration, and it is
+ * not available during server rendering at all.
+ */
+export async function startAnalytics(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  const app = firebaseApp();
+  const settings = readSettings();
+  if (!app || !settings.measurementId) return;
+
+  try {
+    const { getAnalytics, isSupported } = await import("firebase/analytics");
+    if (await isSupported()) getAnalytics(app);
+  } catch {
+    // Blocked by an extension, an unsupported browser, or no network. None of
+    // those are reasons to interrupt the person filling in the form.
+  }
 }
 
 /** Where data is actually being read from, for the organizer to see. */
