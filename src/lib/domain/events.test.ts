@@ -247,16 +247,28 @@ describe("seeded event data", () => {
   });
 
   /** Money goes to a real account or the step says details are coming. */
-  it("carries real payment details for AlphaBattle and none for GAME ON!", () => {
+  /**
+   * Both events collect into the same accounts, confirmed by the organizer.
+   * The point of this test is not that the fields are populated but that they
+   * are populated *identically* — a divergence would mean one event's money
+   * goes somewhere nobody checked, which is exactly the failure that leaving
+   * GAME ON! blank was originally guarding against.
+   */
+  it("collects both events into the same confirmed accounts", () => {
     const [gameOn, alphaBattle] = seed.events;
 
     expect(alphaBattle.bankDetails).toContain("Habib Metropolitan");
+    expect(alphaBattle.bankDetails).toContain("PK66MPBL0170027140140261");
     expect(alphaBattle.walletDetails).toContain("0333 6665761");
-    expect(alphaBattle.paymentMethods.length).toBeGreaterThan(0);
 
-    // The poster states no account, so none is invented.
-    expect(gameOn.bankDetails).toBe("");
-    expect(gameOn.paymentMethods).toEqual([]);
+    expect(gameOn.bankDetails).toBe(alphaBattle.bankDetails);
+    expect(gameOn.walletDetails).toBe(alphaBattle.walletDetails);
+    expect(gameOn.paymentMethods).toEqual(alphaBattle.paymentMethods);
+
+    for (const ev of [gameOn, alphaBattle]) {
+      expect(ev.paymentMethods.length).toBeGreaterThan(0);
+      expect(ev.bankDetails.trim()).not.toBe("");
+    }
   });
 
   it("offers no fabricated discount codes", () => {
@@ -295,11 +307,14 @@ describe("seeded event data", () => {
   });
 
   /** Anything the poster does not state must be listed, not guessed. */
+  /**
+   * Payment details are deliberately absent from this list. They are not on the
+   * poster, but they are not invented either — the organizer confirmed both
+   * events collect into the same accounts, and that is covered by its own test
+   * above. Everything asserted here is still genuinely unstated.
+   */
   it("invents nothing the poster leaves out", () => {
     const event = seed.events[0];
-    expect(event.paymentMethods).toEqual([]);
-    expect(event.bankDetails).toBe("");
-    expect(event.walletDetails).toBe("");
     expect(event.prizes).toEqual([]);
     expect(event.rounds).toBe(0);
     expect(event.capacity).toBe(0);

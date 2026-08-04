@@ -23,10 +23,13 @@ export const DEMO_EVENT_SLUG = "game-on-8-august";
 /**
  * GAME ON!
  *
- * Built strictly from the event poster. Anything the poster does not state is
- * left empty and listed in `unconfirmed`, which blocks publication until the
- * organizer supplies it — a public page carrying an invented capacity or
- * payment account is worse than one that admits the gap.
+ * Built from the event poster plus what the organizer has since confirmed.
+ * Anything neither source states is left empty and listed in `unconfirmed`,
+ * which blocks publication until it is supplied — a public page carrying an
+ * invented capacity or payment account is worse than one that admits the gap.
+ *
+ * The payment accounts came from the organizer directly, not from the poster:
+ * both August events collect into the same HabibMetro and EasyPaisa accounts.
  *
  * The year is the one exception, and it is a deduction rather than an
  * invention: the poster says "8th August, Saturday", and 8 August falls on a
@@ -61,7 +64,8 @@ const EVENT: PublicEvent = {
   timeDisplay: "5:00 PM onwards",
   timeZone: "Asia/Karachi (PKT, UTC+5)",
 
-  contactPhone: "",
+  // Same organizer contact as the August 23 event.
+  contactPhone: "0300 8278594",
   contactEmail: "",
 
   visibility: "public",
@@ -87,11 +91,16 @@ const EVENT: PublicEvent = {
     },
   ],
 
-  // No account details appear on the poster, and reusing a previous event's
-  // would send money to the wrong place.
-  paymentMethods: [],
-  bankDetails: "",
-  walletDetails: "",
+  /*
+   * The poster prints no account details. The organizer confirmed both August
+   * events collect into the same accounts, so these match AlphaBattle exactly
+   * — not copied on the assumption that a previous event's account still
+   * applies, which would send money to the wrong place.
+   */
+  paymentMethods: ["bank-transfer", "easypaisa"],
+  bankDetails:
+    "Habib Metropolitan Bank · Huda Garib · 6-01-70-20311-714-140261 · IBAN PK66MPBL0170027140140261 · Khayaban-e-Shahbaz Branch",
+  walletDetails: "0333 6665761 (Nida Khan)",
   waitingList: true,
 
   participationTracks: ["board_games", "speed_scrabble", "both"],
@@ -103,7 +112,6 @@ const EVENT: PublicEvent = {
   divisions: ["beginner", "recreational", "advanced", "masters"],
 
   unconfirmed: [
-    "Payment method and receiving account",
     "Registration deadline",
     "Maximum capacity",
     "Number of Speed Scrabble rounds",
