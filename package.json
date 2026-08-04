@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "supabase": "supabase",
+    "db:link": "supabase link --project-ref jxpbdxocipwonlkrzhjv",
+    "db:push": "supabase db push"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
@@ -41,6 +44,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "jsqr": "^1.4.0",
+    "supabase": "^2.111.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"
