@@ -8,6 +8,7 @@
  */
 
 import { PaymentMethod, PlayerCategory } from "./identity";
+import { ParticipationTrack } from "../firebase/schema";
 
 /* -------------------------------------------------------------------------- */
 /* Event lifecycle                                                             */
@@ -225,6 +226,50 @@ export interface PublicEvent {
 
   prizes: { place: string; award: string }[];
 
+  /** Shown under the event name, e.g. "An Evening of Board Games & Speed Scrabble". */
+  subtitle?: string;
+
+  /**
+   * Organizations presenting the event together.
+   *
+   * Distinct from `organizer`, which is who operates the platform. A
+   * collaborator lends its name to the event without running it, and
+   * conflating the two renames the event after one of its partners.
+   */
+  collaborators?: string[];
+
+  /**
+   * How the time is written publicly, e.g. "5:00 PM onwards".
+   *
+   * Kept separate from `startTime` because a poster may state an opening time
+   * without a close, and inventing a finish to fill the field would put a time
+   * on the public page that nobody committed to.
+   */
+  timeDisplay?: string;
+
+  /** Which tracks a participant may choose. */
+  participationTracks?: ParticipationTrack[];
+
+  /**
+   * Percentage off for a verified Alliance Française member.
+   *
+   * The reduction is shown from the moment it is claimed, so the participant
+   * sees the fee they expect, but it is not counted as settled until someone
+   * has checked the membership number.
+   */
+  memberDiscountPercent?: number;
+  /** The membership body the discount belongs to. */
+  memberDiscountBody?: string;
+
+  /**
+   * Details the poster did not confirm.
+   *
+   * Listed rather than guessed. Each one blocks publication until the organizer
+   * supplies it, because a public page stating an invented capacity or deadline
+   * is worse than one that omits it.
+   */
+  unconfirmed?: string[];
+
   /**
    * The tournament whose games back this event, once play has begun.
    *
@@ -269,7 +314,14 @@ export function registrationStatusOf(
       tone: "neutral",
     };
 
-  if (registrationCount >= event.capacity) {
+  /*
+   * Capacity 0 means no limit has been set yet, not a full event. Without this
+   * an uncapped event reports "full" from its very first entrant, because
+   * 0 >= 0 holds.
+   */
+  const capped = event.capacity > 0;
+
+  if (capped && registrationCount >= event.capacity) {
     return event.waitingList
       ? {
           open: true,
@@ -291,14 +343,18 @@ export function registrationStatusOf(
     return {
       open: true,
       label: "Registration Closing Soon",
-      detail: `${daysLeft} day${daysLeft === 1 ? "" : "s"} left · ${event.capacity - registrationCount} places remaining.`,
+      detail: capped
+        ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left · ${event.capacity - registrationCount} places remaining.`
+        : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left to register.`,
       tone: "warning",
     };
 
   return {
     open: true,
     label: "Registration Open",
-    detail: `${event.capacity - registrationCount} of ${event.capacity} places remaining.`,
+    detail: capped
+      ? `${event.capacity - registrationCount} of ${event.capacity} places remaining.`
+      : `${registrationCount} registered so far.`,
     tone: "success",
   };
 }

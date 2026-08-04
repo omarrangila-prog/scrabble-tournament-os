@@ -63,7 +63,13 @@ describe("fee calculation", () => {
 });
 
 describe("registration availability", () => {
-  const open = { ...EVENT, state: "registration-open" as const };
+  // GAME ON! has no capacity set, so these use an explicitly capped event.
+  const open = {
+    ...EVENT,
+    state: "registration-open" as const,
+    capacity: 100,
+    registrationClosesAt: "2026-09-10T23:59:00+05:00",
+  };
 
   it("is closed while the event is a draft", () => {
     expect(registrationStatusOf({ ...EVENT, state: "draft" }, 0).open).toBe(false);
@@ -78,6 +84,20 @@ describe("registration availability", () => {
   it("warns when the deadline is near", () => {
     const s = registrationStatusOf(open, 10, new Date("2026-09-09"));
     expect(s.label).toBe("Registration Closing Soon");
+  });
+
+  /**
+   * Capacity 0 means "no limit set yet", not "full". Before this was handled,
+   * 0 >= 0 held and an uncapped event reported itself full to its very first
+   * entrant — GAME ON! has no capacity on the poster, so every registration
+   * would have read as waitlisted.
+   */
+  it("treats an unset capacity as no limit rather than a full event", () => {
+    const uncapped = { ...open, capacity: 0 };
+    const s = registrationStatusOf(uncapped, 25, new Date("2026-08-15"));
+    expect(s.open).toBe(true);
+    expect(s.label).toBe("Registration Open");
+    expect(s.detail).toContain("25 registered");
   });
 
   it("offers the waiting list when full", () => {
@@ -188,33 +208,59 @@ describe("default form", () => {
 });
 
 describe("seeded event data", () => {
-  it("publishes one event with registrations", () => {
+  it("seeds exactly one event, drafted until its details are confirmed", () => {
     expect(seed.events).toHaveLength(1);
-    expect(seed.events[0].state).toBe("registration-open");
-    expect(seed.registrations.length).toBeGreaterThan(50);
+    expect(seed.events[0].state).toBe("draft");
   });
 
-  it("stays within capacity", () => {
-    expect(seed.registrations.length).toBeLessThanOrEqual(seed.events[0].capacity);
+  /**
+   * The event starts empty. Seeding invented entrants would put fabricated
+   * names into the participant list, the payment queue, and ultimately onto
+   * certificates that claim to be evidence-based.
+   */
+  it("starts with no registrations", () => {
+    expect(seed.registrations).toEqual([]);
   });
 
-  it("gives every registration a unique opaque token", () => {
-    const tokens = seed.registrations.map((r) => r.token);
-    expect(new Set(tokens).size).toBe(tokens.length);
-    for (const t of tokens) expect(t).not.toContain("reg-");
+  it("carries only what the poster confirms", () => {
+    const event = seed.events[0];
+    expect(event.name).toBe("GAME ON!");
+    expect(event.subtitle).toBe("An Evening of Board Games & Speed Scrabble");
+    expect(event.fee).toBe(1200);
+    expect(event.currency).toBe("PKR");
+    expect(event.memberDiscountPercent).toBe(10);
+    expect(event.venueName).toBe("Alliance Française de Karachi");
+    expect(event.startDate).toBe("2026-08-08");
+    expect(event.timeDisplay).toBe("5:00 PM onwards");
   });
 
-  it("includes a realistic spread of payment states for the review queue", () => {
-    const states = new Set(seed.registrations.map((r) => r.paymentStatus));
-    expect(states.size).toBeGreaterThan(2);
-    expect(states.has("verified")).toBe(true);
+  it("names the three collaborators without renaming the event after one", () => {
+    const event = seed.events[0];
+    expect(event.name).toBe("GAME ON!");
+    expect(event.collaborators).toEqual([
+      "Boardgame Baithak",
+      "Blufy's AlphaBattle",
+      "Alliance Française",
+    ]);
   });
 
-  it("pins the guided-demo participant", () => {
-    const hunain = seed.registrations.find((r) => r.fullName === "Hunain Ahmed");
-    expect(hunain).toBeDefined();
-    expect(hunain!.discountCode).toBe("SONGCHALLENGE");
-    expect(hunain!.amountDue).toBe(1500);
-    expect(hunain!.paymentStatus).toBe("verified");
+  /** Anything the poster does not state must be listed, not guessed. */
+  it("invents nothing the poster leaves out", () => {
+    const event = seed.events[0];
+    expect(event.paymentMethods).toEqual([]);
+    expect(event.bankDetails).toBe("");
+    expect(event.walletDetails).toBe("");
+    expect(event.prizes).toEqual([]);
+    expect(event.rounds).toBe(0);
+    expect(event.capacity).toBe(0);
+    expect(event.unconfirmed?.length).toBeGreaterThan(0);
+  });
+
+  it("offers all three participation tracks", () => {
+    expect(seed.events[0].participationTracks).toEqual([
+      "board_games",
+      "speed_scrabble",
+      "both",
+    ]);
   });
 });
