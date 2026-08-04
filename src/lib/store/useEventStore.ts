@@ -28,6 +28,7 @@ import {
 } from "../domain/events";
 import { PaymentMethod, PlayerCategory } from "../domain/identity";
 import { ParticipationTrack } from "../firebase/schema";
+import { AUTO_VERIFY_ON_UPLOAD } from "../domain/gameOn";
 import {
   activeEvent as resolveActiveEvent,
   isStale,
@@ -54,6 +55,8 @@ export const EVENT_STORAGE_KEY = "bluffy-events-v1";
  */
 export type GuestPaymentStatus =
   | "not-submitted"
+  /** Paying at the welcome desk. Money is collected, not transferred. */
+  | "cash-at-venue"
   | "receipt-uploaded"
   | "processing"
   | "review-required"
@@ -366,13 +369,23 @@ export const useEventStore = create<EventStore>()(
         const status: GuestRegistrationStatus =
           overCapacity && event?.waitingList ? "waitlisted" : "submitted";
 
+        /*
+         * The organizer chose to verify on upload, against a recommendation, so
+         * that registration completes in a single step. The consequence is
+         * recorded in AUTO_VERIFY_ON_UPLOAD: any uploaded file marks the
+         * payment received, including a blank one, and paid and unpaid entrants
+         * become indistinguishable. The duplicate and amount checks still run,
+         * so a reviewer can find suspicious receipts afterwards.
+         */
         const paymentStatus: GuestPaymentStatus =
           input.amountDue === 0
             ? "complimentary"
-            : input.receiptFileName
-              ? "receipt-uploaded"
-              : input.paymentMethod === "cash"
-                ? "not-submitted"
+            : input.paymentMethod === "cash"
+              ? "cash-at-venue"
+              : input.receiptFileName
+                ? AUTO_VERIFY_ON_UPLOAD
+                  ? "verified"
+                  : "receipt-uploaded"
                 : "not-submitted";
 
         const registration: GuestRegistration = {

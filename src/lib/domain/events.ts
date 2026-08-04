@@ -422,6 +422,8 @@ export function slugify(name: string): string {
 export interface ShareAssets {
   publicUrl: string;
   registerUrl: string;
+  /** Short, shareable form of the registration link. */
+  shortUrl: string;
   liveUrl: string;
   whatsappText: string;
   emailSubject: string;
@@ -431,6 +433,19 @@ export interface ShareAssets {
 export function buildShareAssets(event: PublicEvent, origin: string): ShareAssets {
   const publicUrl = `${origin}/events/${event.slug}`;
   const registerUrl = `${publicUrl}/register`;
+
+  /*
+   * The short link drops the date suffix: "game-on-8-august" becomes "game-on".
+   * It is what goes on a poster and into a message, where a long URL wraps and
+   * gets mistyped. The canonical link still works and is what the browser
+   * settles on after the redirect.
+   */
+  const MONTHS =
+    "january|february|march|april|may|june|july|august|september|october|november|december";
+  // Month names specifically, so "round-2-qualifier" is not mistaken for a date
+  // and shortened to "round".
+  const shortSlug = event.slug.replace(new RegExp(`-\\d{1,2}-(?:${MONTHS})$`, "i"), "");
+  const shortUrl = `${origin}/go/${shortSlug}`;
   const liveUrl = `${origin}/live/${event.slug}`;
 
   const money = `${event.currency} ${event.fee.toLocaleString("en-PK")}`;
@@ -439,6 +454,7 @@ export function buildShareAssets(event: PublicEvent, origin: string): ShareAsset
   return {
     publicUrl,
     registerUrl,
+    shortUrl,
     liveUrl,
     whatsappText: [
       `*${event.name}*`,

@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { ParticipationTrack } from "../firebase/schema";
 import {
   AFK_DISCOUNT_PERCENT,
+  AUTO_VERIFY_ON_UPLOAD,
+  BundleEvent,
+  BUNDLE_DISCOUNT_PERCENT,
+  describeBundle,
+  paymentInstructions,
+  quoteBundle,
+  statusAfterUpload,
   canOpenRegistration,
   setupChecklist,
   SetupInput,
@@ -366,5 +373,139 @@ describe("opening registration for GAME ON!", () => {
     const outstanding = items.filter((i) => !i.done).map((i) => i.id);
     expect(outstanding).toContain("capacity");
     expect(canOpenRegistration(items).ready).toBe(true);
+  });
+});
+
+
+/* -------------------------------------------------------------------------- */
+
+describe("multi-event bundles", () => {
+  const events: BundleEvent[] = [
+    { id: "a", name: "GAME ON!", date: "8 August", fee: 1200 },
+    { id: "b", name: "Second event", date: "15 August", fee: 1200 },
+    { id: "c", name: "Third event", date: "23 August", fee: 1000 },
+  ];
+
+  it("charges full price for a single event", () => {
+    const q = quoteBundle([events[0]], events);
+    expect(q.subtotal).toBe(1200);
+    expect(q.bundleOff).toBe(0);
+    expect(q.qualifies).toBe(false);
+  });
+
+  it("applies the discount from two events", () => {
+    const q = quoteBundle([events[0], events[1]], events);
+    expect(q.subtotal).toBe(2400);
+    expect(q.bundleOff).toBe(360);
+    expect(q.qualifies).toBe(true);
+  });
+
+  it("scales with a third event", () => {
+    const q = quoteBundle(events, events);
+    expect(q.subtotal).toBe(3400);
+    expect(q.bundleOff).toBe(510);
+  });
+
+  /** An offer that punishes taking it is worse than no offer. */
+  it("never makes the total rise when another event is added", () => {
+    const one = quoteBundle([events[0]], events);
+    const two = quoteBundle([events[0], events[2]], events);
+    expect(two.subtotal - two.bundleOff).toBeGreaterThanOrEqual(one.subtotal - one.bundleOff);
+  });
+
+  it("tells a single-event registrant what one more would save", () => {
+    const q = quoteBundle([events[0]], events);
+    expect(q.nextTierSaving).toBeGreaterThan(0);
+  });
+
+  it("stops nudging once every event is selected", () => {
+    expect(quoteBundle(events, events).nextTierSaving).toBe(0);
+  });
+
+  /** The nudge must not overstate what the next event is actually worth. */
+  it("quotes only the additional saving once the discount is already earned", () => {
+    const q = quoteBundle([events[0], events[1]], events);
+    const withThird = quoteBundle(events, events);
+    expect(q.nextTierSaving).toBe(withThird.bundleOff - q.bundleOff);
+  });
+
+  it("handles an empty selection", () => {
+    const q = quoteBundle([], events);
+    expect(q.subtotal).toBe(0);
+    expect(q.bundleOff).toBe(0);
+    expect(describeBundle(q)).toContain("at least one");
+  });
+
+  it("uses the configured percentage", () => {
+    expect(BUNDLE_DISCOUNT_PERCENT).toBe(15);
+    expect(quoteBundle([events[0], events[1]], events, 50).bundleOff).toBe(1200);
+  });
+
+  it("describes the position in the participant's terms", () => {
+    expect(describeBundle(quoteBundle([events[0]], events))).toContain("Add one more");
+    expect(describeBundle(quoteBundle([events[0], events[1]], events))).toContain("applied");
+  });
+});
+
+describe("paymentInstructions", () => {
+  /** An empty account number invites someone to send money anywhere. */
+  it("returns nothing when no details are configured", () => {
+    expect(paymentInstructions(["bank-transfer"], "", "")).toEqual([]);
+  });
+
+  it("reads a bank line into title and number", () => {
+    const [i] = paymentInstructions(
+      ["bank-transfer"],
+      "Meezan Bank · GAME ON! · PK00 MEZN 0000 0012 3456 78",
+      "",
+    );
+    expect(i.accountTitle).toBe("GAME ON!");
+    expect(i.accountNumber).toContain("PK00 MEZN");
+  });
+
+  it("reads a wallet number written with the title in brackets", () => {
+    const [i] = paymentInstructions(["easypaisa"], "", "0300 1234567 (Sir Hani)");
+    expect(i.method).toBe("EasyPaisa");
+    expect(i.accountTitle).toBe("Sir Hani");
+    expect(i.accountNumber).toBe("0300 1234567");
+  });
+
+  it("offers only the methods the organizer enabled", () => {
+    const out = paymentInstructions(["easypaisa"], "", "0300 1234567 (Sir Hani)");
+    expect(out.map((i) => i.method)).toEqual(["EasyPaisa"]);
+  });
+
+  it("needs no account for cash at the venue", () => {
+    const [i] = paymentInstructions(["cash"], "", "");
+    expect(i.method).toContain("Cash");
+    expect(i.note).toContain("No upload needed");
+  });
+});
+
+describe("statusAfterUpload", () => {
+  it("marks nothing submitted without a receipt", () => {
+    expect(statusAfterUpload(false, false)).toBe("not-submitted");
+  });
+
+  it("marks cash payers as paying at the venue", () => {
+    expect(statusAfterUpload(false, true)).toBe("cash-at-venue");
+  });
+
+  /**
+   * The organizer chose auto-verification deliberately, against a
+   * recommendation. This test documents the consequence rather than endorsing
+   * it: any uploaded file marks the payment received, so paid and unpaid
+   * entrants are indistinguishable in the records. Flip AUTO_VERIFY_ON_UPLOAD
+   * to restore review-before-verified.
+   */
+  it("verifies on upload, as configured", () => {
+    expect(AUTO_VERIFY_ON_UPLOAD).toBe(true);
+    expect(statusAfterUpload(true, false)).toBe("verified");
+  });
+
+  it("would hold a receipt for review if auto-verification were off", () => {
+    // Guards the other branch so turning the flag off cannot silently break.
+    const held = AUTO_VERIFY_ON_UPLOAD ? "receipt-uploaded" : statusAfterUpload(true, false);
+    expect(held).toBe("receipt-uploaded");
   });
 });

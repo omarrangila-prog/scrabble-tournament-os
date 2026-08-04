@@ -53,6 +53,7 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 
 const PAYMENT_TONE: Record<GuestPaymentStatus, "success" | "warning" | "critical" | "neutral" | "info"> = {
   "not-submitted": "neutral",
+  "cash-at-venue": "info",
   "receipt-uploaded": "warning",
   processing: "warning",
   "review-required": "warning",
@@ -69,6 +70,7 @@ const PAYMENT_TONE: Record<GuestPaymentStatus, "success" | "warning" | "critical
 /** Plain language — participants read these too. */
 const PAYMENT_LABEL: Record<GuestPaymentStatus, string> = {
   "not-submitted": "Waiting for payment",
+  "cash-at-venue": "Paying at the venue",
   "receipt-uploaded": "Receipt under review",
   processing: "Being processed",
   "review-required": "Needs a closer look",

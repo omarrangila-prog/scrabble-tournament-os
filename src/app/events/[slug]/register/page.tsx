@@ -123,7 +123,7 @@ export default function RegisterPage() {
       // No payment method is configured until the organizer sets one, so the
       // participant is not asked to choose one that does not exist yet.
       paymentMethod: event.paymentMethods[0] ?? "cash",
-      receiptFileName: undefined,
+      receiptFileName: reg.receiptFileName,
       amountDue: quote.payable,
       discountCode: campaign?.code,
       discountAmount: quote.totalOff,

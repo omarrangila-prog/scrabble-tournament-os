@@ -2,12 +2,24 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, Music, Save, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Copy,
+  Music,
+  Save,
+  Upload,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { PublicEvent } from "@/lib/domain/events";
 import {
   CampaignReduction,
   GameOnRegistration,
+  paymentInstructions,
   quoteFee,
   validateRegistration,
 } from "@/lib/domain/gameOn";
@@ -65,6 +77,7 @@ export function GameOnForm({
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [codeInput, setCodeInput] = React.useState("");
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
+  const [copied, setCopied] = React.useState<string | null>(null);
 
   const draftKey = `game-on-draft-${event.id}`;
 
@@ -93,8 +106,10 @@ export function GameOnForm({
     if (Object.keys(reg).length <= 2) return;
     const id = window.setTimeout(() => {
       try {
-        const { membershipProofFileName: _proof, ...rest } = reg;
+        // Neither file survives a reload, so neither is implied to have.
+        const { membershipProofFileName: _proof, receiptFileName: _receipt, ...rest } = reg;
         void _proof;
+        void _receipt;
         localStorage.setItem(draftKey, JSON.stringify(rest));
         setSavedAt(new Date().toISOString());
       } catch {
@@ -122,6 +137,12 @@ export function GameOnForm({
   );
 
   const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
+
+  const instructions = paymentInstructions(
+    event.paymentMethods,
+    event.bankDetails,
+    event.walletDetails,
+  );
 
   /** Only blocks on problems belonging to the step being left. */
   const stepFields: Record<StepId, string[]> = {
@@ -534,6 +555,126 @@ export function GameOnForm({
               ) : null}
 
               <FeePanel quote={quote} money={money} />
+
+              {/* How to pay ------------------------------------------------ */}
+              {instructions.length ? (
+                <div className="rounded-feature border border-[#C89B3C]/40 bg-[#C89B3C]/8 p-4">
+                  <p className="flex items-center gap-2 text-[13px] font-bold text-ink">
+                    <Wallet className="size-4" style={{ color: "#8A6A1F" }} />
+                    How to pay
+                  </p>
+
+                  <div className="mt-3 space-y-2.5">
+                    {instructions.map((inst) => (
+                      <div
+                        key={inst.method}
+                        className="rounded-control border border-line bg-white/70 p-3.5"
+                      >
+                        <p className="text-[12.5px] font-bold" style={{ color: "#2F5D3A" }}>
+                          {inst.method}
+                        </p>
+
+                        {inst.accountNumber !== "—" ? (
+                          <dl className="mt-1.5 space-y-1">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <dt className="text-[11.5px] text-muted">Account title</dt>
+                              <dd className="text-right text-[12.5px] font-semibold text-ink">
+                                {inst.accountTitle}
+                              </dd>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-3">
+                              <dt className="text-[11.5px] text-muted">
+                                {inst.method === "Bank transfer" ? "Account number" : "Number"}
+                              </dt>
+                              <dd className="flex items-center gap-1.5">
+                                <span className="num text-right text-[12.5px] font-semibold text-ink">
+                                  {inst.accountNumber}
+                                </span>
+                                <button
+                                  type="button"
+                                  aria-label={`Copy ${inst.method} number`}
+                                  onClick={() => {
+                                    navigator.clipboard?.writeText(inst.accountNumber);
+                                    setCopied(inst.method);
+                                    window.setTimeout(() => setCopied(null), 1600);
+                                  }}
+                                  className="rounded p-1 text-faint transition-colors hover:bg-[rgb(var(--c-line))] hover:text-ink"
+                                >
+                                  {copied === inst.method ? (
+                                    <Check className="size-3" />
+                                  ) : (
+                                    <Copy className="size-3" />
+                                  )}
+                                </button>
+                              </dd>
+                            </div>
+                          </dl>
+                        ) : null}
+
+                        {inst.note ? (
+                          <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">
+                            {inst.note}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="mt-3 text-[11.5px] leading-relaxed" style={{ color: "#8A6A1F" }}>
+                    Send exactly {money(quote.payable)}. Quoting a different amount slows
+                    verification.
+                  </p>
+                </div>
+              ) : (
+                <p className="flex items-start gap-2 rounded-control bg-warning-050 px-3.5 py-3 text-[12.5px] leading-relaxed text-[#a76d16]">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                  Payment details are being finalised. You can still register — the organizer will
+                  send you payment instructions.
+                </p>
+              )}
+
+              {/* Receipt ---------------------------------------------------- */}
+              {instructions.some((i) => i.accountNumber !== "—") ? (
+                <Field
+                  label="Payment screenshot"
+                  hint="A photo or screenshot of your transfer confirmation."
+                >
+                  <label
+                    className={cn(
+                      "flex cursor-pointer flex-col items-center gap-2 rounded-feature border-2 border-dashed px-4 py-6 text-center transition-colors",
+                      reg.receiptFileName
+                        ? "border-[#2F5D3A] bg-[#2F5D3A]/5"
+                        : "border-line hover:bg-[rgb(var(--c-surface-soft))]",
+                    )}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="sr-only"
+                      onChange={(e) => set("receiptFileName", e.target.files?.[0]?.name ?? "")}
+                    />
+                    {reg.receiptFileName ? (
+                      <>
+                        <Check className="size-5" style={{ color: "#2F5D3A" }} />
+                        <span className="text-[13px] font-semibold text-ink">
+                          {reg.receiptFileName}
+                        </span>
+                        <span className="text-[11.5px] text-muted">Tap to replace</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="size-5 text-muted" />
+                        <span className="text-[13px] font-semibold text-ink">
+                          Upload your payment screenshot
+                        </span>
+                        <span className="text-[11.5px] text-muted">
+                          You can also upload it later from your registration link
+                        </span>
+                      </>
+                    )}
+                  </label>
+                </Field>
+              ) : null}
             </>
           ) : null}
 

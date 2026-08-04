@@ -264,3 +264,30 @@ describe("seeded event data", () => {
     ]);
   });
 });
+
+
+describe("short links", () => {
+  const assets = (slug: string) =>
+    buildShareAssets({ ...EVENT, slug }, "https://example.com");
+
+  /** A poster URL that wraps across three lines gets mistyped. */
+  it("drops the date suffix so the link fits on a poster", () => {
+    expect(assets("game-on-8-august").shortUrl).toBe("https://example.com/go/game-on");
+  });
+
+  it("leaves a slug alone when it carries no date", () => {
+    expect(assets("winter-open").shortUrl).toBe("https://example.com/go/winter-open");
+  });
+
+  it("keeps the canonical link intact alongside it", () => {
+    const a = assets("game-on-8-august");
+    expect(a.registerUrl).toBe("https://example.com/events/game-on-8-august/register");
+    expect(a.shortUrl.length).toBeLessThan(a.registerUrl.length);
+  });
+
+  it("does not truncate a slug whose tail only looks like a date", () => {
+    expect(assets("round-2-qualifier").shortUrl).toBe(
+      "https://example.com/go/round-2-qualifier",
+    );
+  });
+});

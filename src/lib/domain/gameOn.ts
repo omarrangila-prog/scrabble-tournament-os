@@ -152,6 +152,15 @@ export interface GameOnRegistration {
   previousTournaments?: string;
   typicalScore?: number;
 
+  /**
+   * The uploaded payment screenshot, by filename.
+   *
+   * Deliberately not part of the autosaved draft: a file cannot be restored
+   * from a string, and implying it was saved would leave someone believing they
+   * had uploaded proof of payment when they had not.
+   */
+  receiptFileName?: string;
+
   /* Membership. */
   membershipStatus: MembershipStatus;
   membershipNumber?: string;
@@ -409,4 +418,194 @@ export function canOpenRegistration(items: SetupItem[]): {
         ? `${blockers[0].label} is still needed.`
         : `${blockers.length} details are still needed before registration can open.`,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Multi-event bundles                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** Percentage off when someone registers for two or more events together. */
+export const BUNDLE_DISCOUNT_PERCENT = 15;
+export const BUNDLE_MIN_EVENTS = 2;
+
+export interface BundleEvent {
+  id: string;
+  name: string;
+  date: string;
+  fee: number;
+}
+
+export interface BundleQuote {
+  /** Events the participant selected, in the order shown. */
+  selected: BundleEvent[];
+  /** Combined fee before any reduction. */
+  subtotal: number;
+  /** Value of the multi-event reduction. Zero below the threshold. */
+  bundleOff: number;
+  /** True once the discount applies. */
+  qualifies: boolean;
+  /** What one more event would save, for the nudge. Zero when already earned. */
+  nextTierSaving: number;
+}
+
+/**
+ * Prices a multi-event selection.
+ *
+ * The reduction is a share of the combined fee rather than a free event, so
+ * adding a cheaper event never reduces the total — an offer that punishes the
+ * participant for taking it would be worse than no offer.
+ *
+ * `nextTierSaving` exists so the form can show what one more event is worth
+ * without the participant having to work it out.
+ */
+export function quoteBundle(
+  selected: BundleEvent[],
+  available: BundleEvent[] = [],
+  discountPercent = BUNDLE_DISCOUNT_PERCENT,
+): BundleQuote {
+  const subtotal = selected.reduce((sum, e) => sum + Math.max(0, e.fee), 0);
+  const qualifies = selected.length >= BUNDLE_MIN_EVENTS;
+  const pct = Math.min(100, Math.max(0, discountPercent));
+
+  const bundleOff = qualifies ? Math.round((subtotal * pct) / 100) : 0;
+
+  /*
+   * What adding one more event would save. Below the threshold that is the
+   * whole discount becoming available; at or above it, only the share of the
+   * extra event's own fee — anything else would overstate the offer.
+   */
+  let nextTierSaving = 0;
+  if (available.length > selected.length) {
+    const cheapestUnselected = available
+      .filter((e) => !selected.some((s) => s.id === e.id))
+      .reduce((min, e) => (min === null || e.fee < min.fee ? e : min), null as BundleEvent | null);
+
+    if (cheapestUnselected) {
+      const nextSubtotal = subtotal + cheapestUnselected.fee;
+      const nextOff = Math.round((nextSubtotal * pct) / 100);
+      nextTierSaving = Math.max(0, nextOff - bundleOff);
+    }
+  }
+
+  return { selected, subtotal, bundleOff, qualifies, nextTierSaving };
+}
+
+/** One line explaining the bundle position, for the form. */
+export function describeBundle(quote: BundleQuote, currency = GAME_ON_CURRENCY): string {
+  const money = (n: number) => `${currency} ${n.toLocaleString("en-PK")}`;
+
+  if (quote.selected.length === 0) return "Choose at least one event.";
+
+  if (quote.qualifies)
+    return `Early Bird discount applied — ${money(quote.bundleOff)} off ${quote.selected.length} events.`;
+
+  if (quote.nextTierSaving > 0)
+    return `Add one more event and save ${money(quote.nextTierSaving)} with the Early Bird discount.`;
+
+  return "Early Bird discount applies when you register for two or more events.";
+}
+
+/* -------------------------------------------------------------------------- */
+/* Payment instructions                                                        */
+/* -------------------------------------------------------------------------- */
+
+export interface PaymentInstruction {
+  method: string;
+  /** Name the money should be sent to. */
+  accountTitle: string;
+  /** Account number, IBAN or mobile number. */
+  accountNumber: string;
+  /** Anything else the participant needs, e.g. a reference to quote. */
+  note?: string;
+}
+
+/**
+ * Turns configured account details into instructions a participant can follow.
+ *
+ * Returns nothing when the organizer has not supplied details. A payment step
+ * showing an empty account number is worse than one saying details are coming:
+ * somebody will send money to whatever they can find.
+ */
+export function paymentInstructions(
+  methods: string[],
+  bankDetails: string,
+  walletDetails: string,
+): PaymentInstruction[] {
+  const out: PaymentInstruction[] = [];
+
+  const parse = (raw: string): { title: string; number: string } | null => {
+    const parts = raw.split("·").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+    // "Bank · Title · Number" or "Number (Title)".
+    if (parts.length >= 3) return { title: parts[1], number: parts.slice(2).join(" ") };
+    if (parts.length === 2) return { title: parts[0], number: parts[1] };
+
+    const m = raw.match(/^(.+?)\s*\((.+)\)$/);
+    if (m) return { title: m[2].trim(), number: m[1].trim() };
+    return { title: "", number: raw.trim() };
+  };
+
+  if (methods.includes("bank-transfer") && bankDetails.trim()) {
+    const p = parse(bankDetails);
+    if (p)
+      out.push({
+        method: "Bank transfer",
+        accountTitle: p.title || "See account details",
+        accountNumber: p.number,
+        note: "Transfer the exact amount shown, then upload your receipt below.",
+      });
+  }
+
+  const wallet = walletDetails.trim();
+  if (wallet) {
+    const p = parse(wallet);
+    for (const m of ["easypaisa", "jazzcash"] as const) {
+      if (!methods.includes(m)) continue;
+      out.push({
+        method: m === "easypaisa" ? "EasyPaisa" : "JazzCash",
+        accountTitle: p?.title || "See account details",
+        accountNumber: p?.number ?? wallet,
+        note: "Send to this number, then upload your confirmation screenshot.",
+      });
+    }
+  }
+
+  if (methods.includes("cash")) {
+    out.push({
+      method: "Cash at the venue",
+      accountTitle: "Welcome desk",
+      accountNumber: "—",
+      note: "Pay when you arrive. No upload needed.",
+    });
+  }
+
+  return out;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Receipt handling                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Whether uploading a receipt marks the payment verified without a human check.
+ *
+ * The organizer chose this deliberately, against a recommendation, to make
+ * registration complete in one step. The consequence is recorded here rather
+ * than buried: **any** uploaded file marks the payment as received, including a
+ * blank image or a screenshot of somebody else's transfer. Paid and unpaid
+ * entrants become indistinguishable in the records.
+ *
+ * The duplicate and amount checks still run and still flag, so a reviewer can
+ * find the suspicious ones afterwards — but nothing is held back at the point
+ * of upload.
+ *
+ * Set to false to restore review-before-verified.
+ */
+export const AUTO_VERIFY_ON_UPLOAD = true;
+
+/** The payment status a freshly uploaded receipt produces. */
+export function statusAfterUpload(hasReceipt: boolean, paysCash: boolean): string {
+  if (paysCash) return "cash-at-venue";
+  if (!hasReceipt) return "not-submitted";
+  return AUTO_VERIFY_ON_UPLOAD ? "verified" : "receipt-uploaded";
 }
