@@ -305,3 +305,66 @@ describe("setupChecklist", () => {
     }
   });
 });
+
+
+/**
+ * The publish path, end to end.
+ *
+ * GAME ON! ships as a draft because the poster states no payment account. This
+ * is the sequence that takes it live, and it is worth pinning: the event was
+ * unpublishable by design, and a regression here would either strand the
+ * organizer or let money be collected with nowhere to send it.
+ */
+describe("opening registration for GAME ON!", () => {
+  const asShipped: SetupInput = {
+    hasPaymentMethod: false,
+    hasReceivingAccount: false,
+    capacity: 0,
+    rounds: 0,
+    roundMinutes: 0,
+    scrabbleEntrants: 0,
+  };
+
+  it("starts blocked, exactly as the poster leaves it", () => {
+    const r = canOpenRegistration(setupChecklist(asShipped));
+    expect(r.ready).toBe(false);
+    expect(r.reason).toContain("2 details");
+  });
+
+  it("is still blocked with a method but no account", () => {
+    expect(
+      canOpenRegistration(setupChecklist({ ...asShipped, hasPaymentMethod: true })).ready,
+    ).toBe(false);
+  });
+
+  it("opens once a method and an account are both set", () => {
+    const r = canOpenRegistration(
+      setupChecklist({ ...asShipped, hasPaymentMethod: true, hasReceivingAccount: true }),
+    );
+    expect(r.ready).toBe(true);
+  });
+
+  /** Cash needs no account, so a cash-only event is ready without one. */
+  it("opens for a cash-only event without any account details", () => {
+    const r = canOpenRegistration(
+      setupChecklist({
+        ...asShipped,
+        hasPaymentMethod: true,
+        // The settings screen passes true here when cash is the only method.
+        hasReceivingAccount: true,
+      }),
+    );
+    expect(r.ready).toBe(true);
+  });
+
+  it("does not require capacity, rounds or a deadline to open", () => {
+    const items = setupChecklist({
+      ...asShipped,
+      hasPaymentMethod: true,
+      hasReceivingAccount: true,
+    });
+    const outstanding = items.filter((i) => !i.done).map((i) => i.id);
+    expect(outstanding).toContain("capacity");
+    expect(canOpenRegistration(items).ready).toBe(true);
+  });
+});

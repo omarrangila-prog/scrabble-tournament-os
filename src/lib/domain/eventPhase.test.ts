@@ -90,10 +90,16 @@ describe("phaseGuidance", () => {
     }
   });
 
-  it("leads a draft to opening registration", () => {
+  /**
+   * A draft leads to setup, not to publishing. Registration cannot open until a
+   * payment account exists, so offering "Open registration" here would be a
+   * button that refuses — pointing at the screen that unblocks it is honest.
+   */
+  it("leads a draft to completing setup rather than to a button that refuses", () => {
     const g = phaseGuidance("draft");
-    expect(g.primary.kind).toBe("transition");
-    expect(g.primary.to).toBe("registration-open");
+    expect(g.primary.kind).toBe("navigate");
+    expect(g.primary.tab).toBe("settings");
+    expect(g.primary.hint).toContain("Payment");
   });
 
   it("leads an open registration to sharing the link", () => {

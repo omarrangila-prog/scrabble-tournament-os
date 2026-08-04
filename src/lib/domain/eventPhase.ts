@@ -114,17 +114,20 @@ const run = (id: string, label: string, hint?: string): PhaseAction => ({
 const GUIDANCE: Record<EventState, PhaseGuidance> = {
   draft: {
     status: "This event is a draft. Nobody can see it yet.",
-    next: "Check the details, then open registration when you are ready.",
-    primary: move(
-      "open-registration",
-      "Open registration",
-      "registration-open",
-      "Publishes the event and lets people register.",
+    next: "Supply the details the poster does not state, then open registration.",
+    /*
+     * Settings rather than a direct transition. Registration cannot open until
+     * a payment account exists, so offering "Open registration" here would be a
+     * button that refuses — sending the organizer to the screen that unblocks it
+     * is the honest action.
+     */
+    primary: nav(
+      "complete-setup",
+      "Complete event setup",
+      "settings",
+      "Payment details are needed before registration can open.",
     ),
-    secondary: [
-      nav("edit", "Edit event", "settings"),
-      nav("preview-form", "Preview registration form", "registrations"),
-    ],
+    secondary: [nav("preview-form", "Preview registration form", "registrations")],
   },
 
   "registration-open": {
