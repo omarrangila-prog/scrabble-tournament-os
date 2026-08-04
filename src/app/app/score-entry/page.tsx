@@ -663,15 +663,20 @@ function OcrPanel() {
               </p>
             </div>
 
+            {/*
+              * Blank rather than pre-filled. A scanned sheet supplies these
+              * values; inventing them would let a plausible-looking result be
+              * submitted for players who never played it.
+              */}
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Board">
-                <Input defaultValue="3" className="num" />
+                <Input className="num" placeholder="Board number" />
               </Field>
-              <Field label="Ahmad Raza">
-                <Input defaultValue="498" className="num" />
+              <Field label="First player score">
+                <Input className="num" placeholder="Score" />
               </Field>
-              <Field label="Usman Ali">
-                <Input defaultValue="472" className="num" />
+              <Field label="Second player score">
+                <Input className="num" placeholder="Score" />
               </Field>
             </div>
 

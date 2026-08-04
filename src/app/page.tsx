@@ -245,9 +245,9 @@ export default function LandingPage() {
               >
                 <div className="space-y-1.5">
                   {[
-                    ["1", "Ahmad Raza", "8", "+1,204"],
-                    ["2", "Sana Malik", "7", "+842"],
-                    ["3", "Usman Tariq", "7", "+610"],
+                    ["1", "First place", "8", "+1,204"],
+                    ["2", "Second place", "7", "+842"],
+                    ["3", "Third place", "7", "+610"],
                   ].map(([rank, name, wins, spread]) => (
                     <div key={rank} className="flex items-center gap-2 text-[11.5px]">
                       <span className="num w-4 font-bold text-muted">{rank}</span>

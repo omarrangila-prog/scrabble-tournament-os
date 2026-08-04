@@ -42,7 +42,7 @@ interface FinanceActions {
   expensesFor: (eventId: string) => Expense[];
   incomeFor: (eventId: string) => OtherIncome[];
 
-  /** Populates a realistic demo ledger once, so the dashboard is not empty. */
+  /** Retained as a no-op: nothing is seeded, so the ledger starts empty. */
   seedDemo: (eventId: string) => void;
   resetFinance: () => void;
 }
@@ -58,27 +58,6 @@ const fresh = (): FinanceState => ({
   income: [],
   seeded: false,
 });
-
-/** A plausible one-day 128-player budget, in PKR. */
-const DEMO_EXPENSES: Omit<Expense, "id" | "eventId" | "at">[] = [
-  { category: "venue", description: "Main hall hire, full day", amount: 85000, status: "paid", paidBy: "Sir Hani", reference: "INV-2211" },
-  { category: "venue", description: "Sound system and projector", amount: 18000, status: "paid", paidBy: "Sir Hani" },
-  { category: "prizes", description: "Masters division prize fund", amount: 120000, status: "committed", paidBy: "Sir Hani" },
-  { category: "prizes", description: "Trophies and medals, all divisions", amount: 46000, status: "paid", reference: "PO-118" },
-  { category: "equipment", description: "Tournament boards and clocks, 64 sets", amount: 62000, status: "paid" },
-  { category: "refreshments", description: "Lunch and tea, 150 covers", amount: 54000, status: "committed" },
-  { category: "printing", description: "Certificates, scorecards, signage", amount: 21500, status: "paid" },
-  { category: "staff", description: "Adjudicators and floor volunteers", amount: 40000, status: "committed" },
-  { category: "transport", description: "Equipment transport, both ways", amount: 12000, status: "planned" },
-  { category: "marketing", description: "Social media promotion", amount: 15000, status: "paid" },
-];
-
-const DEMO_INCOME: Omit<OtherIncome, "id" | "eventId" | "at">[] = [
-  { source: "sponsorship", description: "Title sponsor", amount: 150000, received: true },
-  { source: "sponsorship", description: "Refreshment partner", amount: 60000, received: false },
-  { source: "merchandise", description: "Event t-shirts and mugs", amount: 24000, received: true },
-  { source: "canteen", description: "Canteen share", amount: 11000, received: false },
-];
 
 export const useFinanceStore = create<FinanceStore>()(
   persist(
@@ -115,16 +94,12 @@ export const useFinanceStore = create<FinanceStore>()(
       expensesFor: (eventId) => get().expenses.filter((e) => e.eventId === eventId),
       incomeFor: (eventId) => get().income.filter((i) => i.eventId === eventId),
 
-      seedDemo: (eventId) =>
-        set((s) => {
-          if (s.seeded) return s;
-          const at = now();
-          return {
-            seeded: true,
-            expenses: DEMO_EXPENSES.map((e, i) => ({ ...e, id: `exp-seed-${i}`, eventId, at })),
-            income: DEMO_INCOME.map((x, i) => ({ ...x, id: `inc-seed-${i}`, eventId, at })),
-          };
-        }),
+      /*
+       * No demo ledger. Expenses and income used to be seeded with ten
+       * invented costs and four sponsors, which appeared in the profit figure
+       * and on financial reports as though the money were real.
+       */
+      seedDemo: () => set({ seeded: true }),
 
       resetFinance: () => set({ ...fresh(), hydrated: true }),
     }),

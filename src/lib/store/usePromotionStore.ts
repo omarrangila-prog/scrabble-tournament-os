@@ -17,7 +17,6 @@ import {
   Eligibility,
   findByCode,
   Reward,
-  RewardKind,
 } from "../engine/promotions";
 
 export const PROMOTION_STORAGE_KEY = "bluffy-promotions-v1";
@@ -68,83 +67,6 @@ const fresh = (): PromotionState => ({
   rewards: [],
   seeded: false,
 });
-
-const DEMO_CAMPAIGNS: Omit<Campaign, "id" | "eventId">[] = [
-  {
-    name: "Early bird",
-    kind: "early-bird",
-    status: "ended",
-    percentOff: 20,
-    amountOff: 0,
-    code: "EARLY20",
-    cap: 40,
-    redemptions: 40,
-    startsAt: "2026-06-01T00:00:00.000Z",
-    endsAt: "2026-07-15T00:00:00.000Z",
-    notes: "Closed on schedule after reaching its cap.",
-  },
-  {
-    name: "School group of four",
-    kind: "group",
-    status: "active",
-    percentOff: 25,
-    amountOff: 0,
-    code: "SCHOOL4",
-    cap: 0,
-    redemptions: 18,
-    minGroupSize: 4,
-    startsAt: "2026-06-01T00:00:00.000Z",
-    endsAt: "2026-08-20T00:00:00.000Z",
-    notes: "Four or more entries from the same school, registered together.",
-  },
-  {
-    name: "Bring a friend",
-    kind: "referral",
-    status: "active",
-    percentOff: 0,
-    amountOff: 500,
-    code: "FRIEND500",
-    cap: 60,
-    redemptions: 23,
-    startsAt: "2026-07-01T00:00:00.000Z",
-    endsAt: "2026-08-20T00:00:00.000Z",
-  },
-  {
-    name: "First tournament",
-    kind: "first-timer",
-    status: "active",
-    percentOff: 30,
-    amountOff: 0,
-    code: "FIRST30",
-    cap: 25,
-    redemptions: 11,
-    startsAt: "2026-06-15T00:00:00.000Z",
-    endsAt: "2026-08-20T00:00:00.000Z",
-    notes: "For players with no previous rated event.",
-  },
-  {
-    name: "Returning champion",
-    kind: "returning",
-    status: "paused",
-    percentOff: 15,
-    amountOff: 0,
-    code: "AGAIN15",
-    cap: 0,
-    redemptions: 6,
-    startsAt: "2026-06-01T00:00:00.000Z",
-    endsAt: "2026-08-20T00:00:00.000Z",
-    notes: "Paused while the returning-player list is confirmed.",
-  },
-];
-
-const DEMO_REWARDS: { kind: RewardKind; title: string; prizeValue: number }[] = [
-  { kind: "highest-word", title: "Highest word of the tournament", prizeValue: 10000 },
-  { kind: "biggest-upset", title: "Biggest upset", prizeValue: 7500 },
-  { kind: "best-newcomer", title: "Best newcomer", prizeValue: 7500 },
-  { kind: "most-improved", title: "Most improved", prizeValue: 5000 },
-  { kind: "sporting-conduct", title: "Sporting conduct", prizeValue: 5000 },
-  { kind: "perfect-attendance", title: "Every round played", prizeValue: 0 },
-];
 
 export const usePromotionStore = create<PromotionStore>()(
   persist(
@@ -232,20 +154,12 @@ export const usePromotionStore = create<PromotionStore>()(
       campaignsFor: (eventId) => get().campaigns.filter((c) => c.eventId === eventId),
       rewardsFor: (eventId) => get().rewards.filter((r) => r.eventId === eventId),
 
-      seedDemo: (eventId) =>
-        set((s) => {
-          if (s.seeded) return s;
-          return {
-            seeded: true,
-            campaigns: DEMO_CAMPAIGNS.map((c, i) => ({ ...c, id: `camp-seed-${i}`, eventId })),
-            rewards: DEMO_REWARDS.map((r, i) => ({
-              ...r,
-              id: `rew-seed-${i}`,
-              eventId,
-              citation: "",
-            })),
-          };
-        }),
+      /*
+       * No demo campaigns or awards. Five invented promotion codes with
+       * redemption counts, and six pre-named awards, used to ship as though an
+       * organizer had created them.
+       */
+      seedDemo: () => set({ seeded: true }),
 
       resetPromotions: () => set({ ...fresh(), hydrated: true }),
     }),

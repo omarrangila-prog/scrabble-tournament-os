@@ -59,7 +59,7 @@ export const TOURNAMENT_STEPS: DemoStep[] = [
     route: "/app/score-entry",
     title: "Score Entry",
     message: "Results are entered in seconds, with validation as you type.",
-    action: "Enter Board 3 — Ahmad Raza 498, Usman Ali 472.",
+    action: "Enter a result on any board and watch it validate as you type.",
     anchor: "score-table",
   },
   {
@@ -67,14 +67,14 @@ export const TOURNAMENT_STEPS: DemoStep[] = [
     route: "/app/score-entry",
     title: "Verify the result",
     message: "Standings update immediately after verification.",
-    action: "Verify board 3.",
+    action: "Verify a submitted result.",
     anchor: "score-table",
   },
   {
     id: 7,
     route: "/app/standings",
     title: "Live Standings",
-    message: "Ahmad Raza moves from rank 3 to rank 1.",
+    message: "Standings recompute from verified results the moment one is confirmed.",
     anchor: "standings-table",
   },
   {

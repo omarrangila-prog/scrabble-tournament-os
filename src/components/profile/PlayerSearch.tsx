@@ -359,7 +359,7 @@ export function PlayerSearch({
             Try searching for
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {["Ahmad Raza", "PK-003", "Usman Ali", "Karachi", "Masters"].map((s) => (
+            {["PK-001", "Karachi", "Masters", "Beginner"].map((s) => (
               <button
                 key={s}
                 onMouseDown={(e) => e.preventDefault()}

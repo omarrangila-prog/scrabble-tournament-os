@@ -25,6 +25,8 @@ import {
   where,
 } from "firebase/firestore";
 import { firestore, isFirebaseConfigured } from "./config";
+import { isSupabaseConfigured } from "../supabase/client";
+import { SupabaseRepository } from "../supabase/repository";
 import {
   CollectionName,
   DocumentBase,
@@ -246,10 +248,32 @@ let cached: Repository | null = null;
 
 /** The active repository. Chosen once, from configuration. */
 export function repository(): Repository {
-  if (!cached) {
-    cached = isFirebaseConfigured() ? new FirestoreRepository() : new LocalRepository();
+  if (cached) return cached;
+
+  /*
+   * Supabase first when both are configured. It is the backend actually
+   * provisioned for this project; Firestore support stays because the schema
+   * and rules are written and a project may be created later.
+   *
+   * With neither, the app runs on browser storage and remains fully usable —
+   * a missing environment variable is never a blank screen.
+   */
+  if (isSupabaseConfigured()) {
+    cached = new SupabaseRepository();
+  } else if (isFirebaseConfigured()) {
+    cached = new FirestoreRepository();
+  } else {
+    cached = new LocalRepository();
   }
+
   return cached;
+}
+
+/** Where data is actually being read from, for the organizer to see. */
+export function activeBackendName(): "supabase" | "firestore" | "local" {
+  if (isSupabaseConfigured()) return "supabase";
+  if (isFirebaseConfigured()) return "firestore";
+  return "local";
 }
 
 /** Testing seam. */

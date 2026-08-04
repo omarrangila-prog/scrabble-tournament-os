@@ -6,7 +6,6 @@ import {
 
   validateSeeding,
 } from "./seeding";
-import { buildSeed } from "../domain/seed";
 import { Player } from "../domain/types";
 
 /** Builds a controllable roster: ratings descend, clubs assigned explicitly. */
@@ -291,21 +290,32 @@ describe("first round from published seeds", () => {
   });
 });
 
-describe("the Masters division in the demo data", () => {
-  const seed = buildSeed();
-  const masters = seed.players.filter((p) => p.division === "masters");
+/**
+ * A full-size field, built explicitly rather than read from seed data.
+ *
+ * These tests previously used the platform's fabricated 32-player Masters
+ * division. That data is gone — the platform ships empty — so the field is
+ * constructed here, which also makes the preconditions visible instead of
+ * implied.
+ */
+describe("seeding a full division", () => {
+  const CLUBS = ["Karachi SC", "Lahore SC", "Islamabad SC", "Multan SC"];
+  const masters = makePool(
+    Array.from({ length: 32 }, (_, i) => ({
+      rating: 2100 - i * 20,
+      club: CLUBS[i % CLUBS.length],
+      name: `Player ${i + 1}`,
+    })),
+  );
 
-  it("holds 32 players", () => {
-    expect(masters).toHaveLength(32);
-  });
-
-  it("produces a complete seed list under both modes", () => {
+  it("seeds every player exactly once, in an unbroken sequence", () => {
     for (const mode of ["rating", "hybrid"] as const) {
       const r = generateSeeding(masters, "masters", mode);
       expect(r.entries).toHaveLength(32);
       expect(r.entries.map((e) => e.seed)).toEqual(
         Array.from({ length: 32 }, (_, i) => i + 1),
       );
+
       const v = validateSeeding(r, new Map(masters.map((p) => [p.id, p])));
       expect(v.valid).toBe(true);
     }
