@@ -1,10 +1,11 @@
 /**
- * Deterministic demo-data generator.
+ * Reference data the app needs before anything has happened.
  *
- * Everything here is derived from a fixed seed so the demo looks identical on
- * every machine and after every "Reset Demo Data". Rounds 1–4 are played and
- * verified; round 5 is live with the exact operational picture the spec calls
- * for (61 live, 1 complete, 3 pending).
+ * This is not demo data. It holds only what an empty install genuinely has —
+ * the organization, its divisions and sign-in roles — with every record
+ * collection empty. Players, pairings, results and announcements arrive from
+ * real registrations. Anything invented here would be indistinguishable from
+ * a real tournament to whoever opens the app.
  */
 
 import {
@@ -43,14 +44,20 @@ export const ORGANIZATION: Organization = {
   contactEmail: "info@tournamentos.demo",
 };
 
+/**
+ * Placeholder venue, replaced per event in settings.
+ *
+ * Invented halls and a 72-board capacity described a building that does not
+ * exist, and the accessibility pairing constraint read those board numbers as
+ * fact. Left deliberately unnamed so it is obvious nothing has been set.
+ */
 export const VENUE: Venue = {
-  id: "venue-nseh",
-  name: "National Sports & Events Hall",
+  id: "venue-unset",
+  name: "Venue not set",
   city: "Karachi",
-  halls: ["Hall A — Masters & Open", "Hall B — Youth & Junior", "Hall C — Overflow"],
-  // Ground-floor boards; used by the accessibility pairing constraint.
-  accessibleBoards: Array.from({ length: 20 }, (_, i) => i + 1),
-  totalBoards: 72,
+  halls: [],
+  accessibleBoards: [],
+  totalBoards: 0,
 };
 
 export const DIVISIONS: Division[] = [
@@ -78,18 +85,20 @@ export const USERS: User[] = [
 
 export const TOURNAMENT: Tournament = {
   id: "t-pnsc-2026",
-  name: "Bluffy Alphabattle Championship 2026 — Demo",
+  name: "Blufy's AlphaBattle 2026",
   organizer: "Bluffy Alphabattle",
   organizationId: "org-federation",
-  venueId: "venue-nseh",
+  venueId: "venue-unset",
   city: "Karachi",
-  startDate: "2026-07-29",
-  endDate: "2026-08-02",
+  startDate: "2026-08-23",
+  endDate: "2026-08-23",
   timeZone: "Asia/Karachi (PKT, UTC+5)",
-  status: "live",
+  // Nothing has been played. A "live" tournament on round 5 with no players or
+  // pairings would show mid-event progress the organizer never ran.
+  status: "draft",
   system: "swiss",
   totalRounds: 9,
-  currentRound: 5,
+  currentRound: 0,
   divisions: ["masters", "advanced", "recreational", "beginner"],
   rankingRules: ["wins", "spread", "head-to-head"],
   constraints: {
@@ -105,10 +114,12 @@ export const TOURNAMENT: Tournament = {
   breakMinutes: 15,
   visibility: "public",
   registrationOpen: false,
-  registrationFee: 2500,
+  registrationFee: 1250,
   currency: "PKR",
   capacity: 160,
-  sponsors: ["Gulf Stationers", "Karachi Book Depot", "PakTel", "Indus Bank"],
+  // Named sponsors imply commercial backing that does not exist. Real ones get
+  // added in event settings.
+  sponsors: [],
 };
 
 /**

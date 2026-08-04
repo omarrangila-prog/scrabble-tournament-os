@@ -215,10 +215,14 @@ export default function LandingPage() {
                 caption="A receipt is a claim. Only a verified payment counts."
               >
                 <div className="space-y-1.5">
+                  {/*
+                   * Illustrative only. Real names beside "Duplicate transaction"
+                   * would read as an accusation against an actual participant.
+                   */}
                   {[
-                    ["Hunain Ahmed", "Receipt under review", "warning"],
-                    ["Ayesha Khan", "Duplicate transaction", "critical"],
-                    ["Bilal Iqbal", "Payment verified", "success"],
+                    ["Participant A", "Receipt under review", "warning"],
+                    ["Participant B", "Duplicate transaction", "critical"],
+                    ["Participant C", "Payment verified", "success"],
                   ].map(([name, status, tone]) => (
                     <div key={name} className="flex items-center justify-between gap-2">
                       <span className="truncate text-[11.5px] text-ink">{name}</span>

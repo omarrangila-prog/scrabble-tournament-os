@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
+  ClipboardCheck,
+  Dices,
+  UserRound,
   ArrowRight,
   Check,
   Copy,
@@ -47,10 +50,30 @@ import { CATEGORY_LABEL, PlayerCategory } from "@/lib/domain/identity";
 import { cn, formatDate } from "@/lib/utils";
 
 const STEPS = [
-  { id: "about", title: "About you", blurb: "Who you are and how we reach you." },
-  { id: "experience", title: "Choose your experience", blurb: "What you would like to join." },
-  { id: "payment", title: "Membership and payment", blurb: "Your fee, and how you are paying." },
-  { id: "review", title: "Review", blurb: "Check everything before submitting." },
+  {
+    id: "about",
+    title: "About you",
+    blurb: "Who you are and how we reach you.",
+    icon: UserRound,
+  },
+  {
+    id: "experience",
+    title: "Choose your experience",
+    blurb: "What you would like to join.",
+    icon: Dices,
+  },
+  {
+    id: "payment",
+    title: "Payment",
+    blurb: "Your fee, and how to pay it.",
+    icon: Wallet,
+  },
+  {
+    id: "review",
+    title: "Review",
+    blurb: "Check everything before submitting.",
+    icon: ClipboardCheck,
+  },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
@@ -248,45 +271,94 @@ export function GameOnForm({
   return (
     <div className="mx-auto w-full max-w-[600px]">
       {/* Progress ---------------------------------------------------------- */}
-      <nav aria-label="Progress" className="flex items-center gap-1.5">
-        {STEPS.map((s, i) => (
-          <React.Fragment key={s.id}>
-            <span
-              aria-current={i === step ? "step" : undefined}
-              className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-full text-[12px] font-bold transition-colors",
-                i === step
-                  ? "bg-[#2F5D3A] text-white"
-                  : i < step
-                    ? "bg-[#C89B3C] text-white"
-                    : "bg-[rgb(var(--c-line))] text-muted",
-              )}
-            >
-              {i < step ? <Check className="size-4" strokeWidth={3} /> : i + 1}
-            </span>
-            {i < STEPS.length - 1 ? (
-              <span
-                className={cn(
-                  "h-0.5 flex-1 rounded-full",
-                  i < step ? "bg-[#C89B3C]" : "bg-[rgb(var(--c-line))]",
-                )}
-              />
-            ) : null}
-          </React.Fragment>
-        ))}
+      <nav aria-label="Progress">
+        <ol className="flex items-start gap-1">
+          {STEPS.map((s, i) => {
+            const done = i < step;
+            const current = i === step;
+            const StepIcon = s.icon;
+
+            return (
+              <React.Fragment key={s.id}>
+                <li className="flex shrink-0 flex-col items-center gap-1.5">
+                  <motion.span
+                    aria-current={current ? "step" : undefined}
+                    animate={current ? { scale: 1.06 } : { scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 26 }}
+                    className={cn(
+                      "grid size-10 place-items-center rounded-full transition-colors",
+                      current
+                        ? "bg-[#2F5D3A] text-white shadow-[0_6px_16px_rgba(47,93,58,0.3)]"
+                        : done
+                          ? "bg-[#C89B3C] text-white"
+                          : "bg-[rgb(var(--c-line))] text-muted",
+                    )}
+                  >
+                    {done ? (
+                      <Check className="size-4.5" strokeWidth={3} />
+                    ) : (
+                      <StepIcon className="size-4.5" />
+                    )}
+                  </motion.span>
+
+                  {/* Named on wider screens; the icon carries it on a phone. */}
+                  <span
+                    className={cn(
+                      "hidden max-w-[92px] text-center text-[10.5px] font-semibold leading-tight sm:block",
+                      current ? "text-[#2F5D3A]" : done ? "text-muted" : "text-faint",
+                    )}
+                  >
+                    {s.title}
+                  </span>
+                </li>
+
+                {i < STEPS.length - 1 ? (
+                  <li className="mt-5 h-0.5 flex-1 overflow-hidden rounded-full bg-[rgb(var(--c-line))]">
+                    <motion.span
+                      className="block h-full rounded-full bg-[#C89B3C]"
+                      initial={false}
+                      animate={{ width: done ? "100%" : "0%" }}
+                      transition={{ duration: 0.35, ease: "easeOut" }}
+                    />
+                  </li>
+                ) : null}
+              </React.Fragment>
+            );
+          })}
+        </ol>
       </nav>
 
-      <p className="mt-2 text-center text-[12.5px] text-muted">
+      <p className="mt-3 text-center text-[12px] font-medium text-muted sm:hidden">
         Step {step + 1} of {STEPS.length} · {STEPS[step].title}
       </p>
 
-      <Card className="mt-4">
-        <div className="border-b border-line p-5">
-          <p className="text-[16px] font-bold text-ink">{STEPS[step].title}</p>
-          <p className="mt-0.5 text-[13px] text-muted">{STEPS[step].blurb}</p>
+      <Card className="mt-5 overflow-hidden">
+        {/* Step heading, tinted so each step feels like its own place. */}
+        <div
+          className="flex items-start gap-3 border-b border-line p-5"
+          style={{ background: "linear-gradient(180deg, rgba(47,93,58,0.05), transparent)" }}
+        >
+          <span
+            className="grid size-9 shrink-0 place-items-center rounded-control"
+            style={{ background: "rgba(47,93,58,0.1)", color: "#2F5D3A" }}
+          >
+            {React.createElement(STEPS[step].icon, { className: "size-4.5" })}
+          </span>
+          <span className="min-w-0">
+            <p className="text-[16.5px] font-bold text-ink">{STEPS[step].title}</p>
+            <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
+              {STEPS[step].blurb}
+            </p>
+          </span>
         </div>
 
-        <div className="space-y-4 p-5">
+        <motion.div
+          key={STEPS[step].id}
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="space-y-4 p-5"
+        >
           {/* ---- Step 1: About you ---------------------------------------- */}
           {STEPS[step].id === "about" ? (
             <>
@@ -456,11 +528,23 @@ export function GameOnForm({
                         >
                           {track === t ? <Check className="size-3" strokeWidth={3} /> : null}
                         </span>
-                        <span className="min-w-0">
-                          <span className="block text-[14px] font-bold text-ink">
-                            {TRACK_LABEL[t]}
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span className="text-[14px] font-bold text-ink">
+                              {TRACK_LABEL[t]}
+                            </span>
+                            {t === "both" ? (
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em]"
+                                style={{ background: "#C89B3C22", color: "#8A6A1F" }}
+                              >
+                                Most popular
+                              </span>
+                            ) : null}
                           </span>
-                          <span className="block text-[12.5px] text-muted">{TRACK_BLURB[t]}</span>
+                          <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
+                            {TRACK_BLURB[t]}
+                          </span>
                         </span>
                       </button>
                     ),
@@ -895,10 +979,10 @@ export function GameOnForm({
               </label>
             </>
           ) : null}
-        </div>
+        </motion.div>
 
         {/* Navigation --------------------------------------------------- */}
-        <div className="flex items-center justify-between gap-2 border-t border-line p-4">
+        <div className="flex items-center justify-between gap-2 border-t border-line bg-[rgb(var(--c-surface-soft))] p-4">
           <Button
             variant="secondary"
             icon={<ArrowLeft className="size-4" />}
@@ -909,12 +993,23 @@ export function GameOnForm({
           </Button>
 
           {isReview ? (
-            <Button variant="primary" size="lg" onClick={submit}>
+            <Button
+              variant="primary"
+              size="lg"
+              className="border-0"
+              style={{ background: "#2F5D3A", color: "white" }}
+              onClick={submit}
+            >
               Submit registration
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button variant="primary" onClick={next}>
+            <Button
+              variant="primary"
+              className="border-0"
+              style={{ background: "#2F5D3A", color: "white" }}
+              onClick={next}
+            >
               Continue
               <ArrowRight className="size-4" />
             </Button>

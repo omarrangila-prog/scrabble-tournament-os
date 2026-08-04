@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
-import { CheckCircle2, Copy, Mail } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, Copy, Mail, MapPin } from "lucide-react";
 import { Badge, Button, Card, EmptyState } from "@/components/ui";
 import { GameOnForm } from "./GameOnForm";
 import {
@@ -25,6 +26,7 @@ import { formatDate } from "@/lib/utils";
 const CREAM = "#F5F0E4";
 const FOREST = "#2F5D3A";
 const BROWN = "#3E2F23";
+const GOLD = "#C89B3C";
 
 /**
  * GAME ON! registration.
@@ -162,9 +164,33 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-dvh px-4 py-8 sm:py-12" style={{ background: CREAM }}>
-      <div className="mx-auto w-full max-w-[600px]">
-        <header className="text-center">
+    <main className="relative min-h-dvh px-4 py-8 sm:py-12" style={{ background: CREAM }}>
+      {/* Diamond grid, echoing the poster's texture. Behind everything. */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.4]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(45deg, ${BROWN}0A 0 1px, transparent 1px 22px),
+                            repeating-linear-gradient(-45deg, ${BROWN}0A 0 1px, transparent 1px 22px)`,
+        }}
+        aria-hidden
+      />
+
+      {/* A soft wash behind the header, so the page has a focal point. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[320px]"
+        style={{
+          background: `radial-gradient(60% 100% at 50% 0%, ${FOREST}14, transparent 70%)`,
+        }}
+        aria-hidden
+      />
+
+      <div className="relative mx-auto w-full max-w-[600px]">
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-center"
+        >
           {event.collaborators?.length ? (
             <p
               className="text-[10.5px] font-bold uppercase tracking-[0.16em]"
@@ -173,17 +199,38 @@ export default function RegisterPage() {
               {event.collaborators.join("  ×  ")}
             </p>
           ) : null}
+
           <h1
-            className="mt-2 text-[32px] font-extrabold tracking-[-0.02em]"
+            className="mt-2 text-[34px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[40px]"
             style={{ color: BROWN }}
           >
             {event.name}
           </h1>
-          <p className="mt-1 text-[13.5px]" style={{ color: FOREST }}>
-            {formatDate(event.startDate)} · {event.timeDisplay ?? event.startTime} ·{" "}
-            {event.venueName}
-          </p>
-        </header>
+
+          {event.subtitle ? (
+            <p className="mt-1.5 text-[14px] font-semibold" style={{ color: FOREST }}>
+              {event.subtitle}
+            </p>
+          ) : null}
+
+          {/* The three facts someone checks before deciding to fill this in. */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+            {[
+              { icon: <CalendarDays className="size-3.5" />, text: formatDate(event.startDate) },
+              { icon: <Clock className="size-3.5" />, text: event.timeDisplay ?? event.startTime },
+              { icon: <MapPin className="size-3.5" />, text: event.venueName },
+            ].map((item, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1.5 text-[12.5px]"
+                style={{ color: `${BROWN}CC` }}
+              >
+                <span style={{ color: GOLD }}>{item.icon}</span>
+                {item.text}
+              </span>
+            ))}
+          </div>
+        </motion.header>
 
         <div className="mt-7">
           <GameOnForm

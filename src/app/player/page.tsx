@@ -14,12 +14,13 @@ import {
   Send,
   Swords,
   Trophy,
+  Users,
 } from "lucide-react";
 import { Avatar, Badge, Button, Field, Input, Select } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
 import { DEMO_PLAYER_A } from "@/lib/domain/seed";
-import { cn, formatTime, signed } from "@/lib/utils";
+import { cn, formatTime, signed, timeAgo } from "@/lib/utils";
 
 type Tab = "home" | "pairing" | "standings" | "results" | "more";
 
@@ -36,6 +37,42 @@ const NAV: { id: Tab; label: string; icon: React.ElementType }[] = [
  * client can see the mobile experience during the presentation.
  */
 export default function PlayerAppPage() {
+  const players = useStore((s) => s.players);
+
+  // Every derivation in the preview reads a player. With no entrants there is
+  // nothing to preview, and rendering it would throw.
+  if (players.length === 0) return <PlayerAppEmpty />;
+
+  return <PlayerAppPreview />;
+}
+
+/** Shown until the first player is registered. */
+function PlayerAppEmpty() {
+  return (
+    <div className="min-h-dvh px-6 py-16">
+      <div className="mx-auto max-w-md text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-subtle">
+          <Users className="h-5 w-5 text-muted" />
+        </div>
+        <h1 className="mt-4 text-[22px] font-semibold tracking-[-0.02em] text-ink">
+          No players yet
+        </h1>
+        <p className="mt-2 text-[14px] leading-relaxed text-muted">
+          This is the view every player gets on their phone — their pairing, board number
+          and result submission. It appears here once the first entrant is registered.
+        </p>
+        <Link
+          href="/app/events"
+          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-[13.5px] font-medium text-white"
+        >
+          Go to events
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function PlayerAppPreview() {
   const store = useStore();
   const { players, pairings, tournament, announcements } = store;
   const [tab, setTab] = React.useState<Tab>("home");
@@ -72,12 +109,12 @@ export default function PlayerAppPage() {
         (p.playerBId === me.id && p.playerAId === opponentId)),
   );
 
-  const notifications = [
-    { id: 1, text: `Round ${tournament.currentRound + 1} pairings are available`, time: "2 min ago", tone: "primary" as const },
-    { id: 2, text: "Your board has changed from 18 to 22", time: "14 min ago", tone: "warning" as const },
-    { id: 3, text: `Your Round ${tournament.currentRound - 1} result has been verified`, time: "48 min ago", tone: "success" as const },
-    { id: 4, text: "Next round begins in 10 minutes", time: "1 h ago", tone: "info" as const },
-  ];
+  // Real announcements only. Invented board changes and "2 min ago" timestamps
+  // read as live updates a player would act on.
+  const notifications = announcements
+    .slice()
+    .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1))
+    .slice(0, 6);
 
   return (
     <div className="min-h-dvh px-0 py-0 sm:px-6 sm:py-8">
@@ -375,23 +412,26 @@ export default function PlayerAppPage() {
                   <div>
                     <p className="px-1 py-2 text-[12.5px] font-semibold text-muted">Notifications</p>
                     <div className="space-y-1.5">
-                      {notifications.map((n) => (
-                        <div key={n.id} className="flex items-start gap-2.5 rounded-control bg-[rgb(var(--c-surface))] px-3 py-2.5">
-                          <span
-                            className={cn(
-                              "mt-1 size-1.5 shrink-0 rounded-full",
-                              n.tone === "primary" && "bg-primary",
-                              n.tone === "warning" && "bg-warning",
-                              n.tone === "success" && "bg-success",
-                              n.tone === "info" && "bg-secondary",
-                            )}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-[12.5px] text-ink">{n.text}</p>
-                            <p className="text-[11px] text-muted">{n.time}</p>
+                      {notifications.length === 0 ? (
+                        <p className="rounded-control bg-[rgb(var(--c-surface))] px-3 py-2.5 text-[12.5px] text-muted">
+                          No announcements yet.
+                        </p>
+                      ) : (
+                        notifications.map((n) => (
+                          <div key={n.id} className="flex items-start gap-2.5 rounded-control bg-[rgb(var(--c-surface))] px-3 py-2.5">
+                            <span
+                              className={cn(
+                                "mt-1 size-1.5 shrink-0 rounded-full",
+                                n.pinned ? "bg-warning" : "bg-secondary",
+                              )}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-[12.5px] text-ink">{n.title}</p>
+                              <p className="text-[11px] text-muted">{timeAgo(n.publishedAt)}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
 
