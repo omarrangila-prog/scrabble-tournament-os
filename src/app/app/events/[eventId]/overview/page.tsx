@@ -6,8 +6,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Banknote,
+  BadgeCheck,
   Check,
-  CircleDashed,
+  Dices,
+  Swords,
   Copy,
   Info,
   QrCode,
@@ -30,6 +32,8 @@ import {
 import { useStore } from "@/lib/store/useStore";
 import { useLiveStore } from "@/lib/store/useLiveStore";
 import { activeEvent } from "@/lib/domain/scope";
+import { countTracks } from "@/lib/domain/gameOn";
+import { ParticipationTrack } from "@/lib/firebase/schema";
 import {
   eventAlerts,
   PhaseAction,
@@ -90,6 +94,24 @@ export default function OverviewPage() {
       ? Math.round((summary.approved / event.capacity) * 100)
       : 0,
   });
+
+  /*
+   * Both operational totals are reported, not just the exclusive splits.
+   * Everyone who chose "both" belongs on the floor and in the Scrabble pool, so
+   * showing only the exclusive counts would have a director lay out the wrong
+   * number of tables.
+   */
+  const tracks = countTracks(
+    registrations
+      .filter((r) => r.status !== "rejected")
+      .map((r) => (r.participationTrack ?? "speed_scrabble") as ParticipationTrack),
+  );
+
+  const membershipClaims = registrations.filter((r) => r.answers?.membershipNumber).length;
+  // A claimed membership is not a verified one until someone has checked it.
+  const membershipPending = registrations.filter(
+    (r) => r.answers?.membershipNumber && r.status !== "approved",
+  ).length;
 
   const published = event.state !== "draft";
   const checklist = setupChecklist({
@@ -206,7 +228,7 @@ export default function OverviewPage() {
       ) : null}
 
       {/* Metrics ---------------------------------------------------------- */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <Stat
           label="Registrations"
           value={summary.total}
@@ -214,6 +236,35 @@ export default function OverviewPage() {
           icon={<Users className="size-5" />}
           tone="primary"
           onClick={() => router.push(`/app/events/${event.id}/registrations`)}
+        />
+        <Stat
+          label="Board game floor"
+          value={tracks.boardGameFloor}
+          sub={tracks.both ? `${tracks.both} also playing Scrabble` : "social attendees"}
+          icon={<Dices className="size-5" />}
+          tone="info"
+        />
+        <Stat
+          label="Speed Scrabble"
+          value={tracks.scrabblePool}
+          sub={tracks.both ? `${tracks.both} also on the floor` : "competitors"}
+          icon={<Swords className="size-5" />}
+          tone="info"
+          onClick={() => router.push(`/app/events/${event.id}/scrabble`)}
+        />
+        <Stat
+          label="AFK members"
+          value={membershipClaims}
+          sub={
+            membershipPending
+              ? `${membershipPending} to verify`
+              : membershipClaims
+                ? "all verified"
+                : "none claimed"
+          }
+          icon={<BadgeCheck className="size-5" />}
+          tone={membershipPending ? "warning" : "success"}
+          onClick={() => router.push(`/app/events/${event.id}/payments`)}
         />
         <Stat
           label="Payments verified"
@@ -229,14 +280,6 @@ export default function OverviewPage() {
           sub="verified payments only"
           icon={<Banknote className="size-5" />}
           tone="success"
-        />
-        <Stat
-          label="Current round"
-          value={`${round} of ${event.rounds}`}
-          sub={progress.totalBoards ? `${progress.percentComplete}% verified` : "not started"}
-          icon={<CircleDashed className="size-5" />}
-          tone="info"
-          onClick={() => router.push(`/app/events/${event.id}/live`)}
         />
       </div>
 
