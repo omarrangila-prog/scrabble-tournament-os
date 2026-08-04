@@ -1,0 +1,290 @@
+rules_version = '2';
+
+/**
+ * Firestore security rules for Tournament OS.
+ *
+ * Two principles drive every rule below.
+ *
+ * 1. Registration is public and unauthenticated. Anyone with the link can
+ *    create a registration — that is the product. So creation is allowed and
+ *    *reading* is what is locked down: a participant must never be able to
+ *    enumerate other people's entries, contact details or payment records.
+ *
+ * 2. Money and results are organizer-only. A payment is verified by a named
+ *    person on the organizer side, and a score becomes official the same way.
+ *    Nothing a client sends can set either, because a client-side role check is
+ *    not a security control.
+ *
+ * Deploy with:  firebase deploy --only firestore:rules
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---- Helpers ---------------------------------------------------- */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Staff membership is read from the organization document rather than a
+     * custom claim on the request, so revoking access takes effect immediately
+     * rather than when a token happens to refresh.
+     */
+    function isStaff(orgId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid));
+    }
+
+    function staffRole(orgId) {
+      return get(/databases/$(database)/documents/organizations/$(orgId)/staff/$(request.auth.uid)).data.role;
+    }
+
+    function isDirector(orgId) {
+      return isStaff(orgId) && staffRole(orgId) == 'director';
+    }
+
+    /** Fields every event-owned record must carry on creation. */
+    function hasAuditFields() {
+      return request.resource.data.keys().hasAll(
+        ['organizationId', 'eventId', 'createdAt', 'updatedAt', 'status']
+      );
+    }
+
+    /** createdAt is written once and never rewritten. */
+    function preservesCreatedAt() {
+      return request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    /* ---- Organizations and staff ------------------------------------ */
+
+    match /organizations/{orgId} {
+      // Public read: the event page shows the organizer's name.
+      allow read: if true;
+      allow write: if isDirector(orgId);
+
+      match /staff/{uid} {
+        // Staff can see who else is staff; only a director changes the list.
+        allow read: if isStaff(orgId);
+        allow write: if isDirector(orgId);
+      }
+    }
+
+    /* ---- Events ------------------------------------------------------ */
+
+    match /events/{eventId} {
+      // Published events are public — that is the point of a public event page.
+      // Drafts stay internal so an unannounced event does not leak.
+      allow read: if resource.data.visibility == 'public'
+                  && resource.data.status == 'active'
+                  || isStaff(resource.data.organizationId);
+
+      allow create: if isStaff(request.resource.data.organizationId) && hasAuditFields();
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      // Events are archived, never deleted: results and certificates outlive
+      // the event and must remain resolvable.
+      allow delete: if false;
+    }
+
+    /* ---- Registration forms ------------------------------------------ */
+
+    match /registrationForms/{formId} {
+      // Public: the participant has to be able to render the form.
+      allow read: if true;
+      allow write: if isStaff(resource.data.organizationId);
+    }
+
+    /* ---- Registrations ----------------------------------------------- */
+
+    match /registrations/{registrationId} {
+      /*
+       * Never publicly readable. A participant confirms their own entry through
+       * a signed token endpoint rather than by reading this collection, because
+       * a public read here would expose every entrant's email and phone number
+       * to anyone who guessed a document path.
+       */
+      allow read: if isStaff(resource.data.organizationId);
+
+      /*
+       * Anyone may register. What they may not do is decide their own outcome:
+       * status, payment state and any verified figure are fixed on creation and
+       * only staff can move them afterwards.
+       */
+      allow create: if hasAuditFields()
+                    && request.resource.data.status == 'active'
+                    && request.resource.data.registrationStatus == 'submitted'
+                    && request.resource.data.paymentStatus in ['not-submitted', 'receipt-uploaded', 'cash-at-venue']
+                    && request.resource.data.membershipStatus in ['not-claimed', 'discount-requested']
+                    // A participant cannot grant themselves a verified discount.
+                    && !request.resource.data.keys().hasAny(['verifiedBy', 'verifiedAt', 'finalLevel']);
+
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      allow delete: if false;
+    }
+
+    /* ---- Participants and player records ------------------------------ */
+
+    match /participants/{participantId} {
+      allow read: if isStaff(resource.data.organizationId);
+      allow create: if hasAuditFields();
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      allow delete: if false;
+    }
+
+    match /scrabblePlayers/{playerId} {
+      allow read: if isStaff(resource.data.organizationId);
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    /* ---- Payments ----------------------------------------------------- */
+
+    match /payments/{paymentId} {
+      // Payment records are organizer-only in both directions.
+      allow read: if isStaff(resource.data.organizationId);
+
+      /*
+       * A participant's client uploads a receipt reference and nothing more.
+       * "Verified" is a decision a named person takes on the organizer side, so
+       * no client write may set it.
+       */
+      allow create: if hasAuditFields()
+                    && request.resource.data.paymentStatus in ['receipt-uploaded', 'not-submitted', 'cash-at-venue']
+                    && !request.resource.data.keys().hasAny(['verifiedBy', 'verifiedAt']);
+
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      allow delete: if false;
+    }
+
+    match /membershipVerifications/{verificationId} {
+      allow read: if isStaff(resource.data.organizationId);
+      allow create: if hasAuditFields()
+                    && request.resource.data.membershipStatus in ['discount-requested', 'review-required'];
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      allow delete: if false;
+    }
+
+    /* ---- Discounts and campaign codes ---------------------------------- */
+
+    match /discounts/{discountId} {
+      allow read: if isStaff(resource.data.organizationId);
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    match /campaignCodes/{codeId} {
+      /*
+       * Not publicly readable. Validating a code is a callable function that
+       * answers yes or no for one code — a public read would let anyone
+       * enumerate every code the organizer has issued.
+       */
+      allow read: if isStaff(resource.data.organizationId);
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    /* ---- Event day ------------------------------------------------------ */
+
+    match /checkIns/{checkInId} {
+      allow read: if isStaff(resource.data.organizationId);
+      // A participant checks themselves in from the venue QR.
+      allow create: if hasAuditFields();
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      allow delete: if false;
+    }
+
+    match /rounds/{roundId} {
+      // Published rounds are public: players need to find their board.
+      allow read: if resource.data.published == true
+                  || isStaff(resource.data.organizationId);
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    match /pairings/{pairingId} {
+      allow read: if resource.data.published == true
+                  || isStaff(resource.data.organizationId);
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    /* ---- Scores --------------------------------------------------------- */
+
+    match /scoreSubmissions/{submissionId} {
+      allow read: if isStaff(resource.data.organizationId);
+
+      /*
+       * Players submit their own result, which is a claim. It becomes official
+       * only when the opponent confirms or a scorekeeper verifies, so a
+       * submission may not arrive pre-confirmed.
+       */
+      allow create: if hasAuditFields()
+                    && request.resource.data.confirmed == false
+                    && request.resource.data.disputed == false;
+
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      allow delete: if false;
+    }
+
+    match /verifiedResults/{resultId} {
+      // The official record. Public to read, organizer-only to write.
+      allow read: if true;
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    match /standings/{standingId} {
+      allow read: if true;
+      // Standings are derived, so only a trusted server context writes them.
+      allow write: if false;
+    }
+
+    /* ---- Awards and certificates ----------------------------------------- */
+
+    match /awards/{awardId} {
+      allow read: if true;
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    match /certificates/{certificateId} {
+      /*
+       * Certificates resolve publicly by design — that is what makes one
+       * checkable years later. The document holds only what is printed on the
+       * certificate itself; nothing private is stored here.
+       */
+      allow read: if true;
+      allow write: if isStaff(request.resource.data.organizationId);
+      allow delete: if false;
+    }
+
+    /* ---- Communication ---------------------------------------------------- */
+
+    match /notifications/{notificationId} {
+      allow read: if isStaff(resource.data.organizationId);
+      allow write: if isStaff(request.resource.data.organizationId);
+    }
+
+    match /interestRegistrations/{interestId} {
+      allow read: if isStaff(resource.data.organizationId);
+      // Captured during registration, so unauthenticated creation is expected.
+      allow create: if hasAuditFields()
+                    && request.resource.data.communicationConsent is bool;
+      allow update: if isStaff(resource.data.organizationId) && preservesCreatedAt();
+      // A person may withdraw their interest.
+      allow delete: if isStaff(resource.data.organizationId);
+    }
+
+    /* ---- Audit ------------------------------------------------------------ */
+
+    match /auditLogs/{logId} {
+      allow read: if isDirector(resource.data.organizationId);
+      /*
+       * Append-only. An audit log that can be edited or deleted after the fact
+       * documents nothing.
+       */
+      allow create: if isStaff(request.resource.data.organizationId);
+      allow update, delete: if false;
+    }
+
+    /* ---- Default deny ------------------------------------------------------ */
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
