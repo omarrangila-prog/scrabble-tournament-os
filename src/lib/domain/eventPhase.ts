@@ -18,20 +18,26 @@ export type WorkspaceTab =
   | "overview"
   | "registrations"
   | "payments"
-  | "players"
+  | "scrabble"
   | "live"
-  | "scores"
   | "awards"
   | "analytics"
   | "settings";
 
+/**
+ * The workspace tabs.
+ *
+ * Eight rather than nine: seeding, pairings, rounds, scores and standings all
+ * belong to one activity, so they live together under Speed Scrabble instead of
+ * being split across "Players & Divisions" and "Scores & Standings". A director
+ * running the competition works in one place.
+ */
 export const WORKSPACE_TABS: { id: WorkspaceTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "registrations", label: "Registrations" },
   { id: "payments", label: "Payments" },
-  { id: "players", label: "Players & Divisions" },
+  { id: "scrabble", label: "Speed Scrabble" },
   { id: "live", label: "Live Event" },
-  { id: "scores", label: "Scores & Standings" },
   { id: "awards", label: "Awards & Certificates" },
   { id: "analytics", label: "Analytics" },
   { id: "settings", label: "Settings" },
@@ -135,7 +141,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "registration-closed": {
     status: "Registration is closed.",
     next: "Confirm divisions and seeding before the event day.",
-    primary: nav("confirm-divisions", "Confirm divisions", "players", "Review requested against final divisions."),
+    primary: nav("confirm-divisions", "Confirm divisions", "scrabble", "Review requested against final divisions."),
     secondary: [
       nav("review-payments", "Review payments", "payments"),
       move("start-preparing", "Start preparing", "preparing"),
@@ -147,7 +153,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     next: "Open check-in when players start arriving.",
     primary: move("open-check-in", "Open check-in", "check-in-open", "Players can mark themselves present."),
     secondary: [
-      nav("seeding", "Review seeding", "players"),
+      nav("seeding", "Review seeding", "scrabble"),
       nav("payments", "Review payments", "payments"),
     ],
   },
@@ -163,7 +169,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     status: "Check-in is closed.",
     next: "Publish the pairings for this round.",
     primary: nav("publish-pairings", "Publish pairings", "live", "Assigns boards and shows them to players."),
-    secondary: [nav("standings", "View standings", "scores")],
+    secondary: [nav("standings", "View standings", "scrabble")],
   },
 
   "round-published": {
@@ -189,10 +195,10 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "result-entry": {
     status: "Results are being submitted and confirmed.",
     next: "Every board must be verified before the next round.",
-    primary: nav("verify-scores", "Verify scores", "scores", "Confirm results and settle any conflicts."),
+    primary: nav("verify-scores", "Verify scores", "scrabble", "Confirm results and settle any conflicts."),
     secondary: [
       move("start-break", "Start break", "break"),
-      nav("standings", "View standings", "scores"),
+      nav("standings", "View standings", "scrabble"),
     ],
   },
 
@@ -201,7 +207,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     next: "Prepare the next round, or move to final review after the last one.",
     primary: nav("next-round", "Prepare next round", "live", "Pairs the next round from current standings."),
     secondary: [
-      nav("standings", "View standings", "scores"),
+      nav("standings", "View standings", "scrabble"),
       move("final-review", "Go to final review", "final-review"),
     ],
   },
@@ -209,7 +215,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "final-review": {
     status: "All rounds are complete. Results are under final review.",
     next: "Lock the standings, then generate certificates.",
-    primary: nav("review-standings", "Review final standings", "scores", "Check every result before locking."),
+    primary: nav("review-standings", "Review final standings", "scrabble", "Check every result before locking."),
     secondary: [
       nav("awards", "Assign prizes", "awards"),
       move("complete", "Mark event complete", "completed", undefined, true),
@@ -222,7 +228,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     primary: nav("certificates", "Generate certificates", "awards", "Winners, awards and participation."),
     secondary: [
       nav("analytics", "View analytics", "analytics"),
-      nav("standings", "Final standings", "scores"),
+      nav("standings", "Final standings", "scrabble"),
       move("archive", "Archive event", "archived", undefined, true),
     ],
   },
@@ -231,7 +237,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     status: "This event is archived and read-only.",
     next: "Its results and certificates remain available.",
     primary: nav("analytics", "View analytics", "analytics", "The full record of the event."),
-    secondary: [nav("standings", "Final standings", "scores")],
+    secondary: [nav("standings", "Final standings", "scrabble")],
   },
 };
 
@@ -347,7 +353,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "conflicts",
       severity: "critical",
       message: `${input.scoreConflicts} score conflict${input.scoreConflicts === 1 ? " needs" : "s need"} a ruling.`,
-      tab: "scores",
+      tab: "scrabble",
     });
 
   if (input.paymentsAwaiting > 0)
@@ -363,7 +369,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "boards",
       severity: "warning",
       message: `${input.unverifiedBoards} board${input.unverifiedBoards === 1 ? " has" : "s have"} no verified result.`,
-      tab: "scores",
+      tab: "scrabble",
     });
 
   if (input.unassignedPlayers > 0)
@@ -371,7 +377,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "divisions",
       severity: "info",
       message: `${input.unassignedPlayers} player${input.unassignedPlayers === 1 ? " has" : "s have"} no confirmed division.`,
-      tab: "players",
+      tab: "scrabble",
     });
 
   if (input.capacityUsed >= 100)

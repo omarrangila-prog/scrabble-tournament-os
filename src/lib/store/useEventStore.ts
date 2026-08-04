@@ -27,6 +27,7 @@ import {
   TokenKind,
 } from "../domain/events";
 import { PaymentMethod, PlayerCategory } from "../domain/identity";
+import { ParticipationTrack } from "../firebase/schema";
 import {
   activeEvent as resolveActiveEvent,
   isStale,
@@ -89,6 +90,15 @@ export interface GuestRegistration {
   dateOfBirth: string;
   city: string;
   club: string;
+
+  /**
+   * What this participant came for.
+   *
+   * Decides which operational modules apply to them: only Speed Scrabble
+   * entrants are seeded, paired and ranked. Defaults to speed_scrabble for
+   * records created before tracks existed.
+   */
+  participationTrack?: ParticipationTrack;
 
   experience: string;
   selfRating?: number;

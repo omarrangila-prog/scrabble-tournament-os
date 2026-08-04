@@ -282,3 +282,131 @@ export function countTracks(tracks: ParticipationTrack[]): TrackCounts {
     scrabblePool: scrabbleOnly + both,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Setup readiness                                                             */
+/* -------------------------------------------------------------------------- */
+
+export interface SetupItem {
+  id: string;
+  label: string;
+  done: boolean;
+  /** Why it matters, shown when the item is outstanding. */
+  hint?: string;
+  /** True when registration cannot open until this is supplied. */
+  blocking: boolean;
+}
+
+export interface SetupInput {
+  hasPaymentMethod: boolean;
+  hasReceivingAccount: boolean;
+  capacity: number;
+  rounds: number;
+  roundMinutes: number;
+  registrationClosesAt?: string;
+  contactEmail?: string;
+  scrabbleEntrants: number;
+}
+
+/**
+ * What still has to be decided before registration can open.
+ *
+ * The poster confirms the event, not how it is run. Everything below is
+ * genuinely unknown rather than merely unfilled, so the checklist names each
+ * gap instead of the software choosing a plausible value — a public page
+ * quoting an invented deadline, or a payment step pointing at a previous
+ * event's account, does real damage.
+ *
+ * Only two items block. A missing capacity or round count is worth flagging but
+ * should not stop people registering; a missing payment account means money
+ * goes nowhere, and an event nobody can pay for is not open.
+ */
+export function setupChecklist(input: SetupInput): SetupItem[] {
+  const items: SetupItem[] = [
+    {
+      id: "payment-method",
+      label: "Payment method chosen",
+      done: input.hasPaymentMethod,
+      hint: "Participants cannot pay until at least one method is active.",
+      blocking: true,
+    },
+    {
+      id: "receiving-account",
+      label: "Receiving account entered",
+      done: input.hasReceivingAccount,
+      hint: "Without this the payment step has nowhere to send money.",
+      blocking: true,
+    },
+    {
+      id: "deadline",
+      label: input.registrationClosesAt
+        ? "Registration deadline set"
+        : "Registration deadline not set",
+      done: Boolean(input.registrationClosesAt),
+      hint: "Registration stays open until you close it by hand.",
+      blocking: false,
+    },
+    {
+      id: "capacity",
+      label: input.capacity > 0 ? `Capacity set to ${input.capacity}` : "Capacity not set",
+      done: input.capacity > 0,
+      hint: "Without a limit, entries are accepted until you close registration.",
+      blocking: false,
+    },
+    {
+      id: "contact",
+      label: "Contact address for participants",
+      done: Boolean(input.contactEmail?.trim()),
+      hint: "Shown on the public page and used for confirmation emails.",
+      blocking: false,
+    },
+  ];
+
+  /*
+   * Format only matters once somebody has entered Speed Scrabble. Asking an
+   * organizer to fix a round count before a single competitor has registered
+   * is noise.
+   */
+  if (input.scrabbleEntrants > 0) {
+    items.push(
+      {
+        id: "rounds",
+        label: input.rounds > 0 ? `${input.rounds} rounds` : "Number of rounds not set",
+        done: input.rounds > 0,
+        hint: `${input.scrabbleEntrants} people have entered Speed Scrabble. Pairing needs a round count.`,
+        blocking: false,
+      },
+      {
+        id: "round-length",
+        label:
+          input.roundMinutes > 0
+            ? `${input.roundMinutes} minutes per round`
+            : "Round duration not set",
+        done: input.roundMinutes > 0,
+        hint: "The round timer needs a length before play begins.",
+        blocking: false,
+      },
+    );
+  }
+
+  return items;
+}
+
+/** Whether registration may be opened, and what stands in the way. */
+export function canOpenRegistration(items: SetupItem[]): {
+  ready: boolean;
+  reason: string;
+} {
+  const blockers = items.filter((i) => i.blocking && !i.done);
+
+  if (blockers.length === 0)
+    return { ready: true, reason: "Everything needed to open registration is in place." };
+
+  return {
+    ready: false,
+    reason:
+      blockers.length === 1
+        ? `${blockers[0].label} is still needed.`
+        : `${blockers.length} details are still needed before registration can open.`,
+  };
+}

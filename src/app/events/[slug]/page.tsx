@@ -3,33 +3,55 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   CalendarDays,
   Clock,
-  Mail,
+  Dices,
   MapPin,
-  Phone,
   Ticket,
-  Trophy,
   Users,
 } from "lucide-react";
-import { Badge, Button, Card, CardHeader, EmptyState } from "@/components/ui";
+import { Button, Card, EmptyState } from "@/components/ui";
 import {
   registrationStatusOf,
   selectEventBySlug,
   selectRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
-import { CATEGORY_LABEL } from "@/lib/domain/identity";
-import { LetterTile } from "@/components/art/ScrabbleArt";
-import { cn, formatDate } from "@/lib/utils";
+import { memberFee } from "@/lib/domain/gameOn";
+import { ParticipationTrack } from "@/lib/firebase/schema";
+import { formatDate } from "@/lib/utils";
+
+/** Poster palette. Applied here and on the other participant-facing surfaces. */
+const CREAM = "#F5F0E4";
+const FOREST = "#2F5D3A";
+const GOLD = "#C89B3C";
+const BROWN = "#3E2F23";
+
+const TRACK_COPY: Record<ParticipationTrack, { title: string; body: string }> = {
+  board_games: {
+    title: "Social Board Games",
+    body: "Play casual board games, meet new people, and enjoy the evening. No competition, no experience needed.",
+  },
+  speed_scrabble: {
+    title: "Speed Scrabble",
+    body: "Enter the Speed Scrabble competition. You will be seeded, paired and ranked across the evening.",
+  },
+  both: {
+    title: "Both",
+    body: "Join the board-game floor and enter the Speed Scrabble competition. Most people do.",
+  },
+};
 
 /**
- * Public event page.
+ * The public event page.
  *
- * Reachable without any account. Shows exactly what a prospective player needs
- * to decide whether to enter, and nothing about how the tournament is run.
+ * A digital extension of the poster rather than a restatement of the app. It
+ * carries the poster's palette and only the facts the poster confirms —
+ * anything the organizer has not supplied is simply absent, because a page
+ * stating an invented deadline or capacity is worse than one that omits it.
  */
 export default function PublicEventPage() {
   const params = useParams<{ slug: string }>();
@@ -44,7 +66,7 @@ export default function PublicEventPage() {
       <div className="mx-auto max-w-2xl px-5 py-20">
         <Card>
           <EmptyState
-            icon={<Trophy className="size-5" />}
+            icon={<Dices className="size-5" />}
             title="Event not found"
             description="This link may have expired, or the event may not have been published yet."
           />
@@ -54,205 +76,323 @@ export default function PublicEventPage() {
   }
 
   const status = registrationStatusOf(event, registrations.length);
-  const placesLeft = Math.max(0, event.capacity - registrations.length);
+  const tracks = event.participationTracks ?? [];
+  const discounted = event.memberDiscountPercent
+    ? memberFee(event.fee)
+    : null;
+
+  const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
 
   return (
-    <div className="min-h-dvh">
-      {/* Banner ---------------------------------------------------------- */}
-      <header className="relative overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(104deg, rgba(115,87,246,0.20) 0%, rgba(57,135,248,0.14) 48%, rgba(85,201,232,0.12) 100%)",
-          }}
-          aria-hidden
-        />
-        <div className="board-motif absolute inset-0 opacity-35" aria-hidden />
+    <main className="min-h-dvh" style={{ background: CREAM }}>
+      {/* Diamond grid, echoing the poster's background texture. */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(45deg, ${BROWN}0A 0 1px, transparent 1px 22px),
+                            repeating-linear-gradient(-45deg, ${BROWN}0A 0 1px, transparent 1px 22px)`,
+        }}
+        aria-hidden
+      />
 
-        <div className="relative mx-auto max-w-[1080px] px-5 py-12 sm:px-8 sm:py-16">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-            <div className="min-w-0 flex-1">
-              <Badge tone={status.tone === "neutral" ? "neutral" : status.tone} dot pulse={status.open}>
-                {status.label}
-              </Badge>
+      <div className="relative mx-auto w-full max-w-[840px] px-5 py-10 sm:py-14">
+        {/* ---- Collaborators ------------------------------------------- */}
+        {event.collaborators?.length ? (
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: BROWN }}>
+            {event.collaborators.join("  ×  ")}
+          </p>
+        ) : null}
 
-              <h1 className="mt-4 text-[32px] font-extrabold leading-[1.08] tracking-[-0.035em] text-ink sm:text-[44px]">
-                {event.name}
-              </h1>
-              <p className="mt-3 max-w-2xl text-[16px] leading-relaxed text-muted">
-                {event.shortDescription}
+        {/* ---- Hero ---------------------------------------------------- */}
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="mt-6 text-center"
+        >
+          <h1
+            className="text-[52px] font-extrabold leading-[0.95] tracking-[-0.03em] sm:text-[72px]"
+            style={{ color: BROWN }}
+          >
+            {event.name.replace(/!$/, "")}
+            <span style={{ color: FOREST }}>!</span>
+          </h1>
+
+          {event.subtitle ? (
+            <p className="mt-3 text-[15px] font-semibold sm:text-[17px]" style={{ color: FOREST }}>
+              {event.subtitle}
+            </p>
+          ) : null}
+        </motion.header>
+
+        {/* ---- Essentials ---------------------------------------------- */}
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            {
+              icon: <CalendarDays className="size-4" />,
+              label: formatDate(event.startDate),
+              sub: new Date(event.startDate).toLocaleDateString("en-GB", { weekday: "long" }),
+            },
+            {
+              icon: <Clock className="size-4" />,
+              label: event.timeDisplay ?? event.startTime,
+              sub: "Doors open",
+            },
+            {
+              icon: <MapPin className="size-4" />,
+              label: event.venueName,
+              sub: event.address || event.city,
+            },
+            {
+              icon: <Ticket className="size-4" />,
+              label: money(event.fee),
+              sub: event.memberDiscountPercent
+                ? `${event.memberDiscountPercent}% off for AFK members`
+                : "Entry",
+            },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="rounded-2xl border bg-white/70 p-4 text-center"
+              style={{ borderColor: `${BROWN}1A` }}
+            >
+              <span className="inline-flex" style={{ color: GOLD }}>
+                {item.icon}
+              </span>
+              <p className="mt-1.5 text-[13.5px] font-bold leading-tight" style={{ color: BROWN }}>
+                {item.label}
               </p>
-
-              <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[14px] text-ink">
-                <span className="inline-flex items-center gap-2">
-                  <CalendarDays className="size-4 text-primary" />
-                  {formatDate(event.startDate)} · {event.startTime}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="size-4 text-primary" />
-                  {event.venueName}, {event.city}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Ticket className="size-4 text-primary" />
-                  {event.currency} {event.fee.toLocaleString("en-PK")}
-                </span>
-              </div>
-
-              <div className="mt-7 flex flex-wrap items-center gap-3">
-                {status.open ? (
-                  <Link href={`/events/${event.slug}/register`}>
-                    <Button variant="primary" size="xl" icon={<ArrowRight className="size-5" />}>
-                      Register Now
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button variant="secondary" size="xl" disabled>
-                    {status.label}
-                  </Button>
-                )}
-                <p className="text-[13px] text-muted">{status.detail}</p>
-              </div>
+              <p className="mt-0.5 text-[11px] leading-tight" style={{ color: `${BROWN}99` }}>
+                {item.sub}
+              </p>
             </div>
-
-            <div className="hidden shrink-0 items-end gap-2 xl:flex" aria-hidden>
-              <LetterTile letter="P" size={56} className="float-soft-slow" />
-              <LetterTile letter="L" size={56} className="float-soft" style={{ animationDelay: "300ms" }} />
-              <LetterTile letter="A" size={56} className="float-soft-slow" style={{ animationDelay: "600ms" }} />
-              <LetterTile letter="Y" size={56} tone="gold" className="float-soft" style={{ animationDelay: "900ms" }} />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1080px] px-5 pb-16 sm:px-8">
-        {/* Key figures */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Figure label="Rounds" value={String(event.rounds)} sub={`${event.roundMinutes} min each`} />
-          <Figure label="Divisions" value={String(event.divisions.length)} sub="All levels welcome" />
-          <Figure label="Places left" value={String(placesLeft)} sub={`of ${event.capacity}`} />
-          <Figure
-            label="Entry"
-            value={`${event.currency} ${event.fee.toLocaleString("en-PK")}`}
-            sub="Discounts available"
-          />
+          ))}
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          {/* About */}
-          <Card className="lg:col-span-2">
-            <CardHeader title="About this tournament" />
-            <div className="px-5 pb-5">
-              <p className="text-[14.5px] leading-relaxed text-ink">{event.description}</p>
-
-              <h3 className="mt-6 text-[14px] font-bold text-ink">Divisions</h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {event.divisions.map((d) => (
-                  <span
-                    key={d}
-                    className="rounded-full border border-line bg-[rgb(var(--c-surface-strong))] px-3.5 py-1.5 text-[13px] font-semibold text-ink"
-                  >
-                    {CATEGORY_LABEL[d]}
-                  </span>
-                ))}
-              </div>
-
-              <h3 className="mt-6 text-[14px] font-bold text-ink">Format</h3>
-              <ul className="mt-2 space-y-1.5 text-[13.5px] text-muted">
-                <li>· {event.rounds} rounds of {event.roundMinutes} minutes per player</li>
-                <li>· {event.breakMinutes}-minute break between rounds</li>
-                <li>· Swiss pairing within each division</li>
-                <li>· Doors open {event.startTime}, expected finish {event.expectedFinish}</li>
-              </ul>
+        {/* ---- Primary actions ------------------------------------------ */}
+        <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          {status.open ? (
+            <Link href={`/events/${event.slug}/register`} className="w-full sm:w-auto">
+              <Button
+                size="lg"
+                className="w-full border-0 sm:w-auto"
+                style={{ background: FOREST, color: "white" }}
+              >
+                Register for {event.name}
+                <ArrowRight className="size-4" />
+              </Button>
+            </Link>
+          ) : (
+            <div
+              className="rounded-control px-5 py-3 text-center text-[13.5px] font-semibold"
+              style={{ background: `${GOLD}22`, color: BROWN }}
+            >
+              {status.label} — {status.detail}
             </div>
-          </Card>
+          )}
 
-          {/* Prizes + venue */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader title="Prizes" icon={<Trophy className="size-4.5" />} />
-              <ul className="space-y-1.5 px-5 pb-5">
-                {event.prizes.map((p) => (
-                  <li
-                    key={p.place}
-                    className="flex items-center justify-between rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-2.5"
-                  >
-                    <span className="text-[13px] text-muted">{p.place}</span>
-                    <span className="text-[13.5px] font-bold text-ink">{p.award}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
+          {event.mapsUrl ? (
+            <a href={event.mapsUrl} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+                View venue
+              </Button>
+            </a>
+          ) : null}
+        </div>
 
-            <Card>
-              <CardHeader title="Venue" icon={<MapPin className="size-4.5" />} />
-              <div className="space-y-2 px-5 pb-5 text-[13.5px]">
-                <p className="font-semibold text-ink">{event.venueName}</p>
-                <p className="text-muted">{event.address}, {event.city}</p>
-                {event.mapsUrl ? (
-                  <a
-                    href={event.mapsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-600 hover:underline"
-                  >
-                    Open in Maps
-                    <ArrowRight className="size-3.5" />
-                  </a>
-                ) : null}
-                <div className="mt-3 space-y-1 border-t border-line pt-3 text-[13px] text-muted">
-                  <p className="inline-flex items-center gap-2">
-                    <Phone className="size-3.5" />
-                    {event.contactPhone}
+        {/* ---- About ---------------------------------------------------- */}
+        <section className="mt-12">
+          <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+            About {event.name}
+          </h2>
+          <p className="mt-2 text-[14.5px] leading-relaxed" style={{ color: `${BROWN}CC` }}>
+            {event.description}
+          </p>
+        </section>
+
+        {/* ---- Choose your experience ------------------------------------ */}
+        {tracks.length ? (
+          <section className="mt-10">
+            <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+              Choose your experience
+            </h2>
+            <p className="mt-1 text-[13.5px]" style={{ color: `${BROWN}99` }}>
+              Pick one when you register. You can join either, or both.
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {tracks.map((t) => (
+                <div
+                  key={t}
+                  className="rounded-2xl border bg-white/70 p-4"
+                  style={{ borderColor: `${BROWN}1A` }}
+                >
+                  <p className="text-[14px] font-bold" style={{ color: FOREST }}>
+                    {TRACK_COPY[t].title}
                   </p>
-                  <p className="inline-flex items-center gap-2">
-                    <Mail className="size-3.5" />
-                    {event.contactEmail}
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
+                    {TRACK_COPY[t].body}
                   </p>
                 </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-
-        {/* Closing call to action */}
-        <Card className="mt-5">
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
-            <Clock className="size-6 text-primary" />
-            <div>
-              <p className="text-[18px] font-bold text-ink">
-                Registration closes {formatDate(event.registrationClosesAt)}
-              </p>
-              <p className="mt-1 text-[13.5px] text-muted">{status.detail}</p>
+              ))}
             </div>
-            {status.open ? (
-              <Link href={`/events/${event.slug}/register`}>
-                <Button variant="primary" size="lg" icon={<Users className="size-4" />}>
-                  Register for this tournament
-                </Button>
-              </Link>
+          </section>
+        ) : null}
+
+        {/* ---- Fee ------------------------------------------------------- */}
+        <section className="mt-10">
+          <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+            Registration fee
+          </h2>
+
+          <div
+            className="mt-3 rounded-2xl border bg-white/70 p-5"
+            style={{ borderColor: `${BROWN}1A` }}
+          >
+            <div className="flex items-baseline justify-between">
+              <span className="text-[14px]" style={{ color: `${BROWN}CC` }}>
+                Standard entry
+              </span>
+              <span className="num text-[20px] font-extrabold" style={{ color: BROWN }}>
+                {money(event.fee)}
+              </span>
+            </div>
+
+            {discounted !== null ? (
+              <>
+                <div className="mt-2 flex items-baseline justify-between border-t pt-2" style={{ borderColor: `${BROWN}14` }}>
+                  <span className="text-[14px]" style={{ color: `${BROWN}CC` }}>
+                    {event.memberDiscountBody ?? "Member"} members
+                    <span className="ml-1.5 text-[12px]" style={{ color: GOLD }}>
+                      −{event.memberDiscountPercent}%
+                    </span>
+                  </span>
+                  <span className="num text-[20px] font-extrabold" style={{ color: FOREST }}>
+                    {money(discounted)}
+                  </span>
+                </div>
+                <p className="mt-2 text-[11.5px] leading-relaxed" style={{ color: `${BROWN}88` }}>
+                  Bring your membership number when you register. The discount is confirmed once we
+                  have checked it.
+                </p>
+              </>
             ) : null}
           </div>
-        </Card>
-      </main>
+        </section>
 
-      <footer className="border-t border-line px-5 py-8 text-center sm:px-8">
-        <p className="text-[12.5px] text-muted">
-          {event.organizer} · Organized with Bluffy Alphabattle
-        </p>
-      </footer>
-    </div>
-  );
-}
+        {/* ---- Venue ----------------------------------------------------- */}
+        <section className="mt-10">
+          <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+            Venue
+          </h2>
+          <div
+            className="mt-3 rounded-2xl border bg-white/70 p-5"
+            style={{ borderColor: `${BROWN}1A` }}
+          >
+            <p className="text-[15px] font-bold" style={{ color: BROWN }}>
+              {event.venueName}
+            </p>
+            <p className="mt-0.5 text-[13.5px]" style={{ color: `${BROWN}AA` }}>
+              {event.address || event.city}
+            </p>
+            {event.mapsUrl ? (
+              <a
+                href={event.mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-[13px] font-semibold underline underline-offset-2"
+                style={{ color: FOREST }}
+              >
+                Open in Maps
+              </a>
+            ) : null}
+          </div>
+        </section>
 
-function Figure({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div className="glass rounded-card p-4">
-      <p className="text-[12px] font-semibold text-muted">{label}</p>
-      <p className={cn("num mt-0.5 text-[24px] font-extrabold tracking-[-0.025em] text-ink")}>
-        {value}
-      </p>
-      <p className="text-[11.5px] text-muted">{sub}</p>
-    </div>
+        {/* ---- Questions -------------------------------------------------- */}
+        <section className="mt-10">
+          <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+            Common questions
+          </h2>
+
+          <div className="mt-3 space-y-2">
+            {[
+              {
+                q: "Do I need to be good at Scrabble?",
+                a: "No. You can join purely for the board games, and the Speed Scrabble competition has levels from Beginner upwards.",
+              },
+              {
+                q: "Can I come on my own?",
+                a: "Yes — most people do. The board-game floor is built around meeting new people.",
+              },
+              {
+                q: "Do I need an app or an account?",
+                a: "No. You register through a link, and check in at the venue by scanning a QR code.",
+              },
+              {
+                q: "Can I do both board games and Speed Scrabble?",
+                a: "Yes. Choose “Both” when you register.",
+              },
+            ].map((item) => (
+              <details
+                key={item.q}
+                className="rounded-2xl border bg-white/70 p-4"
+                style={{ borderColor: `${BROWN}1A` }}
+              >
+                <summary
+                  className="cursor-pointer text-[14px] font-semibold"
+                  style={{ color: BROWN }}
+                >
+                  {item.q}
+                </summary>
+                <p className="mt-2 text-[13px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* ---- Closing call ------------------------------------------------ */}
+        {status.open ? (
+          <section className="mt-12 text-center">
+            <p className="text-[15px] font-semibold" style={{ color: BROWN }}>
+              {event.bannerCaption}
+            </p>
+            <Link href={`/events/${event.slug}/register`}>
+              <Button
+                size="lg"
+                className="mt-4 border-0"
+                style={{ background: FOREST, color: "white" }}
+              >
+                Register for {event.name}
+                <ArrowRight className="size-4" />
+              </Button>
+            </Link>
+            {registrations.length > 0 ? (
+              <p
+                className="mt-3 inline-flex items-center gap-1.5 text-[12.5px]"
+                style={{ color: `${BROWN}99` }}
+              >
+                <Users className="size-3.5" />
+                {registrations.length} already registered
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {/* ---- Partners ------------------------------------------------------ */}
+        {event.collaborators?.length ? (
+          <footer className="mt-14 border-t pt-6 text-center" style={{ borderColor: `${BROWN}1A` }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: `${BROWN}88` }}>
+              Presented in collaboration with
+            </p>
+            <p className="mt-2 text-[14px] font-bold" style={{ color: BROWN }}>
+              {event.collaborators.join("  ×  ")}
+            </p>
+          </footer>
+        ) : null}
+      </div>
+    </main>
   );
 }

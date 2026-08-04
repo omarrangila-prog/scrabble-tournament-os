@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { ParticipationTrack } from "../firebase/schema";
 import {
   AFK_DISCOUNT_PERCENT,
+  canOpenRegistration,
+  setupChecklist,
+  SetupInput,
   arrivalInstruction,
   countTracks,
   GAME_ON_FEE,
@@ -231,6 +234,74 @@ describe("validateRegistration", () => {
     for (const p of validateRegistration({})) {
       expect(p.message.length).toBeGreaterThan(0);
       expect(p.message).toMatch(/[.!]$/);
+    }
+  });
+});
+
+
+describe("setupChecklist", () => {
+  const input = (over: Partial<SetupInput> = {}): SetupInput => ({
+    hasPaymentMethod: true,
+    hasReceivingAccount: true,
+    capacity: 0,
+    rounds: 0,
+    roundMinutes: 0,
+    scrabbleEntrants: 0,
+    ...over,
+  });
+
+  it("passes once payment is configured", () => {
+    expect(canOpenRegistration(setupChecklist(input())).ready).toBe(true);
+  });
+
+  /** An event nobody can pay for is not open. */
+  it("blocks registration without a payment method", () => {
+    const r = canOpenRegistration(setupChecklist(input({ hasPaymentMethod: false })));
+    expect(r.ready).toBe(false);
+    expect(r.reason).toContain("Payment method");
+  });
+
+  it("blocks registration without a receiving account", () => {
+    expect(canOpenRegistration(setupChecklist(input({ hasReceivingAccount: false }))).ready).toBe(
+      false,
+    );
+  });
+
+  it("counts several blockers rather than naming only the first", () => {
+    const r = canOpenRegistration(
+      setupChecklist(input({ hasPaymentMethod: false, hasReceivingAccount: false })),
+    );
+    expect(r.reason).toContain("2 details");
+  });
+
+  /** Worth flagging, not worth stopping people registering over. */
+  it("does not block on a missing capacity or deadline", () => {
+    const items = setupChecklist(input());
+    const capacity = items.find((i) => i.id === "capacity")!;
+    expect(capacity.done).toBe(false);
+    expect(capacity.blocking).toBe(false);
+    expect(canOpenRegistration(items).ready).toBe(true);
+  });
+
+  /** Asking for a round count before anyone has entered is noise. */
+  it("stays quiet about format until someone enters Speed Scrabble", () => {
+    const none = setupChecklist(input({ scrabbleEntrants: 0 }));
+    expect(none.some((i) => i.id === "rounds")).toBe(false);
+
+    const some = setupChecklist(input({ scrabbleEntrants: 4 }));
+    expect(some.some((i) => i.id === "rounds")).toBe(true);
+    expect(some.find((i) => i.id === "rounds")!.hint).toContain("4 people");
+  });
+
+  it("marks format complete once configured", () => {
+    const items = setupChecklist(input({ scrabbleEntrants: 4, rounds: 6, roundMinutes: 20 }));
+    expect(items.find((i) => i.id === "rounds")!.done).toBe(true);
+    expect(items.find((i) => i.id === "round-length")!.done).toBe(true);
+  });
+
+  it("gives every outstanding item a reason", () => {
+    for (const item of setupChecklist(input({ hasPaymentMethod: false }))) {
+      if (!item.done) expect(item.hint).toBeDefined();
     }
   });
 });

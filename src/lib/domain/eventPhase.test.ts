@@ -27,18 +27,29 @@ const ALL_STATES: EventState[] = [
 ];
 
 describe("workspace tabs", () => {
-  it("exposes the nine tabs in order", () => {
+  it("exposes the eight tabs in order", () => {
     expect(WORKSPACE_TABS.map((t) => t.id)).toEqual([
       "overview",
       "registrations",
       "payments",
-      "players",
+      "scrabble",
       "live",
-      "scores",
       "awards",
       "analytics",
       "settings",
     ]);
+  });
+
+  /**
+   * Seeding, pairings, scores and standings are one activity. Splitting them
+   * across separate tabs made a director running the competition move between
+   * screens to do a single job.
+   */
+  it("keeps the whole Scrabble competition under one tab", () => {
+    const ids = WORKSPACE_TABS.map((t) => t.id);
+    expect(ids).toContain("scrabble");
+    expect(ids).not.toContain("scores");
+    expect(ids).not.toContain("players");
   });
 
   it("recognises real tabs and rejects anything else", () => {
