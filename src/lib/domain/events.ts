@@ -9,6 +9,7 @@
 
 import { PaymentMethod, PlayerCategory } from "./identity";
 import { ParticipationTrack } from "../firebase/schema";
+import { Rate } from "./pricing";
 
 /* -------------------------------------------------------------------------- */
 /* Event lifecycle                                                             */
@@ -249,6 +250,15 @@ export interface PublicEvent {
 
   /** Which tracks a participant may choose. */
   participationTracks?: ParticipationTrack[];
+
+  /**
+   * The rates this event offers.
+   *
+   * Each event prices itself: the two live events already differ in both the
+   * amounts and which tiers exist at all. A participant qualifying for several
+   * pays the cheapest, never a stack.
+   */
+  rates?: Rate[];
 
   /**
    * Percentage off for a verified Alliance Française member.

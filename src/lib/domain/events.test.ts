@@ -208,9 +208,59 @@ describe("default form", () => {
 });
 
 describe("seeded event data", () => {
-  it("seeds exactly one event, drafted until its details are confirmed", () => {
-    expect(seed.events).toHaveLength(1);
-    expect(seed.events[0].state).toBe("draft");
+  it("seeds two events, both drafted until their details are confirmed", () => {
+    expect(seed.events).toHaveLength(2);
+    for (const event of seed.events) expect(event.state).toBe("draft");
+  });
+
+  /** Two genuinely separate events, not one with variants. */
+  it("keeps the two events distinct in identity, venue and pricing", () => {
+    const [gameOn, alphaBattle] = seed.events;
+
+    expect(gameOn.name).toBe("GAME ON!");
+    expect(alphaBattle.name).toBe("Blufy's AlphaBattle");
+
+    expect(gameOn.slug).not.toBe(alphaBattle.slug);
+    expect(gameOn.venueName).not.toBe(alphaBattle.venueName);
+    expect(gameOn.startDate).toBe("2026-08-08");
+    expect(alphaBattle.startDate).toBe("2026-08-23");
+    expect(gameOn.fee).toBe(1200);
+    expect(alphaBattle.fee).toBe(1250);
+  });
+
+  it("gives each event its own registration form", () => {
+    expect(seed.forms).toHaveLength(2);
+    expect(new Set(seed.forms.map((f) => f.eventId)).size).toBe(2);
+  });
+
+  it("carries the AlphaBattle rate tiers from the organizer's form", () => {
+    const alphaBattle = seed.events[1];
+    const amounts = Object.fromEntries(
+      (alphaBattle.rates ?? []).map((r) => [r.id, r.amount]),
+    );
+    expect(amounts).toMatchObject({
+      standard: 1250,
+      member: 950,
+      family: 850,
+      "early-bird": 800,
+    });
+  });
+
+  /** Money goes to a real account or the step says details are coming. */
+  it("carries real payment details for AlphaBattle and none for GAME ON!", () => {
+    const [gameOn, alphaBattle] = seed.events;
+
+    expect(alphaBattle.bankDetails).toContain("Habib Metropolitan");
+    expect(alphaBattle.walletDetails).toContain("0333 6665761");
+    expect(alphaBattle.paymentMethods.length).toBeGreaterThan(0);
+
+    // The poster states no account, so none is invented.
+    expect(gameOn.bankDetails).toBe("");
+    expect(gameOn.paymentMethods).toEqual([]);
+  });
+
+  it("offers no fabricated discount codes", () => {
+    expect(seed.discounts).toEqual([]);
   });
 
   /**

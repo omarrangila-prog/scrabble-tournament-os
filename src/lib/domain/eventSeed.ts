@@ -77,6 +77,16 @@ const EVENT: PublicEvent = {
   memberDiscountPercent: 10,
   memberDiscountBody: "Alliance Française de Karachi",
 
+  rates: [
+    { id: "standard", label: "Standard entry", amount: 1200, basis: "Everyone" },
+    {
+      id: "member",
+      label: "Alliance Française member",
+      amount: 1080,
+      basis: "Members of Alliance Française de Karachi",
+    },
+  ],
+
   // No account details appear on the poster, and reusing a previous event's
   // would send money to the wrong place.
   paymentMethods: [],
@@ -116,59 +126,114 @@ const EVENT: PublicEvent = {
   publishedAt: T("2026-08-01"),
 };
 
-const DISCOUNTS: Discount[] = [
-  {
-    id: "disc-early",
-    eventId: EVENT.id,
-    code: "EARLYBIRD",
-    label: "Early-bird discount",
-    kind: "fixed",
-    value: 300,
-    maxRedemptions: 40,
-    redemptions: 12,
-    active: true,
-    expiresAt: T("2026-08-20"),
-    campaign: "Early registration",
-  },
-  {
-    id: "disc-song",
-    eventId: EVENT.id,
-    code: "SONGCHALLENGE",
-    label: "Instagram song challenge winner",
-    kind: "fixed",
-    value: 500,
-    freeGames: 2,
-    maxRedemptions: 1,
-    redemptions: 1,
-    active: true,
-    campaign: "Instagram Song Challenge",
-  },
-  {
-    id: "disc-school",
-    eventId: EVENT.id,
-    code: "SCHOOL25",
-    label: "School group discount",
-    kind: "percentage",
-    value: 25,
-    maxRedemptions: 0,
-    redemptions: 6,
-    active: true,
-    campaign: "School outreach",
-  },
-  {
-    id: "disc-comp",
-    eventId: EVENT.id,
-    code: "VOLUNTEER",
-    label: "Complimentary entry — volunteer",
-    kind: "free-entry",
-    value: 0,
-    maxRedemptions: 5,
-    redemptions: 2,
-    active: true,
-    campaign: "Volunteer recognition",
-  },
-];
+/**
+ * Blufy's AlphaBattle — 23 August.
+ *
+ * A separate event from GAME ON!, at a different venue with different pricing.
+ * Details come from the organizer's registration form.
+ */
+const ALPHABATTLE: PublicEvent = {
+  id: "evt-alphabattle-23-august",
+  organizationId: "org-federation",
+  slug: "alphabattle-23-august",
 
+  name: "Blufy's AlphaBattle",
+  subtitle: "A fast-paced Scrabble showdown",
+
+  shortDescription:
+    "Five timed games and a song round. Newcomers, casual players and strategists all welcome.",
+  description:
+    "Whether you are a newcomer, a casual player or a strategy pro, join us for a fun, friendly word battle with good vibes. Five timed games of twenty minutes decide the top two in each category, with four songs to guess from twenty-second clips along the way.",
+  bannerCaption: "A fast-paced Scrabble showdown",
+
+  organizer: "Bluffy Alphabattle",
+  collaborators: [],
+
+  venueName: "Chai Chatt, Habitt City",
+  address:
+    "Street No. 3, Karachi Memon Co-operative Housing Society, P.E.C.H.S., Karachi",
+  city: "Karachi",
+  mapsUrl: "https://maps.app.goo.gl/xFEWE2Rr38GjaeScA",
+
+  startDate: "2026-08-23",
+  startTime: "12:00",
+  expectedFinish: "15:30",
+  timeDisplay: "12:00 PM to 3:30 PM",
+  timeZone: "Asia/Karachi (PKT, UTC+5)",
+
+  contactPhone: "0300 8278594",
+  contactEmail: "",
+
+  visibility: "public",
+  capacity: 0,
+
+  registrationOpensAt: T("2026-07-01"),
+  registrationClosesAt: T("2026-08-23", "11:45"),
+
+  fee: 1250,
+  currency: "PKR",
+
+  /*
+   * Four rates. A participant qualifying for several pays the cheapest — three
+   * PSA members registering together would otherwise stack their way down to
+   * almost nothing.
+   */
+  rates: [
+    { id: "standard", label: "Standard entry", amount: 1250, basis: "Everyone" },
+    {
+      id: "member",
+      label: "PSA member",
+      amount: 950,
+      basis: "Members of the Pakistan Scrabble Association",
+    },
+    {
+      id: "family",
+      label: "Family rate",
+      amount: 850,
+      basis: "Three or more registering together",
+      minGroupSize: 3,
+    },
+    {
+      id: "early-bird",
+      label: "Early bird",
+      amount: 800,
+      basis: "Until 9 August",
+      availableUntil: "2026-08-09T23:59:59+05:00",
+    },
+  ],
+
+  paymentMethods: ["bank-transfer", "easypaisa"],
+  bankDetails:
+    "Habib Metropolitan Bank · Huda Garib · 6-01-70-20311-714-140261 · IBAN PK66MPBL0170027140140261 · Khayaban-e-Shahbaz Branch",
+  walletDetails: "0333 6665761 (Nida Khan)",
+  waitingList: true,
+
+  // A Scrabble competition only. No board-game floor at this one.
+  participationTracks: ["speed_scrabble"],
+
+  rounds: 5,
+  roundMinutes: 20,
+  breakMinutes: 0,
+  divisions: ["beginner", "recreational", "advanced"],
+
+  prizes: [
+    { place: "Winner, each category", award: "PKR 5,000" },
+    { place: "Runner-up, each category", award: "PKR 3,000" },
+    { place: "First to name each song", award: "PKR 1,000 per song" },
+  ],
+
+  unconfirmed: ["Maximum capacity", "Contact email"],
+
+  state: "draft",
+  createdAt: T("2026-07-01"),
+  createdBy: "Sir Hani",
+};
+
+/*
+ * No seeded discount codes. The five that used to ship carried invented
+ * redemption counts and read as though an organizer had created and used them.
+ */
+const DISCOUNTS: Discount[] = [];
 
 export function buildEventSeed(): {
   events: PublicEvent[];
@@ -178,25 +243,25 @@ export function buildEventSeed(): {
   tokens: QrToken[];
 } {
   /*
-   * GAME ON! starts empty. Its registrations are the ones people actually
-   * submit — seeding invented entrants would put fabricated names in the
-   * participant list, the payment queue and eventually on certificates.
-   *
-   * buildRegistrations() is kept for the archived demo event, which retains its
-   * own history.
+   * Two events, each starting empty. Their registrations are the ones people
+   * actually submit — seeding invented entrants would put fabricated names in
+   * the participant list, the payment queue and eventually on certificates.
    */
+  const events = [EVENT, ALPHABATTLE];
   const registrations: GuestRegistration[] = [];
-  const form = defaultForm(EVENT.id);
 
-  const tokens: QrToken[] = [
-    {
-      token: "GAMEON8AUG",
-      kind: "event",
-      eventId: EVENT.id,
-      issuedAt: EVENT.publishedAt ?? EVENT.createdAt,
+  return {
+    events,
+    // Each event gets its own form: the questions differ between them.
+    forms: events.map((e) => defaultForm(e.id)),
+    discounts: DISCOUNTS,
+    registrations,
+    tokens: events.map((e) => ({
+      token: e.id === EVENT.id ? "GAMEON8AUG" : "ALPHA23AUG",
+      kind: "event" as const,
+      eventId: e.id,
+      issuedAt: e.publishedAt ?? e.createdAt,
       revoked: false,
-    },
-  ];
-
-  return { events: [EVENT], forms: [form], discounts: DISCOUNTS, registrations, tokens };
+    })),
+  };
 }

@@ -38,6 +38,11 @@ import {
   playsScrabble,
   TRACK_LABEL,
 } from "@/lib/firebase/schema";
+import {
+  cheaperRateHint,
+  describeRate,
+  priceRegistration as priceByRate,
+} from "@/lib/domain/pricing";
 import { CATEGORY_LABEL, PlayerCategory } from "@/lib/domain/identity";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -145,12 +150,29 @@ export function GameOnForm({
     });
   };
 
-  const quote = quoteFee(
-    reg.membershipStatus ?? "not-claimed",
-    campaign,
-    event.fee,
-    event.currency,
-  );
+  /*
+   * An event with a rate table prices from it: the participant pays the
+   * cheapest tier they qualify for. Without one, the older single-discount
+   * path still applies.
+   */
+  const rateResult = event.rates?.length
+    ? priceByRate(event.rates, {
+        isMember: reg.membershipStatus !== "not-claimed",
+        groupSize: Math.max(1, (reg.accompanyingCount ?? 0) + 1),
+        at: new Date().toISOString(),
+      })
+    : null;
+
+  const quote = rateResult
+    ? quoteFee(
+        // The rate already reflects membership, so the older discount must not
+        // be applied on top of it.
+        "not-claimed",
+        campaign,
+        rateResult.perPerson,
+        event.currency,
+      )
+    : quoteFee(reg.membershipStatus ?? "not-claimed", campaign, event.fee, event.currency);
 
   const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
 
@@ -657,6 +679,30 @@ export function GameOnForm({
                     </Button>
                   </div>
                 </Field>
+              ) : null}
+
+              {rateResult ? (
+                <div className="rounded-feature bg-[#2F5D3A]/8 p-4">
+                  <p className="flex items-start gap-2 text-[13px] font-semibold" style={{ color: "#2F5D3A" }}>
+                    <Sparkles className="mt-0.5 size-3.5 shrink-0" />
+                    {describeRate(rateResult, event.currency)}
+                  </p>
+
+                  {/* What they would need to do to pay less, when it is reachable. */}
+                  {cheaperRateHint(rateResult, {
+                    isMember: reg.membershipStatus !== "not-claimed",
+                    groupSize: Math.max(1, (reg.accompanyingCount ?? 0) + 1),
+                    at: new Date().toISOString(),
+                  }) ? (
+                    <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">
+                      {cheaperRateHint(rateResult, {
+                        isMember: reg.membershipStatus !== "not-claimed",
+                        groupSize: Math.max(1, (reg.accompanyingCount ?? 0) + 1),
+                        at: new Date().toISOString(),
+                      })}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
 
               <FeePanel quote={quote} money={money} />
