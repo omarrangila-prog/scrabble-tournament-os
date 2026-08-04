@@ -11,15 +11,21 @@ import {
   Music,
   Save,
   Upload,
+  Sparkles,
   Users,
   Wallet,
 } from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { PublicEvent } from "@/lib/domain/events";
 import {
+  BundleEvent,
+  BUNDLE_DISCOUNT_PERCENT,
+  BUNDLE_MIN_EVENTS,
   CampaignReduction,
+  describeBundle,
   GameOnRegistration,
   paymentInstructions,
+  quoteBundle,
   quoteFee,
   validateRegistration,
 } from "@/lib/domain/gameOn";
@@ -63,11 +69,14 @@ export function GameOnForm({
   onSubmit,
   campaign,
   onCampaignCode,
+  otherEvents = [],
 }: {
   event: PublicEvent;
   onSubmit: (registration: GameOnRegistration) => void;
   campaign?: CampaignReduction;
   onCampaignCode?: (code: string) => void;
+  /** Other events on offer, for the multi-event bundle. */
+  otherEvents?: BundleEvent[];
 }) {
   const [step, setStep] = React.useState(0);
   const [reg, setReg] = React.useState<Partial<GameOnRegistration>>({
@@ -78,6 +87,13 @@ export function GameOnForm({
   const [codeInput, setCodeInput] = React.useState("");
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
+
+  /*
+   * The event that was opened is always selected and cannot be removed —
+   * unticking the event whose link you followed would leave the form with no
+   * subject at all.
+   */
+  const [selectedEventIds, setSelectedEventIds] = React.useState<string[]>([event.id]);
 
   const draftKey = `game-on-draft-${event.id}`;
 
@@ -137,6 +153,23 @@ export function GameOnForm({
   );
 
   const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
+
+  const allEvents: BundleEvent[] = [
+    { id: event.id, name: event.name, date: formatDate(event.startDate), fee: event.fee },
+    ...otherEvents,
+  ];
+
+  const bundle = quoteBundle(
+    allEvents.filter((e) => selectedEventIds.includes(e.id)),
+    allEvents,
+  );
+
+  const toggleEvent = (id: string) => {
+    if (id === event.id) return;
+    setSelectedEventIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    );
+  };
 
   const instructions = paymentInstructions(
     event.paymentMethods,
@@ -299,6 +332,78 @@ export function GameOnForm({
           {/* ---- Step 2: Experience --------------------------------------- */}
           {STEPS[step].id === "experience" ? (
             <>
+              {/* Which events ------------------------------------------- */}
+              {otherEvents.length ? (
+                <Field
+                  label="Which events would you like to join?"
+                  hint={`Register for ${BUNDLE_MIN_EVENTS} or more and take ${BUNDLE_DISCOUNT_PERCENT}% off.`}
+                >
+                  <div className="space-y-2">
+                    {allEvents.map((e) => {
+                      const on = selectedEventIds.includes(e.id);
+                      const isThisEvent = e.id === event.id;
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          disabled={isThisEvent}
+                          onClick={() => toggleEvent(e.id)}
+                          aria-pressed={on}
+                          className={cn(
+                            "flex w-full items-center gap-3 rounded-feature border p-3.5 text-left transition-all",
+                            on
+                              ? "border-[#C89B3C] bg-[#C89B3C]/10"
+                              : "border-line bg-[rgb(var(--c-surface-strong))] hover:bg-[rgb(var(--c-surface-soft))]",
+                            isThisEvent && "cursor-default",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "grid size-5 shrink-0 place-items-center rounded border-2 transition-colors",
+                              on ? "border-[#C89B3C] bg-[#C89B3C] text-white" : "border-line",
+                            )}
+                          >
+                            {on ? <Check className="size-3" strokeWidth={3} /> : null}
+                          </span>
+
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[13.5px] font-bold text-ink">
+                              {e.name}
+                            </span>
+                            <span className="block text-[11.5px] text-muted">
+                              {e.date}
+                              {isThisEvent ? " · the event you opened" : ""}
+                            </span>
+                          </span>
+
+                          <span className="num shrink-0 text-[12.5px] font-semibold text-muted">
+                            {money(e.fee)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              ) : null}
+
+              {/* Bundle nudge --------------------------------------------- */}
+              {otherEvents.length ? (
+                <motion.p
+                  key={bundle.qualifies ? "earned" : "nudge"}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    "flex items-start gap-2 rounded-control px-3.5 py-3 text-[12.5px] leading-relaxed",
+                    bundle.qualifies
+                      ? "bg-[#2F5D3A]/10 text-[#2F5D3A]"
+                      : "bg-[#C89B3C]/12 text-[#8A6A1F]",
+                  )}
+                >
+                  <Sparkles className="mt-0.5 size-3.5 shrink-0" />
+                  {describeBundle(bundle, event.currency)}
+                </motion.p>
+              ) : null}
+
               <Field
                 label="What would you like to join at GAME ON!?"
                 required
