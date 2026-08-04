@@ -116,6 +116,14 @@ export default function PaymentsPage() {
     expectedReceiver: event.bankDetails || undefined,
   });
 
+  /*
+   * Membership claims, and the subset still to be checked. A claim shows the
+   * participant the reduced fee but must not count as confirmed revenue until
+   * someone has looked at the number.
+   */
+  const membershipClaims = registrations.filter((r) => r.answers?.membershipNumber);
+  const membershipUnverified = membershipClaims.filter((r) => r.status !== "approved");
+
   const settled = submissions.filter(
     (s) => s.status === "verified" || s.status === "rejected" || s.status === "complimentary",
   );
@@ -203,6 +211,101 @@ export default function PaymentsPage() {
           payment provider confirming the transaction directly could do that automatically.
         </p>
       </div>
+
+      {/* Membership verification -------------------------------------------- */}
+      {membershipClaims.length ? (
+        <Card className="mt-4">
+          <CardHeader
+            title="Alliance Française memberships"
+            subtitle={`${membershipUnverified.length} of ${membershipClaims.length} still to check`}
+          />
+          <div className="space-y-2 px-4 pb-4">
+            {membershipClaims.slice(0, 20).map((r) => {
+              const verified = r.status === "approved";
+              return (
+                <div
+                  key={r.id}
+                  className={cn(
+                    "flex flex-wrap items-center gap-3 rounded-feature border p-3.5",
+                    verified
+                      ? "border-success bg-success-050/40"
+                      : "border-line bg-[rgb(var(--c-surface-soft))]",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold text-ink">
+                      {r.fullName}
+                    </span>
+                    <span className="num block truncate text-[11.5px] text-muted">
+                      Membership {r.answers.membershipNumber}
+                    </span>
+                  </span>
+
+                  <span className="num shrink-0 text-[12.5px] text-muted">
+                    {money(r.amountDue, event.currency)}
+                  </span>
+
+                  <Badge tone={verified ? "success" : "warning"}>
+                    {verified ? "Verified" : "To check"}
+                  </Badge>
+
+                  {!verified ? (
+                    <div className="flex shrink-0 gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          store.reviewRegistration(
+                            r.id,
+                            "approved",
+                            app.currentUser?.name ?? "Sir Hani",
+                            `Alliance Française membership ${r.answers.membershipNumber} verified.`,
+                          );
+                          app.toast({
+                            title: "Membership verified",
+                            description: `${r.fullName} — discount confirmed.`,
+                            tone: "success",
+                          });
+                        }}
+                      >
+                        Verify
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          const reason = window.prompt(
+                            `Reject the membership claim for ${r.fullName}?\n\nThe full fee applies. Give a reason — the participant is shown it.`,
+                          );
+                          if (!reason?.trim()) return;
+                          store.reviewRegistration(
+                            r.id,
+                            "under-review",
+                            app.currentUser?.name ?? "Sir Hani",
+                            `Membership not verified: ${reason.trim()}`,
+                          );
+                          app.toast({
+                            title: "Membership claim rejected",
+                            description: `${r.fullName} — full fee now applies.`,
+                            tone: "info",
+                          });
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="px-5 pb-5 text-[11.5px] leading-relaxed text-faint">
+            A claimed membership is not a verified one. Until each number is checked, the
+            discount is shown to the participant but not counted as settled revenue.
+          </p>
+        </Card>
+      ) : null}
 
       {/* Review queue ------------------------------------------------------ */}
       <Card className="mt-4">
