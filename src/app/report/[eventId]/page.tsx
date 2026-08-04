@@ -8,6 +8,7 @@ import { useCertificateStore } from "@/lib/store/useCertificateStore";
 import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useStore } from "@/lib/store/useStore";
 import { activeEvent } from "@/lib/domain/scope";
+import { InterestAnswer, ParticipationTrack } from "@/lib/firebase/schema";
 import { expenseTotals, feeTotals, financePosition } from "@/lib/engine/finance";
 import { buildDocument, Metric, ReportSection } from "@/lib/engine/reporting";
 import { certificateSummary } from "@/lib/engine/certificates";
@@ -87,6 +88,11 @@ export default function ReportDocumentPage() {
       city: r.city,
       club: r.club,
       isReturning: emailsElsewhere.has(r.email.trim().toLowerCase()),
+      track: (r.participationTrack ?? undefined) as ParticipationTrack | undefined,
+      claimedMembership: Boolean(r.answers?.membershipNumber),
+      // Approval is what confirms a membership claim in this flow.
+      membershipVerified: Boolean(r.answers?.membershipNumber) && r.status === "approved",
+      futureInterest: r.answers?.jammingSessionInterest as InterestAnswer | undefined,
     })),
 
     attendance: { checkedIn: live.checkedInCount(event.id) },

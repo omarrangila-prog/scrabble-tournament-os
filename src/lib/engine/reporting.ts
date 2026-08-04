@@ -15,6 +15,13 @@
  */
 
 import { ExpenseTotals, FeeTotals, FinancePosition } from "./finance";
+import {
+  InterestAnswer,
+  isInterested,
+  ParticipationTrack,
+  playsBoardGames,
+  playsScrabble,
+} from "../firebase/schema";
 
 export type ReportPage =
   | "executive"
@@ -126,6 +133,14 @@ export interface ReportInput {
     city: string;
     club: string;
     isReturning: boolean;
+    /** Which parts of the event this person came for. */
+    track?: ParticipationTrack;
+    /** True when a member discount was claimed, whether or not it was verified. */
+    claimedMembership?: boolean;
+    /** True once the membership number has actually been checked. */
+    membershipVerified?: boolean;
+    /** Interest in a future event, captured at registration. */
+    futureInterest?: InterestAnswer;
   }[];
 
   attendance: { checkedIn: number };
@@ -183,6 +198,26 @@ export function buildReport(input: ReportInput): ReportSection[] {
   const regs = input.registrations;
   const approved = regs.filter((r) => r.status === "approved");
   const returning = approved.filter((r) => r.isReturning).length;
+
+  const pctOf = (n: number, of: number) => (of > 0 ? Math.round((n / of) * 100) : 0);
+
+  /*
+   * Track figures. The exclusive splits and the two operational totals are
+   * both reported: everyone who chose "both" belongs on the floor and in the
+   * Scrabble pool, so quoting only the exclusive counts understates each.
+   */
+  const hasTracks = approved.some((r) => r.track);
+  const boardOnly = approved.filter((r) => r.track === "board_games").length;
+  const scrabbleOnly = approved.filter((r) => r.track === "speed_scrabble").length;
+  const bothCount = approved.filter((r) => r.track === "both").length;
+  const onFloor = approved.filter((r) => r.track && playsBoardGames(r.track)).length;
+  const inPool = approved.filter((r) => r.track && playsScrabble(r.track)).length;
+
+  const membershipClaimed = approved.filter((r) => r.claimedMembership).length;
+  const membershipVerified = approved.filter((r) => r.membershipVerified).length;
+  const interested = approved.filter(
+    (r) => r.futureInterest && isInterested(r.futureInterest),
+  ).length;
 
   /* ---- Executive ------------------------------------------------------ */
 
@@ -262,8 +297,60 @@ export function buildReport(input: ReportInput): ReportSection[] {
         value: String(approved.length - returning),
         sub: `${pct(approved.length - returning, approved.length)} of the field`,
       },
+      ...(hasTracks
+        ? [
+            {
+              label: "On the board-game floor",
+              value: String(onFloor),
+              sub: bothCount ? `includes ${bothCount} also competing` : "social attendees",
+            },
+            {
+              label: "In the Scrabble pool",
+              value: String(inPool),
+              sub: bothCount ? `includes ${bothCount} also on the floor` : "competitors",
+            },
+          ]
+        : []),
+      ...(membershipClaimed
+        ? [
+            {
+              label: "Member discounts",
+              value: `${membershipVerified}/${membershipClaimed}`,
+              sub: "verified of claimed",
+              caveat:
+                membershipVerified < membershipClaimed
+                  ? "Unverified claims are not counted as settled revenue."
+                  : undefined,
+              tone:
+                membershipVerified < membershipClaimed
+                  ? ("warning" as const)
+                  : ("neutral" as const),
+            },
+          ]
+        : []),
+      ...(interested
+        ? [
+            {
+              label: "Future event interest",
+              value: String(interested),
+              sub: "asked to hear about the next one",
+            },
+          ]
+        : []),
     ],
     tables: [
+      ...(hasTracks
+        ? [
+            {
+              title: "By what they came for",
+              rows: [
+                { label: "Board games only", count: boardOnly, share: pctOf(boardOnly, approved.length) },
+                { label: "Speed Scrabble only", count: scrabbleOnly, share: pctOf(scrabbleOnly, approved.length) },
+                { label: "Both", count: bothCount, share: pctOf(bothCount, approved.length) },
+              ].filter((r) => r.count > 0),
+            },
+          ]
+        : []),
       { title: "By division", rows: distribution(approved.map((r) => r.division)) },
       { title: "By city", rows: distribution(approved.map((r) => r.city), { limit: 8 }) },
       {
@@ -282,6 +369,16 @@ export function buildReport(input: ReportInput): ReportSection[] {
   if (returning > 0)
     participants.observations.push(
       `${returning} of ${approved.length} players had entered a previous event.`,
+    );
+
+  if (membershipClaimed > membershipVerified)
+    participants.observations.push(
+      `${membershipClaimed - membershipVerified} member discount${membershipClaimed - membershipVerified === 1 ? "" : "s"} were claimed but never verified.`,
+    );
+
+  if (hasTracks && bothCount > 0)
+    participants.observations.push(
+      `${bothCount} participant${bothCount === 1 ? "" : "s"} joined both the board-game floor and the Speed Scrabble competition.`,
     );
 
   /* ---- Performance ------------------------------------------------------ */

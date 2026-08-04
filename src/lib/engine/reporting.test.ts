@@ -219,6 +219,67 @@ describe("buildReport", () => {
   });
 });
 
+describe("GAME ON! track reporting", () => {
+  const tracked = () =>
+    input({
+      registrations: [
+        { status: "approved", paymentStatus: "verified", division: "Masters", city: "Karachi", club: "KSC", isReturning: false, track: "board_games" },
+        { status: "approved", paymentStatus: "verified", division: "Masters", city: "Karachi", club: "KSC", isReturning: false, track: "board_games" },
+        { status: "approved", paymentStatus: "verified", division: "Advanced", city: "Karachi", club: "KSC", isReturning: false, track: "speed_scrabble" },
+        { status: "approved", paymentStatus: "verified", division: "Advanced", city: "Karachi", club: "KSC", isReturning: false, track: "both", claimedMembership: true, membershipVerified: true },
+        { status: "approved", paymentStatus: "verified", division: "Beginner", city: "Lahore", club: "LSC", isReturning: false, track: "both", claimedMembership: true, futureInterest: "yes" },
+      ],
+    });
+
+  /**
+   * Both totals are reported. Everyone who chose "both" belongs on the floor
+   * and in the pool, so quoting only the exclusive counts understates each.
+   */
+  it("counts people doing both into each operational total", () => {
+    const metrics = buildReport(tracked())[1].metrics;
+    expect(metrics.find((m) => m.label === "On the board-game floor")?.value).toBe("4");
+    expect(metrics.find((m) => m.label === "In the Scrabble pool")?.value).toBe("3");
+  });
+
+  it("breaks the field down by what people came for", () => {
+    const table = buildReport(tracked())[1].tables.find(
+      (t) => t.title === "By what they came for",
+    )!;
+    expect(table.rows.find((r) => r.label === "Board games only")?.count).toBe(2);
+    expect(table.rows.find((r) => r.label === "Both")?.count).toBe(2);
+  });
+
+  /** A claimed discount is not a verified one. */
+  it("separates claimed member discounts from verified ones", () => {
+    const metric = buildReport(tracked())[1].metrics.find(
+      (m) => m.label === "Member discounts",
+    )!;
+    expect(metric.value).toBe("1/2");
+    expect(metric.caveat).toContain("not counted as settled revenue");
+  });
+
+  it("reports discounts claimed but never verified", () => {
+    const observations = buildReport(tracked())[1].observations;
+    expect(observations.some((o) => o.includes("never verified"))).toBe(true);
+  });
+
+  it("counts interest in a future event", () => {
+    const metric = buildReport(tracked())[1].metrics.find(
+      (m) => m.label === "Future event interest",
+    );
+    expect(metric?.value).toBe("1");
+  });
+
+  /** An event without tracks must not sprout empty track sections. */
+  it("stays silent about tracks when the event has none", () => {
+    const metrics = buildReport(input())[1].metrics;
+    expect(metrics.some((m) => m.label === "On the board-game floor")).toBe(false);
+    expect(
+      buildReport(input())[1].tables.some((t) => t.title === "By what they came for"),
+    ).toBe(false);
+  });
+});
+
 describe("buildDocument", () => {
   it("carries the identity a printed report needs", () => {
     const doc = buildDocument(input());
