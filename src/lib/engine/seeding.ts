@@ -76,7 +76,7 @@ function ordinal(n: number): string {
  * director most wants to see, because a Swiss draw commonly pairs neighbouring
  * seeds in the opening round.
  */
-export function sameSchoolWarnings(
+function sameSchoolWarnings(
   entries: SeedEntry[],
   players: Map<string, Player>,
 ): SeedWarning[] {

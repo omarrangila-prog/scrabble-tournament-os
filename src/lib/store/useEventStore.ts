@@ -509,9 +509,6 @@ export const selectForm = (s: EventStore, eventId: string) =>
 export const selectRegistrations = (s: EventStore, eventId: string) =>
   s.registrations.filter((r) => r.eventId === eventId);
 
-export const selectEventToken = (s: EventStore, eventId: string) =>
-  s.tokens.find((t) => t.kind === "event" && t.eventId === eventId && !t.revoked);
-
 /* -------------------------------------------------------------------------- */
 /* Scoped selectors                                                            */
 /* -------------------------------------------------------------------------- */
@@ -533,9 +530,6 @@ export const selectScopedRegistrations = (s: EventStore) =>
   scoped(s.registrations, s.scope());
 
 export const selectScopedForm = (s: EventStore) => scoped(s.forms, s.scope())[0];
-
-export const selectScopedTokens = (s: EventStore) =>
-  scoped(s.tokens, s.scope()).filter((t) => !t.revoked);
 
 /** Headline counts for the organizer review queue. */
 export function registrationSummary(registrations: GuestRegistration[]) {

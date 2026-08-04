@@ -176,67 +176,6 @@ export function ProfileSkeleton({ className }: { className?: string }) {
   );
 }
 
-/** Collapsible section wrapper with a smooth height transition. */
-export function Expandable({
-  title,
-  subtitle,
-  icon,
-  defaultOpen = true,
-  children,
-  action,
-}: {
-  title: string;
-  subtitle?: string;
-  icon?: React.ReactNode;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  const [open, setOpen] = React.useState(defaultOpen);
-  return (
-    <div className="glass overflow-hidden rounded-card">
-      <div className="flex items-center gap-3 p-4">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        >
-          {icon ? (
-            <span className="grid size-9 shrink-0 place-items-center rounded-control bg-primary-050 text-primary">
-              {icon}
-            </span>
-          ) : null}
-          <span className="min-w-0">
-            <span className="block truncate text-[15px] font-semibold tracking-[-0.01em] text-ink">
-              {title}
-            </span>
-            {subtitle ? (
-              <span className="block truncate text-[12.5px] text-muted">{subtitle}</span>
-            ) : null}
-          </span>
-          <motion.span
-            animate={{ rotate: open ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="ml-auto shrink-0 text-faint"
-            aria-hidden
-          >
-            ▾
-          </motion.span>
-        </button>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </div>
-      <motion.div
-        initial={false}
-        animate={{ height: open ? "auto" : 0, opacity: open ? 1 : 0 }}
-        transition={{ duration: 0.28, ease: "easeInOut" }}
-        className="overflow-hidden"
-      >
-        <div className="px-4 pb-4">{children}</div>
-      </motion.div>
-    </div>
-  );
-}
-
 /** Full-screen image viewer for the player portrait. */
 export function Lightbox({
   open,

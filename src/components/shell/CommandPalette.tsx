@@ -39,7 +39,7 @@ const KIND_ICON: Record<SearchResult["kind"], React.ElementType> = {
 };
 
 /** Searches every entity the specification requires the palette to reach. */
-export function useGlobalSearch(query: string): SearchResult[] {
+function useGlobalSearch(query: string): SearchResult[] {
   const players = useStore((s) => s.players);
   const pairings = useStore((s) => s.pairings);
   const rounds = useStore((s) => s.rounds);

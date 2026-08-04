@@ -240,7 +240,7 @@ export interface FormDraft {
   savedAt: string;
 }
 
-export function draftKey(eventId: string): string {
+function draftKey(eventId: string): string {
   return `bluffy-registration-draft-${eventId}`;
 }
 

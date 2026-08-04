@@ -238,9 +238,6 @@ export const DEMO_TRACKS = {
 
 export type DemoTrackId = keyof typeof DEMO_TRACKS;
 
-/** Backwards-compatible default export used by the overlay. */
-export const DEMO_STEPS = TOURNAMENT_STEPS;
-
 interface GuidedState {
   active: boolean;
   step: number;

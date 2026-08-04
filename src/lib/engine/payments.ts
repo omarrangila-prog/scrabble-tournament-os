@@ -47,10 +47,10 @@ export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
 };
 
 /** Statuses that count as money actually received. */
-export const RECEIVED_STATUSES: PaymentStatus[] = ["verified"];
+const RECEIVED_STATUSES: PaymentStatus[] = ["verified"];
 
 /** Statuses a reviewer still has to act on. */
-export const OPEN_STATUSES: PaymentStatus[] = [
+const OPEN_STATUSES: PaymentStatus[] = [
   "receipt-uploaded",
   "processing",
   "review-required",

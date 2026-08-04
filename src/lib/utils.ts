@@ -41,13 +41,6 @@ export function timeAgo(iso: string, reference = Date.now()): string {
 
 export const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
-export function initialsColor(hue: number) {
-  return {
-    background: `linear-gradient(135deg, hsl(${hue} 78% 92%), hsl(${(hue + 40) % 360} 76% 86%))`,
-    color: `hsl(${hue} 52% 32%)`,
-  };
-}
-
 /** Triggers a client-side file download for demo exports. */
 export function downloadFile(filename: string, content: string, type = "text/plain") {
   const blob = new Blob([content], { type });

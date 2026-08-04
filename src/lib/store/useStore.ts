@@ -701,15 +701,3 @@ export const selectStandings = (
   options: { division?: string; upToRound?: number } = {},
 ) => computeStandings(s.players, s.pairings, s.tournament, options);
 
-export const selectRoundPairings = (s: Store, round: number) =>
-  s.pairings.filter((p) => p.round === round).sort((a, b) => a.board - b.board);
-
-export const selectPlayer = (s: Store, id: string) => s.players.find((p) => p.id === id);
-
-export const selectPendingResults = (s: Store) =>
-  s.pairings.filter(
-    (p) => p.round === s.tournament.currentRound && p.status === "awaiting-verification",
-  );
-
-export const selectLiveGames = (s: Store) =>
-  s.pairings.filter((p) => p.round === s.tournament.currentRound && p.status === "live");

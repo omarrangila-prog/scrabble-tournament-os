@@ -231,7 +231,7 @@ export function categoryEligibility(
   return { eligible: true };
 }
 
-export function categoryRank(category: PlayerCategory): number {
+function categoryRank(category: PlayerCategory): number {
   return CATEGORY_ORDER.indexOf(category);
 }
 

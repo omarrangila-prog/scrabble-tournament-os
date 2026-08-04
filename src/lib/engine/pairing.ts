@@ -9,8 +9,6 @@
 
 import {
   ConflictKind,
-  Division,
-  DivisionId,
   Pairing,
   PairingConflict,
   PairingConstraints,
@@ -44,7 +42,7 @@ export function eligiblePlayers(players: Player[]): Player[] {
  * Detects every rule violation on a single pairing. Kept pure so both the
  * generator and the manual-adjustment UI report conflicts identically.
  */
-export function detectConflicts(
+function detectConflicts(
   pairing: Pairing,
   players: Map<string, Player>,
   history: Map<string, string[]>,
@@ -418,6 +416,3 @@ export function swapPlayers(
   return annotateConflicts(next, players, tournament, history);
 }
 
-export function divisionOf(id: DivisionId, divisions: Division[]) {
-  return divisions.find((d) => d.id === id);
-}

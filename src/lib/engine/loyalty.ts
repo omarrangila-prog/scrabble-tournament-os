@@ -24,15 +24,6 @@ export type LoyaltyKind =
   | "free-games"
   | "membership";
 
-export const LOYALTY_KIND_LABEL: Record<LoyaltyKind, string> = {
-  none: "No returning-player reward",
-  percentage: "Percentage off",
-  fixed: "Fixed amount off",
-  "free-entry": "Free entry",
-  "free-games": "Free games",
-  membership: "Membership discount",
-};
-
 export interface LoyaltyPolicy {
   kind: LoyaltyKind;
   /** Percent for `percentage`, currency units for `fixed`, games for `free-games`. */
