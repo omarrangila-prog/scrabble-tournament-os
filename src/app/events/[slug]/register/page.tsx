@@ -193,15 +193,18 @@ export default function RegisterPage() {
         >
           {event.collaborators?.length ? (
             <p
-              className="text-[10.5px] font-bold uppercase tracking-[0.16em]"
+              // Wide letter-spacing on three joined names overruns a 320px
+              // screen, so it tightens and wraps on the narrowest phones.
+              className="text-[10.5px] font-bold uppercase tracking-[0.08em] sm:tracking-[0.16em]"
               style={{ color: `${BROWN}99` }}
             >
               {event.collaborators.join("  ×  ")}
             </p>
           ) : null}
 
+          {/* Scales from the smallest phone rather than starting at 34px. */}
           <h1
-            className="mt-2 text-[34px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[40px]"
+            className="mt-2 text-[27px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[40px]"
             style={{ color: BROWN }}
           >
             {event.name}

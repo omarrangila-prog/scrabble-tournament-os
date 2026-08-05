@@ -866,7 +866,10 @@ export function GameOnForm({
                                     setCopied(inst.method);
                                     window.setTimeout(() => setCopied(null), 1600);
                                   }}
-                                  className="rounded p-1 text-faint transition-colors hover:bg-[rgb(var(--c-line))] hover:text-ink"
+                                  // 20px was too small to hit reliably on a
+                                  // phone, and this is the control people use to
+                                  // copy an IBAN.
+                                  className="grid size-11 shrink-0 place-items-center rounded-control text-faint transition-colors hover:bg-[rgb(var(--c-line))] hover:text-ink"
                                 >
                                   {copied === inst.method ? (
                                     <Check className="size-3" />
