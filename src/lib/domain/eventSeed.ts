@@ -1,13 +1,15 @@
 /**
- * Demo data for the public event slice.
+ * The two real August 2026 events.
  *
- * One published event with a realistic spread of registrations: verified and
- * pending payments, a discount campaign, a complimentary entry, a waitlisted
- * player and an amount mismatch — so the organizer review queue has genuine
- * decisions to make rather than a uniform list.
+ * Not demo data: these are the events the organizer is actually running, and
+ * they start with no registrations at all. Entrants arrive from the public
+ * form. Seeding invented ones would put fabricated names into the participant
+ * list, the payment queue, and ultimately onto certificates that claim to be
+ * evidence-based.
  */
 
 import { defaultForm, Discount, PublicEvent, QrToken, RegistrationForm } from "./events";
+import type { PaymentMethod } from "./identity";
 import type { GuestRegistration } from "../store/useEventStore";
 
 const T = (day: string, time = "10:00") => {
@@ -19,6 +21,27 @@ const T = (day: string, time = "10:00") => {
 };
 
 export const DEMO_EVENT_SLUG = "game-on-8-august";
+
+/**
+ * The one set of accounts every event collects into.
+ *
+ * Defined once and shared rather than repeated per event. Two copies of an
+ * account number drift the moment one is edited, and a form quoting a stale
+ * account sends real money somewhere nobody is watching. Every registration
+ * form reads these, so changing them here changes them everywhere.
+ *
+ * Transcribed from the organizer's registration document. Still worth checking
+ * against a statement before money moves — one wrong digit in an IBAN is an
+ * unrecoverable transfer.
+ */
+export const PAYMENT_ACCOUNTS = {
+  methods: ["bank-transfer", "easypaisa"] as PaymentMethod[],
+  bank:
+    "Habib Metropolitan Bank · Huda Garib · 6-01-70-20311-714-140261 · IBAN PK66MPBL0170027140140261 · Khayaban-e-Shahbaz Branch",
+  wallet: "0333 6665761 (Nida Khan)",
+  /** Where participants send their screenshot if they cannot upload it. */
+  receiptContact: "0300 8278594",
+} as const;
 
 /**
  * GAME ON!
@@ -91,16 +114,10 @@ const EVENT: PublicEvent = {
     },
   ],
 
-  /*
-   * The poster prints no account details. The organizer confirmed both August
-   * events collect into the same accounts, so these match AlphaBattle exactly
-   * — not copied on the assumption that a previous event's account still
-   * applies, which would send money to the wrong place.
-   */
-  paymentMethods: ["bank-transfer", "easypaisa"],
-  bankDetails:
-    "Habib Metropolitan Bank · Huda Garib · 6-01-70-20311-714-140261 · IBAN PK66MPBL0170027140140261 · Khayaban-e-Shahbaz Branch",
-  walletDetails: "0333 6665761 (Nida Khan)",
+  // Shared across every event — see PAYMENT_ACCOUNTS.
+  paymentMethods: [...PAYMENT_ACCOUNTS.methods],
+  bankDetails: PAYMENT_ACCOUNTS.bank,
+  walletDetails: PAYMENT_ACCOUNTS.wallet,
   waitingList: true,
 
   participationTracks: ["board_games", "speed_scrabble", "both"],
@@ -216,10 +233,10 @@ const ALPHABATTLE: PublicEvent = {
     },
   ],
 
-  paymentMethods: ["bank-transfer", "easypaisa"],
-  bankDetails:
-    "Habib Metropolitan Bank · Huda Garib · 6-01-70-20311-714-140261 · IBAN PK66MPBL0170027140140261 · Khayaban-e-Shahbaz Branch",
-  walletDetails: "0333 6665761 (Nida Khan)",
+  // Shared across every event — see PAYMENT_ACCOUNTS.
+  paymentMethods: [...PAYMENT_ACCOUNTS.methods],
+  bankDetails: PAYMENT_ACCOUNTS.bank,
+  walletDetails: PAYMENT_ACCOUNTS.wallet,
   waitingList: true,
 
   // A Scrabble competition only. No board-game floor at this one.

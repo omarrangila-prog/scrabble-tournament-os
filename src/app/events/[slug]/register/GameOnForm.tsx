@@ -833,6 +833,14 @@ export function GameOnForm({
 
                         {inst.accountNumber !== "—" ? (
                           <dl className="mt-1.5 space-y-1">
+                            {inst.bank ? (
+                              <div className="flex items-baseline justify-between gap-3">
+                                <dt className="text-[11.5px] text-muted">Bank</dt>
+                                <dd className="text-right text-[12.5px] font-semibold text-ink">
+                                  {inst.bank}
+                                </dd>
+                              </div>
+                            ) : null}
                             <div className="flex items-baseline justify-between gap-3">
                               <dt className="text-[11.5px] text-muted">Account title</dt>
                               <dd className="text-right text-[12.5px] font-semibold text-ink">

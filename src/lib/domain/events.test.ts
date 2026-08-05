@@ -9,7 +9,7 @@ import {
   slugify,
   STATE_DESTINATION,
 } from "./events";
-import { buildEventSeed } from "./eventSeed";
+import { buildEventSeed, PAYMENT_ACCOUNTS } from "./eventSeed";
 
 const seed = buildEventSeed();
 const EVENT = seed.events[0];
@@ -286,6 +286,19 @@ describe("seeded event data", () => {
     for (const ev of [gameOn, alphaBattle]) {
       expect(ev.paymentMethods.length).toBeGreaterThan(0);
       expect(ev.bankDetails.trim()).not.toBe("");
+    }
+  });
+
+  /**
+   * Holds for every event, not just today's two. A third event added later that
+   * quotes a different account would send money somewhere nobody is watching,
+   * and the divergence would be invisible until someone paid into it.
+   */
+  it("quotes the one shared account on every event", () => {
+    for (const ev of seed.events) {
+      expect(ev.bankDetails).toBe(PAYMENT_ACCOUNTS.bank);
+      expect(ev.walletDetails).toBe(PAYMENT_ACCOUNTS.wallet);
+      expect(ev.paymentMethods).toEqual([...PAYMENT_ACCOUNTS.methods]);
     }
   });
 

@@ -96,10 +96,22 @@ export default function CommandCentrePage() {
 
         <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
+            {/*
+              * The status badge reads the tournament rather than asserting
+              * "Live". A pulsing Live badge over a tournament with no players
+              * and no played rounds claims an event is under way when nothing
+              * has started.
+              */}
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone="success" dot pulse>
-                Live
-              </Badge>
+              {tournament.status === "live" ? (
+                <Badge tone="success" dot pulse>
+                  Live
+                </Badge>
+              ) : tournament.status === "complete" ? (
+                <Badge tone="neutral">Complete</Badge>
+              ) : (
+                <Badge tone="warning">Setup</Badge>
+              )}
               <Badge tone="neutral">Swiss System</Badge>
               <SyncIndicator state="synced" />
             </div>
@@ -108,18 +120,25 @@ export default function CommandCentrePage() {
               {tournament.name.replace(" — Demo", "")}
             </h1>
 
+            {/* Each fact appears only once it is real. */}
             <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13.5px] text-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="size-4" />
-                {venue.name} · {tournament.city}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <ListOrdered className="size-4" />
-                Round {round} of {tournament.totalRounds}
-              </span>
+              {venue.totalBoards > 0 ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="size-4" />
+                  {venue.name} · {tournament.city}
+                </span>
+              ) : null}
+              {round > 0 ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <ListOrdered className="size-4" />
+                  Round {round} of {tournament.totalRounds}
+                </span>
+              ) : null}
               <span className="inline-flex items-center gap-1.5">
                 <Users className="size-4" />
-                {players.length} players
+                {players.length === 0
+                  ? "No players yet"
+                  : `${players.length} player${players.length === 1 ? "" : "s"}`}
               </span>
             </p>
 

@@ -53,7 +53,8 @@ export const ORGANIZATION: Organization = {
  */
 export const VENUE: Venue = {
   id: "venue-unset",
-  name: "Venue not set",
+  // Reads as a prompt wherever it surfaces, rather than as a venue name.
+  name: "No venue set yet",
   city: "Karachi",
   halls: [],
   accessibleBoards: [],

@@ -88,13 +88,22 @@ export default function TvDisplayPage() {
             {tournament.name.replace(" — Demo", "")}
           </h1>
           <p className="mt-0.5 text-[15px] text-muted sm:text-[17px]">
-            Round {tournament.currentRound} of {tournament.totalRounds} · {store.venue.name}
+            {tournament.currentRound > 0
+              ? `Round ${tournament.currentRound} of ${tournament.totalRounds}`
+              : "Not started"}
+            {store.venue.totalBoards > 0 ? ` · ${store.venue.name}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Badge tone="success" dot pulse className="!px-4 !py-2 !text-[15px]">
-            Live
-          </Badge>
+          {tournament.status === "live" ? (
+            <Badge tone="success" dot pulse className="!px-4 !py-2 !text-[15px]">
+              Live
+            </Badge>
+          ) : (
+            <Badge tone="neutral" className="!px-4 !py-2 !text-[15px]">
+              Not started
+            </Badge>
+          )}
           <p className="text-[15px] font-medium text-muted num sm:text-[17px]">{panel.label}</p>
         </div>
       </header>

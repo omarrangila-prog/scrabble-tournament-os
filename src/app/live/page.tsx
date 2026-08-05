@@ -107,9 +107,16 @@ export default function PublicSitePage() {
               {venue.name}, {tournament.city}
             </p>
           </div>
-          <Badge tone="success" dot pulse className="hidden sm:inline-flex">
-            Live · Round {tournament.currentRound}
-          </Badge>
+          {/* Public page: never claim a round is under way before one is. */}
+          {tournament.status === "live" && tournament.currentRound > 0 ? (
+            <Badge tone="success" dot pulse className="hidden sm:inline-flex">
+              Live · Round {tournament.currentRound}
+            </Badge>
+          ) : (
+            <Badge tone="neutral" className="hidden sm:inline-flex">
+              Not started
+            </Badge>
+          )}
           <Button size="sm" variant="secondary" icon={<Link2 className="size-3.5" />} onClick={copyLink} className="hidden sm:inline-flex">
             Copy Public Link
           </Button>
@@ -131,9 +138,13 @@ export default function PublicSitePage() {
           <div className="space-y-4">
             <Card className="board-motif overflow-hidden">
               <div className="p-6 sm:p-8">
-                <Badge tone="success" dot pulse>
-                  Live now
-                </Badge>
+                {tournament.status === "live" ? (
+                  <Badge tone="success" dot pulse>
+                    Live now
+                  </Badge>
+                ) : (
+                  <Badge tone="neutral">Not started</Badge>
+                )}
                 <h1 className="mt-3 text-[26px] font-semibold leading-tight tracking-[-0.025em] text-ink sm:text-[34px]">
                   {tournament.name.replace(" — Demo", "")}
                 </h1>

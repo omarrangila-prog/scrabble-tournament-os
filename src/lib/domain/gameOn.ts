@@ -538,6 +538,14 @@ export interface PaymentInstruction {
   accountTitle: string;
   /** Account number, IBAN or mobile number. */
   accountNumber: string;
+  /**
+   * Institution and branch, for a bank transfer.
+   *
+   * Kept separate rather than folded into the title: a transfer form asks for
+   * the bank by name, and dropping it leaves the participant holding an
+   * account number with no idea where to send it.
+   */
+  bank?: string;
   /** Anything else the participant needs, e.g. a reference to quote. */
   note?: string;
 }
@@ -556,11 +564,30 @@ export function paymentInstructions(
 ): PaymentInstruction[] {
   const out: PaymentInstruction[] = [];
 
-  const parse = (raw: string): { title: string; number: string } | null => {
+  /*
+   * "Bank · Title · Number · IBAN · Branch" — the bank and any branch are kept
+   * rather than dropped. Taking parts[1] as the title and discarding the rest
+   * left the form showing an account number with no bank name against it,
+   * which is not enough to make a transfer.
+   */
+  const parse = (
+    raw: string,
+  ): { title: string; number: string; bank?: string } | null => {
     const parts = raw.split("·").map((p) => p.trim()).filter(Boolean);
     if (parts.length === 0) return null;
-    // "Bank · Title · Number" or "Number (Title)".
-    if (parts.length >= 3) return { title: parts[1], number: parts.slice(2).join(" ") };
+
+    if (parts.length >= 3) {
+      const [bank, title, ...rest] = parts;
+      // A trailing "… Branch" belongs with the bank, not the account number.
+      const branchAt = rest.findIndex((p) => /branch$/i.test(p));
+      const branch = branchAt >= 0 ? rest.splice(branchAt, 1)[0] : "";
+      return {
+        title,
+        number: rest.join(" · "),
+        bank: branch ? `${bank} · ${branch}` : bank,
+      };
+    }
+
     if (parts.length === 2) return { title: parts[0], number: parts[1] };
 
     const m = raw.match(/^(.+?)\s*\((.+)\)$/);
@@ -575,6 +602,7 @@ export function paymentInstructions(
         method: "Bank transfer",
         accountTitle: p.title || "See account details",
         accountNumber: p.number,
+        bank: p.bank,
         note: "Transfer the exact amount shown, then upload your receipt below.",
       });
   }

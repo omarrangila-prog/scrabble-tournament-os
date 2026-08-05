@@ -506,6 +506,27 @@ describe("paymentInstructions", () => {
     expect(i.accountNumber).toContain("PK00 MEZN");
   });
 
+  /**
+   * The real account line, verbatim. The bank name used to be discarded, which
+   * left the form showing an account number with nothing to say where to send
+   * it — not enough to complete a transfer.
+   */
+  it("keeps the bank and branch off the real account line", () => {
+    const [i] = paymentInstructions(
+      ["bank-transfer"],
+      "Habib Metropolitan Bank · Huda Garib · 6-01-70-20311-714-140261 · IBAN PK66MPBL0170027140140261 · Khayaban-e-Shahbaz Branch",
+      "",
+    );
+
+    expect(i.bank).toContain("Habib Metropolitan Bank");
+    expect(i.bank).toContain("Khayaban-e-Shahbaz Branch");
+    expect(i.accountTitle).toBe("Huda Garib");
+    expect(i.accountNumber).toContain("6-01-70-20311-714-140261");
+    expect(i.accountNumber).toContain("PK66MPBL0170027140140261");
+    // The branch belongs with the bank, not in the number someone copies.
+    expect(i.accountNumber).not.toMatch(/Branch/i);
+  });
+
   it("reads a wallet number written with the title in brackets", () => {
     const [i] = paymentInstructions(["easypaisa"], "", "0300 1234567 (Sir Hani)");
     expect(i.method).toBe("EasyPaisa");
