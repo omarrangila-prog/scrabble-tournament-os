@@ -831,25 +831,31 @@ export function GameOnForm({
                         {inst.accountNumber !== "—" ? (
                           <dl className="mt-1.5 space-y-1">
                             {inst.bank ? (
-                              <div className="flex items-baseline justify-between gap-3">
-                                <dt className="text-[11.5px] text-muted">Bank</dt>
-                                <dd className="text-right text-[12.5px] font-semibold text-ink">
+                              <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                                <dt className="shrink-0 text-[11.5px] text-muted">Bank</dt>
+                                <dd className="min-w-0 text-[12.5px] font-semibold text-ink sm:text-right">
                                   {inst.bank}
                                 </dd>
                               </div>
                             ) : null}
-                            <div className="flex items-baseline justify-between gap-3">
-                              <dt className="text-[11.5px] text-muted">Account title</dt>
-                              <dd className="text-right text-[12.5px] font-semibold text-ink">
+                            <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                              <dt className="shrink-0 text-[11.5px] text-muted">Account title</dt>
+                              <dd className="min-w-0 text-[12.5px] font-semibold text-ink sm:text-right">
                                 {inst.accountTitle}
                               </dd>
                             </div>
-                            <div className="flex items-baseline justify-between gap-3">
-                              <dt className="text-[11.5px] text-muted">
+                            {/*
+                              * Stacks on a narrow screen. The account number and
+                              * IBAN together are a long string, and side-by-side
+                              * with its label it either squeezes the label out or
+                              * overflows the card on a small phone.
+                              */}
+                            <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                              <dt className="shrink-0 text-[11.5px] text-muted">
                                 {inst.method === "Bank transfer" ? "Account number" : "Number"}
                               </dt>
-                              <dd className="flex items-center gap-1.5">
-                                <span className="num text-right text-[12.5px] font-semibold text-ink">
+                              <dd className="flex min-w-0 items-start gap-1.5 sm:justify-end">
+                                <span className="num min-w-0 break-all text-[12.5px] font-semibold text-ink sm:text-right">
                                   {inst.accountNumber}
                                 </span>
                                 <button
@@ -882,9 +888,15 @@ export function GameOnForm({
                     ))}
                   </div>
 
+                  {/*
+                    * No exact figure is quoted here. Participants pay different
+                    * amounts — member, family and early-bird rates, bundles, and
+                    * people paying for someone else — so naming one number would
+                    * be wrong for most of them.
+                    */}
                   <p className="mt-3 text-[11.5px] leading-relaxed" style={{ color: "#8A6A1F" }}>
-                    Send exactly {money(quote.payable)}. Quoting a different amount slows
-                    verification.
+                    Keep your transfer receipt — you will need to upload it on this
+                    step.
                   </p>
                 </div>
               ) : (
@@ -1148,9 +1160,9 @@ function ReviewBlock({
         </div>
         <dl className="mt-2 space-y-1.5">
           {rows.map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-4">
+            <div key={label} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
               <dt className="shrink-0 text-[12px] text-muted">{label}</dt>
-              <dd className="text-right text-[12.5px] font-medium text-ink">{value}</dd>
+              <dd className="min-w-0 break-words text-[12.5px] font-medium text-ink sm:text-right">{value}</dd>
             </div>
           ))}
         </dl>
@@ -1164,9 +1176,9 @@ function ReviewBlock({
             ["Time", event.timeDisplay ?? event.startTime],
             ["Venue", `${event.venueName}, ${event.city}`],
           ].map(([label, value]) => (
-            <div key={label} className="flex items-baseline justify-between gap-4">
+            <div key={label} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
               <dt className="shrink-0 text-[12px] text-muted">{label}</dt>
-              <dd className="text-right text-[12.5px] font-medium text-ink">{value}</dd>
+              <dd className="min-w-0 break-words text-[12.5px] font-medium text-ink sm:text-right">{value}</dd>
             </div>
           ))}
         </dl>

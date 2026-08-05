@@ -625,7 +625,8 @@ export function paymentInstructions(
         accountTitle: p.title || "See account details",
         accountNumber: p.number,
         bank: p.bank,
-        note: "Transfer the exact amount shown, then upload your receipt below.",
+        // No amount named: rates, bundles and group payments all differ.
+        note: "Transfer to this account, then upload your receipt below.",
       });
   }
 
