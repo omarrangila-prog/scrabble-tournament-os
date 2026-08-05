@@ -222,6 +222,12 @@ export function GameOnForm({
     allEvents,
   );
 
+  /*
+   * The added events, priced into the panel below. The opened event is excluded
+   * because its fee is already the base of `quote`.
+   */
+  const addedEvents = bundle.selected.filter((e) => e.id !== event.id);
+
   const toggleEvent = (id: string) => {
     if (id === event.id) return;
     setSelectedEventIds((ids) =>
@@ -282,7 +288,19 @@ export function GameOnForm({
     } catch {
       // Nothing to do — a stale draft is harmless.
     }
-    onSubmit(reg as GameOnRegistration);
+    /*
+     * The selection travels with the registration so the recorded amount matches
+     * the quote. Without it the organizer would see one event's fee for someone
+     * who signed up for two.
+     */
+    onSubmit({
+      ...(reg as GameOnRegistration),
+      selectedEventIds,
+      bundleTotal: Math.max(
+        0,
+        quote.payable + addedEvents.reduce((s, e) => s + e.fee, 0) - bundle.bundleOff,
+      ),
+    });
   };
 
   const track = reg.track;
@@ -808,7 +826,7 @@ export function GameOnForm({
                 </div>
               ) : null}
 
-              <FeePanel quote={quote} money={money} />
+              <FeePanel quote={quote} money={money} extra={addedEvents} extraOff={bundle.bundleOff} />
 
               {/* How to pay ------------------------------------------------ */}
               {instructions.length ? (
@@ -966,6 +984,8 @@ export function GameOnForm({
                 onEdit={(i) => setStep(i)}
                 money={money}
                 quote={quote}
+                addedEvents={addedEvents}
+                bundleOff={bundle.bundleOff}
               />
 
               {/* Jamming Session — a separate event, and a separate consent. */}
@@ -1073,13 +1093,25 @@ export function GameOnForm({
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * What the participant owes.
+ *
+ * `extra` carries the other events they added. Without it the panel showed only
+ * the opened event's fee while the bundle line above promised a combined total —
+ * so someone registering for both was quoted, and recorded as owing, one event.
+ */
 function FeePanel({
   quote,
   money,
+  extra = [],
+  extraOff = 0,
 }: {
   quote: ReturnType<typeof quoteFee>;
   money: (n: number) => string;
+  extra?: { name: string; date: string; fee: number }[];
+  extraOff?: number;
 }) {
+  const total = Math.max(0, quote.payable + extra.reduce((s, e) => s + e.fee, 0) - extraOff);
   return (
     <div className="rounded-feature bg-[rgb(var(--c-surface-soft))] p-4">
       <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -1109,9 +1141,31 @@ function FeePanel({
           </div>
         ))}
 
+        {extra.map((e) => (
+          <div key={e.name} className="flex items-baseline justify-between gap-3">
+            <span className="min-w-0 text-[13px] text-muted">
+              {e.name} <span className="text-faint">· {e.date}</span>
+            </span>
+            <span className="num shrink-0 text-[13.5px] font-semibold text-ink">
+              {money(e.fee)}
+            </span>
+          </div>
+        ))}
+
+        {extraOff > 0 ? (
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[13px] text-muted">
+              Multi-event discount ({BUNDLE_DISCOUNT_PERCENT}%)
+            </span>
+            <span className="num shrink-0 text-[13.5px] font-semibold text-[#2F5D3A]">
+              − {money(extraOff)}
+            </span>
+          </div>
+        ) : null}
+
         <div className="flex items-baseline justify-between border-t border-line pt-2">
           <span className="text-[14px] font-bold text-ink">Amount due</span>
-          <span className="num text-[18px] font-extrabold text-ink">{money(quote.payable)}</span>
+          <span className="num text-[18px] font-extrabold text-ink">{money(total)}</span>
         </div>
       </div>
 
@@ -1131,12 +1185,17 @@ function ReviewBlock({
   onEdit,
   money,
   quote,
+  addedEvents,
+  bundleOff,
 }: {
   event: PublicEvent;
   reg: Partial<GameOnRegistration>;
   onEdit: (step: number) => void;
   money: (n: number) => string;
   quote: ReturnType<typeof quoteFee>;
+  /** Other events they added, so the review total matches the quote. */
+  addedEvents: BundleEvent[];
+  bundleOff: number;
 }) {
   const rows: [string, string][] = [
     ["Name", reg.fullName ?? "—"],
@@ -1187,7 +1246,7 @@ function ReviewBlock({
         </dl>
       </div>
 
-      <FeePanel quote={quote} money={money} />
+      <FeePanel quote={quote} money={money} extra={addedEvents} extraOff={bundleOff} />
     </div>
   );
 }

@@ -138,6 +138,16 @@ export interface GameOnRegistration {
   city: string;
   affiliation?: string;
 
+  /**
+   * Every event they are registering for, including the one they opened.
+   *
+   * Needed so the recorded amount matches what they were quoted: without it the
+   * organizer sees one event's fee for someone who signed up for two.
+   */
+  selectedEventIds?: string[];
+  /** Combined amount owed across those events, after the bundle discount. */
+  bundleTotal?: number;
+
   /* Board-game answers, asked only of that track. */
   playedModernBoardGames?: boolean;
   attendingWith?: "alone" | "with-friends";

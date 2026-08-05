@@ -14,6 +14,7 @@ import {
   useEventStore,
 } from "@/lib/store/useEventStore";
 import {
+  BundleEvent,
   CampaignReduction,
   GameOnRegistration,
   quoteFee,
@@ -42,6 +43,23 @@ export default function RegisterPage() {
   const store = useEventStore();
   const event = selectEventBySlug(store, slug);
   const registrations = event ? selectRegistrations(store, event.id) : [];
+
+  /*
+   * The other events someone can add, each with its date.
+   *
+   * This was never passed before, so `otherEvents.length` was always 0 and the
+   * whole event-selection block — the only place the other event's date appears
+   * — never rendered on either form. Only events open for registration are
+   * offered: adding a draft would take money for something unannounced.
+   */
+  const otherEvents: BundleEvent[] = store.events
+    .filter((e) => e.id !== event?.id && e.state === "registration-open")
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      date: formatDate(e.startDate),
+      fee: e.fee,
+    }));
 
   const [submitted, setSubmitted] = React.useState<{
     token: string;
@@ -126,7 +144,9 @@ export default function RegisterPage() {
       // participant is not asked to choose one that does not exist yet.
       paymentMethod: event.paymentMethods[0] ?? "cash",
       receiptFileName: reg.receiptFileName,
-      amountDue: quote.payable,
+      // The bundle total when they added another event, so the payment queue
+      // shows what they were actually quoted.
+      amountDue: reg.bundleTotal ?? quote.payable,
       discountCode: campaign?.code,
       discountAmount: quote.totalOff,
       currency: event.currency,
@@ -240,6 +260,7 @@ export default function RegisterPage() {
             event={event}
             onSubmit={submit}
             campaign={campaign}
+            otherEvents={otherEvents}
             onCampaignCode={applyCode}
           />
           {codeError ? (

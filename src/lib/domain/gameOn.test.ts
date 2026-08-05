@@ -491,6 +491,55 @@ describe("multi-event bundles", () => {
   });
 });
 
+/**
+ * The bundle total the form must charge.
+ *
+ * The form used to describe a combined bundle price while the fee panel showed
+ * only the opened event's fee — and that smaller figure was what got recorded.
+ * Someone registering for both August events was told PKR 2,082 and filed as
+ * owing PKR 1,200.
+ */
+describe("bundle total matches the combined selection", () => {
+  const AUGUST: BundleEvent[] = [
+    { id: "evt-game-on-8-august", name: "GAME ON!", date: "8 Aug 2026", fee: 1200 },
+    { id: "evt-alphabattle-23-august", name: "Blufy's AlphaBattle", date: "23 Aug 2026", fee: 1250 },
+  ];
+
+  /** Mirrors the form: base quote + added fees − bundle discount. */
+  const total = (selectedIds: string[], openedId: string) => {
+    const b = quoteBundle(AUGUST.filter((e) => selectedIds.includes(e.id)), AUGUST);
+    const opened = AUGUST.find((e) => e.id === openedId)!;
+    const added = b.selected.filter((e) => e.id !== openedId);
+    return Math.max(0, opened.fee + added.reduce((s, e) => s + e.fee, 0) - b.bundleOff);
+  };
+
+  it("charges one fee for one event", () => {
+    expect(total(["evt-game-on-8-august"], "evt-game-on-8-august")).toBe(1200);
+  });
+
+  it("charges the discounted combined fee for both", () => {
+    const both = total(
+      ["evt-game-on-8-august", "evt-alphabattle-23-august"],
+      "evt-game-on-8-august",
+    );
+    const b = quoteBundle(AUGUST, AUGUST);
+
+    expect(both).toBe(b.subtotal - b.bundleOff);
+    expect(both).toBe(2082);
+    // Must exceed a single fee — the bug was charging 1200 for two events.
+    expect(both).toBeGreaterThan(1250);
+  });
+
+  it("gives the same total whichever event was opened", () => {
+    const ids = ["evt-game-on-8-august", "evt-alphabattle-23-august"];
+    expect(total(ids, ids[0])).toBe(total(ids, ids[1]));
+  });
+
+  it("never goes negative", () => {
+    expect(total([], "evt-game-on-8-august")).toBeGreaterThanOrEqual(0);
+  });
+});
+
 describe("affiliationWording", () => {
   const SCRABBLE_ONLY = ["speed_scrabble"];
   const SOCIAL = ["board_games", "speed_scrabble", "both"];
