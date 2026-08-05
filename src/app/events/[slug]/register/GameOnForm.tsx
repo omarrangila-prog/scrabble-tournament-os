@@ -178,6 +178,19 @@ export function GameOnForm({
    * cheapest tier they qualify for. Without one, the older single-discount
    * path still applies.
    */
+  /*
+   * The membership question is driven by the event's own member rate rather
+   * than hardcoded. The two August events discount for different bodies —
+   * Alliance Française for one, the Pakistan Scrabble Association for the
+   * other — and a form naming the wrong one asks people to prove a membership
+   * that earns them nothing. An event with no member rate shows no question.
+   */
+  const memberRate = event.rates?.find((r) => r.id === "member") ?? null;
+  const memberBody = memberRate?.label.replace(/ member$/i, "") ?? "";
+  const memberQuestion = memberRate
+    ? `Are you ${/^[aeiou]/i.test(memberBody) ? "an" : "a"} ${memberBody} member?`
+    : "";
+
   const rateResult = event.rates?.length
     ? priceByRate(event.rates, {
         isMember: reg.membershipStatus !== "not-claimed",
@@ -222,17 +235,24 @@ export function GameOnForm({
     event.walletDetails,
   );
 
+  /*
+   * The receipt is required exactly when the upload is shown — that is, when
+   * the event has an account to pay into. Same condition, so nobody is blocked
+   * by a field they were never offered.
+   */
+  const requireReceipt = instructions.some((i) => i.accountNumber !== "—");
+
   /** Only blocks on problems belonging to the step being left. */
   const stepFields: Record<StepId, string[]> = {
     about: ["fullName", "email", "mobile", "city"],
     experience: ["track", "requestedLevel"],
-    payment: ["membershipNumber"],
+    payment: ["membershipNumber", "receiptFileName"],
     review: [],
   };
 
   const next = () => {
     const relevant = stepFields[STEPS[step].id];
-    const problems = validateRegistration(reg).filter((p) => relevant.includes(p.field));
+    const problems = validateRegistration(reg, { requireReceipt }).filter((p) => relevant.includes(p.field));
     if (problems.length) {
       setErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])));
       return;
@@ -247,7 +267,7 @@ export function GameOnForm({
   };
 
   const submit = () => {
-    const problems = validateRegistration(reg);
+    const problems = validateRegistration(reg, { requireReceipt });
     if (problems.length) {
       setErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])));
       // Send them back to the earliest step that still has a problem.
@@ -688,30 +708,32 @@ export function GameOnForm({
           {/* ---- Step 3: Membership and payment ---------------------------- */}
           {STEPS[step].id === "payment" ? (
             <>
-              <Field label="Are you a member of Alliance Française de Karachi?">
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: "discount-requested" as MembershipStatus, label: "Yes" },
-                    { value: "not-claimed" as MembershipStatus, label: "No" },
-                  ].map((o) => (
-                    <button
-                      key={o.label}
-                      type="button"
-                      onClick={() => set("membershipStatus", o.value)}
-                      className={cn(
-                        "rounded-control border px-3 py-3 text-[13.5px] font-semibold transition-colors",
-                        reg.membershipStatus === o.value
-                          ? "border-[#2F5D3A] bg-[#2F5D3A]/5 text-[#2F5D3A]"
-                          : "border-line bg-[rgb(var(--c-surface-strong))] text-muted",
-                      )}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </Field>
+              {memberRate ? (
+                <Field label={memberQuestion}>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: "discount-requested" as MembershipStatus, label: "Yes" },
+                      { value: "not-claimed" as MembershipStatus, label: "No" },
+                    ].map((o) => (
+                      <button
+                        key={o.label}
+                        type="button"
+                        onClick={() => set("membershipStatus", o.value)}
+                        className={cn(
+                          "rounded-control border px-3 py-3 text-[13.5px] font-semibold transition-colors",
+                          reg.membershipStatus === o.value
+                            ? "border-[#2F5D3A] bg-[#2F5D3A]/5 text-[#2F5D3A]"
+                            : "border-line bg-[rgb(var(--c-surface-strong))] text-muted",
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              ) : null}
 
-              {reg.membershipStatus !== "not-claimed" ? (
+              {memberRate && reg.membershipStatus !== "not-claimed" ? (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -872,7 +894,9 @@ export function GameOnForm({
               {instructions.some((i) => i.accountNumber !== "—") ? (
                 <Field
                   label="Payment screenshot"
+                  required
                   hint="A photo or screenshot of your transfer confirmation."
+                  error={errors.receiptFileName}
                 >
                   <label
                     className={cn(
@@ -903,7 +927,7 @@ export function GameOnForm({
                           Upload your payment screenshot
                         </span>
                         <span className="text-[11.5px] text-muted">
-                          You can also upload it later from your registration link
+                          Required to complete your registration
                         </span>
                       </>
                     )}

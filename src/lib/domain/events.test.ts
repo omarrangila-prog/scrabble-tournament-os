@@ -208,9 +208,27 @@ describe("default form", () => {
 });
 
 describe("seeded event data", () => {
-  it("seeds two events, both drafted until their details are confirmed", () => {
+  /**
+   * Both events are open. The assertion that matters is not the state itself
+   * but the invariant behind it: an event accepting registrations must be able
+   * to take the money it asks for. An open event with no payment method or no
+   * receiving account would collect fees with nowhere to send them, which is
+   * exactly why both were held as drafts until the accounts were confirmed.
+   */
+  it("seeds two events, and any open one can actually take payment", () => {
     expect(seed.events).toHaveLength(2);
-    for (const event of seed.events) expect(event.state).toBe("draft");
+
+    const open = seed.events.filter((e) => e.state === "registration-open");
+    // Without this the loop below passes vacuously if nothing is open.
+    expect(open.length).toBeGreaterThan(0);
+
+    for (const event of open) {
+
+      expect(event.paymentMethods.length).toBeGreaterThan(0);
+      expect(
+        event.bankDetails.trim() || event.walletDetails.trim(),
+      ).not.toBe("");
+    }
   });
 
   /** Two genuinely separate events, not one with variants. */

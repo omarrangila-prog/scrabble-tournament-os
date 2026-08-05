@@ -220,6 +220,49 @@ describe("validateRegistration", () => {
     expect(problems.some((p) => p.field === "requestedLevel")).toBe(true);
   });
 
+  /*
+   * The payment screenshot. A registration with no receipt carries no evidence
+   * of payment at all, leaving the organizer to chase each person individually.
+   */
+  describe("payment screenshot", () => {
+    const hasReceipt = { requireReceipt: true };
+
+    it("blocks a registration with no screenshot", () => {
+      const problems = validateRegistration(base, hasReceipt);
+      expect(problems.some((p) => p.field === "receiptFileName")).toBe(true);
+    });
+
+    it("accepts one once the screenshot is attached", () => {
+      const problems = validateRegistration(
+        { ...base, receiptFileName: "transfer.jpg" },
+        hasReceipt,
+      );
+      expect(problems).toEqual([]);
+    });
+
+    it("treats a blank filename as no screenshot", () => {
+      const problems = validateRegistration({ ...base, receiptFileName: "   " }, hasReceipt);
+      expect(problems.some((p) => p.field === "receiptFileName")).toBe(true);
+    });
+
+    /**
+     * The trap this guards against: an event with no receiving account shows no
+     * upload field. Demanding a screenshot there would block registration with
+     * an error the participant has no way to clear.
+     */
+    it("does not demand a screenshot when the event cannot take payment", () => {
+      expect(validateRegistration(base, { requireReceipt: false })).toEqual([]);
+      expect(validateRegistration(base)).toEqual([]);
+    });
+
+    it("names the field so the form can scroll to it", () => {
+      const problem = validateRegistration(base, hasReceipt).find(
+        (p) => p.field === "receiptFileName",
+      );
+      expect(problem?.message).toMatch(/screenshot/i);
+    });
+  });
+
   it("requires a level from someone doing both", () => {
     const problems = validateRegistration({ ...base, track: "both" });
     expect(problems.some((p) => p.field === "requestedLevel")).toBe(true);

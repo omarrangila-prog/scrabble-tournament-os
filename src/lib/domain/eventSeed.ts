@@ -120,15 +120,21 @@ const EVENT: PublicEvent = {
     "Prize structure",
     "Refund policy",
     "Whether certificates are issued",
-    "Contact phone and email",
+    "Contact email",
   ],
 
   // The poster announces no prizes. Carrying over the previous event's would
   // publish amounts nobody has committed to paying.
   prizes: [],
 
-  // Registration cannot open until the unconfirmed details above are supplied.
-  state: "draft",
+  /*
+   * Open. The two blockers the setup checklist enforces — a payment method and
+   * a receiving account — are both now supplied, so people can register and
+   * pay. The items still in `unconfirmed` above are genuinely unknown but none
+   * of them stops someone entering; they surface as gaps on the event page
+   * rather than as a closed door.
+   */
+  state: "registration-open",
   createdAt: T("2026-07-28"),
   createdBy: "Sir Hani",
   publishedAt: T("2026-08-01"),
@@ -232,7 +238,8 @@ const ALPHABATTLE: PublicEvent = {
 
   unconfirmed: ["Maximum capacity", "Contact email"],
 
-  state: "draft",
+  // Open: payment method and receiving account are both set.
+  state: "registration-open",
   createdAt: T("2026-07-01"),
   createdBy: "Sir Hani",
 };

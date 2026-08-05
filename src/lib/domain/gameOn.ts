@@ -220,9 +220,15 @@ export interface RegistrationProblem {
  *
  * Only asks about what applies: a board-game attendee is never told they must
  * choose a Scrabble level, because they were never shown the question.
+ *
+ * `requireReceipt` follows the same principle. The upload is mandatory, but
+ * only when the event can actually be paid — an event with no receiving
+ * account shows no upload field, and demanding a screenshot nobody can produce
+ * would block registration with an error the participant cannot clear.
  */
 export function validateRegistration(
   reg: Partial<GameOnRegistration>,
+  options: { requireReceipt?: boolean } = {},
 ): RegistrationProblem[] {
   const problems: RegistrationProblem[] = [];
   const need = (field: string, value: unknown, message: string) => {
@@ -249,6 +255,23 @@ export function validateRegistration(
       field: "membershipNumber",
       message: "Your membership number is needed to verify the discount.",
     });
+  }
+
+  /*
+   * The payment screenshot is required. Without it a registration arrives with
+   * no evidence of payment at all, and the organizer is left chasing people
+   * individually to find out who has actually paid.
+   *
+   * This is a claim, not proof: the screenshot still has to be checked against
+   * the account before the payment counts as verified. Requiring it only means
+   * every entry carries something to check.
+   */
+  if (options.requireReceipt) {
+    need(
+      "receiptFileName",
+      reg.receiptFileName,
+      "Upload your payment screenshot to complete your registration.",
+    );
   }
 
   return problems;
