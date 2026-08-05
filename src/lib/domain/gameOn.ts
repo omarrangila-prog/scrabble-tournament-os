@@ -532,6 +532,28 @@ export function describeBundle(quote: BundleQuote, currency = GAME_ON_CURRENCY):
 /* Payment instructions                                                        */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Wording for the optional affiliation field.
+ *
+ * A competition drops "community" and says nothing about seating: the pairing
+ * engine uses affiliation to keep clubmates *apart* (`avoidSameClub`), so
+ * offering to seat them together describes the opposite of what happens. A
+ * social board-game evening does group people, so it keeps both.
+ */
+export function affiliationWording(tracks: string[] | undefined): {
+  label: string;
+  hint: string;
+} {
+  const competitionOnly = tracks?.length === 1 && tracks[0] === "speed_scrabble";
+
+  return competitionOnly
+    ? { label: "School, university or company", hint: "Optional." }
+    : {
+        label: "School, university, company or community",
+        hint: "Optional — helps us seat people together.",
+      };
+}
+
 export interface PaymentInstruction {
   method: string;
   /** Name the money should be sent to. */

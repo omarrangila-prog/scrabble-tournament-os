@@ -23,6 +23,7 @@ import { PublicEvent } from "@/lib/domain/events";
 import {
   BundleEvent,
   BUNDLE_DISCOUNT_PERCENT,
+  affiliationWording,
   BUNDLE_MIN_EVENTS,
   CampaignReduction,
   describeBundle,
@@ -173,11 +174,10 @@ export function GameOnForm({
     });
   };
 
-  /*
-   * An event with a rate table prices from it: the participant pays the
-   * cheapest tier they qualify for. Without one, the older single-discount
-   * path still applies.
-   */
+  const { label: affiliationLabel, hint: affiliationHint } = affiliationWording(
+    event.participationTracks,
+  );
+
   /*
    * The membership question is driven by the event's own member rate rather
    * than hardcoded. The two August events discount for different bodies —
@@ -431,10 +431,7 @@ export function GameOnForm({
                 </Field>
               </div>
 
-              <Field
-                label="School, university, company or community"
-                hint="Optional — helps us seat people together."
-              >
+              <Field label={affiliationLabel} hint={affiliationHint}>
                 <Input
                   value={reg.affiliation ?? ""}
                   onChange={(e) => set("affiliation", e.target.value)}

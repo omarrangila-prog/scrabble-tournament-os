@@ -6,6 +6,7 @@ import {
   BundleEvent,
   BUNDLE_DISCOUNT_PERCENT,
   describeBundle,
+  affiliationWording,
   paymentInstructions,
   quoteBundle,
   statusAfterUpload,
@@ -487,6 +488,38 @@ describe("multi-event bundles", () => {
   it("describes the position in the participant's terms", () => {
     expect(describeBundle(quoteBundle([events[0]], events))).toContain("Add one more");
     expect(describeBundle(quoteBundle([events[0], events[1]], events))).toContain("applied");
+  });
+});
+
+describe("affiliationWording", () => {
+  const SCRABBLE_ONLY = ["speed_scrabble"];
+  const SOCIAL = ["board_games", "speed_scrabble", "both"];
+
+  it("drops 'community' at a competition", () => {
+    expect(affiliationWording(SCRABBLE_ONLY).label).not.toMatch(/community/i);
+  });
+
+  /**
+   * The pairing engine uses affiliation to keep clubmates *apart*
+   * (avoidSameClub). Offering to seat them together would describe the
+   * opposite of what the software actually does.
+   */
+  it("promises no seating at a competition", () => {
+    expect(affiliationWording(SCRABBLE_ONLY).hint).not.toMatch(/seat|together/i);
+  });
+
+  it("keeps both at the social evening, which does group people", () => {
+    const { label, hint } = affiliationWording(SOCIAL);
+    expect(label).toMatch(/community/i);
+    expect(hint).toMatch(/together/i);
+  });
+
+  it("still asks for an affiliation at a competition", () => {
+    expect(affiliationWording(SCRABBLE_ONLY).label).toMatch(/school|university|company/i);
+  });
+
+  it("treats a missing track list as the social default", () => {
+    expect(affiliationWording(undefined).label).toMatch(/community/i);
   });
 });
 
