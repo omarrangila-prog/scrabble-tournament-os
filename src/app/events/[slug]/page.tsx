@@ -10,7 +10,7 @@ import {
   Clock,
   Dices,
   MapPin,
-  Ticket,
+  Utensils,
   Users,
 } from "lucide-react";
 import { Button, Card, EmptyState } from "@/components/ui";
@@ -75,16 +75,16 @@ function faqFor(hasBoardGames: boolean): { q: string; a: string }[] {
     return [
       {
         q: "Do I need to be good at Scrabble?",
-        a: "No. There are three categories — beginners, intermediate and advanced — so you play people at your own level.",
+        a: "No. You are paired with people of a similar skill level.",
       },
       {
         q: "Can I come on my own?",
-        a: "Yes. You are paired with an opponent for every game, so you never need to bring someone.",
+        a: "Yes, but bringing more players — family or friends — adds to the atmosphere, and three or more registering together qualify for the group rate.",
       },
       shared,
       {
         q: "What if I do not know the songs?",
-        a: "The song round is a bit of fun alongside the Scrabble. It does not affect your placing in your category.",
+        a: "The fun is in trying to guess the songs. It does not affect your placing in your category.",
       },
     ];
 
@@ -207,7 +207,7 @@ export default function PublicEventPage() {
         </motion.header>
 
         {/* ---- Essentials ---------------------------------------------- */}
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             {
               icon: <CalendarDays className="size-4" />,
@@ -225,13 +225,6 @@ export default function PublicEventPage() {
               icon: <MapPin className="size-4" />,
               label: event.venueName,
               sub: event.address || event.city,
-            },
-            {
-              icon: <Ticket className="size-4" />,
-              label: money(event.fee),
-              sub: event.memberDiscountPercent
-                ? `${event.memberDiscountPercent}% off for AFK members`
-                : "Entry",
             },
           ].map((item, i) => (
             <div
@@ -373,6 +366,15 @@ export default function PublicEventPage() {
                 {money(event.fee)}
               </span>
             </div>
+
+            {/* What the fee covers, so nobody budgets for lunch separately. */}
+            <p
+              className="mt-2 flex items-center gap-1.5 text-[12.5px] font-semibold"
+              style={{ color: FOREST }}
+            >
+              <Utensils className="size-3.5" />
+              Lunch and tea included
+            </p>
 
             {discounted !== null ? (
               <>

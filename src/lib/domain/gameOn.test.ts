@@ -195,12 +195,21 @@ describe("validateRegistration", () => {
     email: "hunain@example.com",
     mobile: "03001234567",
     city: "Karachi",
+    area: "Clifton",
     membershipStatus: "not-claimed",
     communicationConsent: true,
   };
 
   it("accepts a complete board-game registration", () => {
     expect(validateRegistration(base)).toEqual([]);
+  });
+
+  /** Where entrants travel from: a city field alone cannot show it. */
+  it("requires the area of residence", () => {
+    const { area: _area, ...withoutArea } = base;
+    void _area;
+    const problems = validateRegistration(withoutArea);
+    expect(problems.some((p) => p.field === "area")).toBe(true);
   });
 
   it("requires the essentials", () => {
@@ -269,16 +278,18 @@ describe("validateRegistration", () => {
     expect(problems.some((p) => p.field === "requestedLevel")).toBe(true);
   });
 
-  it("requires a membership number when a discount is claimed", () => {
-    const problems = validateRegistration({
-      ...base,
-      membershipStatus: "discount-requested",
-    });
-    expect(problems.some((p) => p.field === "membershipNumber")).toBe(true);
-  });
-
-  it("does not ask for a membership number from a non-member", () => {
-    expect(validateRegistration(base).some((p) => p.field === "membershipNumber")).toBe(false);
+  /**
+   * No membership number is asked for any more — the organizer judged three
+   * fields too much friction to claim a discount. The rule that matters now is
+   * the inverse: claiming membership must never block submission, because there
+   * is no field in which to satisfy such a demand.
+   */
+  it("never blocks a registration over membership details", () => {
+    for (const membershipStatus of ["not-claimed", "discount-requested"] as const) {
+      const problems = validateRegistration({ ...base, membershipStatus });
+      expect(problems.some((p) => p.field === "membershipNumber")).toBe(false);
+      expect(problems).toEqual([]);
+    }
   });
 
   it("explains every problem in the participant's terms", () => {

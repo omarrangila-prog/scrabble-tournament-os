@@ -108,9 +108,14 @@ export function GameOnForm({
   otherEvents?: BundleEvent[];
 }) {
   const [step, setStep] = React.useState(0);
-  const [reg, setReg] = React.useState<Partial<GameOnRegistration>>({
-    membershipStatus: "not-claimed",
-    communicationConsent: false,
+  const [reg, setReg] = React.useState<Partial<GameOnRegistration>>(() => {
+    const offered = event.participationTracks ?? [];
+    return {
+      membershipStatus: "not-claimed" as MembershipStatus,
+      communicationConsent: false,
+      // A one-track event has nothing to choose, so it is chosen already.
+      ...(offered.length === 1 ? { track: offered[0] as ParticipationTrack } : {}),
+    };
   });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [codeInput, setCodeInput] = React.useState("");
@@ -177,6 +182,30 @@ export function GameOnForm({
   const { label: affiliationLabel, hint: affiliationHint } = affiliationWording(
     event.participationTracks,
   );
+
+  /*
+   * What this event actually offers.
+   *
+   * A one-track event asks nothing: there is no choice to make, so the track is
+   * set for them. Asking "what would you like to join?" with a single option is
+   * a question with a predetermined answer.
+   */
+  const availableTracks = (event.participationTracks ?? [
+    "board_games",
+    "speed_scrabble",
+    "both",
+  ]) as ParticipationTrack[];
+
+  const onlyTrack = availableTracks.length === 1 ? availableTracks[0] : null;
+
+  /*
+   * Playing levels the event actually runs. Masters sits above Advanced and
+   * neither August event fields it, so offering it invites a preference the
+   * organizer cannot honour.
+   */
+  const levelOptions = (event.divisions?.length
+    ? event.divisions
+    : (Object.keys(CATEGORY_LABEL) as PlayerCategory[])) as PlayerCategory[];
 
   /*
    * The membership question is driven by the event's own member rate rather
@@ -250,7 +279,7 @@ export function GameOnForm({
 
   /** Only blocks on problems belonging to the step being left. */
   const stepFields: Record<StepId, string[]> = {
-    about: ["fullName", "email", "mobile", "city"],
+    about: ["fullName", "email", "mobile", "city", "area"],
     experience: ["track", "requestedLevel"],
     payment: ["membershipNumber", "receiptFileName"],
     review: [],
@@ -449,6 +478,25 @@ export function GameOnForm({
                 </Field>
               </div>
 
+              {/*
+                * Area within the city. The organizer uses this to see where
+                * entrants travel from, which a city field alone cannot show when
+                * almost everyone answers "Karachi".
+                */}
+              <Field
+                label="Area of residence"
+                required
+                error={errors.area}
+                hint="Which part of the city you travel from."
+              >
+                <Input
+                  value={reg.area ?? ""}
+                  onChange={(e) => set("area", e.target.value)}
+                  placeholder="e.g. Clifton, D.H.A., Gulshan, P.E.C.H.S."
+                  invalid={!!errors.area}
+                />
+              </Field>
+
               <Field label={affiliationLabel} hint={affiliationHint}>
                 <Input
                   value={reg.affiliation ?? ""}
@@ -533,13 +581,19 @@ export function GameOnForm({
                 </motion.p>
               ) : null}
 
+              {onlyTrack ? null : (
               <Field
-                label="What would you like to join at GAME ON!?"
+                label={`What would you like to join at ${event.name}?`}
                 required
                 error={errors.track}
               >
                 <div className="space-y-2">
-                  {(["board_games", "speed_scrabble", "both"] as ParticipationTrack[]).map(
+                  {/*
+                    * The event's own tracks, not a hardcoded list. The 23 August
+                    * form was offering Social Board Games and "Both" at a
+                    * Scrabble-only event, under the heading "at GAME ON!".
+                    */}
+                  {availableTracks.map(
                     (t) => (
                       <button
                         key={t}
@@ -586,6 +640,7 @@ export function GameOnForm({
                   )}
                 </div>
               </Field>
+              )}
 
               {/* Board-game questions, only when they apply. */}
               {track && playsBoardGames(track) ? (
@@ -604,7 +659,7 @@ export function GameOnForm({
                       value={reg.playedModernBoardGames === undefined ? "" : String(reg.playedModernBoardGames)}
                       onChange={(e) => set("playedModernBoardGames", e.target.value === "true")}
                     >
-                      <option value="">Prefer not to say</option>
+                      <option value="">Select…</option>
                       <option value="true">Yes</option>
                       <option value="false">No, this would be my first time</option>
                     </Select>
@@ -617,7 +672,7 @@ export function GameOnForm({
                         set("attendingWith", e.target.value as "alone" | "with-friends")
                       }
                     >
-                      <option value="">Prefer not to say</option>
+                      <option value="">Select…</option>
                       <option value="alone">On my own</option>
                       <option value="with-friends">With friends</option>
                     </Select>
@@ -662,7 +717,7 @@ export function GameOnForm({
                       value={reg.playedCompetitiveScrabble === undefined ? "" : String(reg.playedCompetitiveScrabble)}
                       onChange={(e) => set("playedCompetitiveScrabble", e.target.value === "true")}
                     >
-                      <option value="">Prefer not to say</option>
+                      <option value="">Select…</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </Select>
@@ -673,7 +728,7 @@ export function GameOnForm({
                       value={reg.attendedPreviousEvent === undefined ? "" : String(reg.attendedPreviousEvent)}
                       onChange={(e) => set("attendedPreviousEvent", e.target.value === "true")}
                     >
-                      <option value="">Prefer not to say</option>
+                      <option value="">Select…</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </Select>
@@ -690,7 +745,11 @@ export function GameOnForm({
                       onChange={(e) => set("requestedLevel", e.target.value as PlayerCategory)}
                     >
                       <option value="">Choose a level…</option>
-                      {(Object.keys(CATEGORY_LABEL) as PlayerCategory[]).map((c) => (
+                      {/*
+                        * The event's own divisions. Listing every category
+                        * offered Masters at an event that does not run one.
+                        */}
+                      {levelOptions.map((c) => (
                         <option key={c} value={c}>
                           {CATEGORY_LABEL[c]}
                         </option>
@@ -748,43 +807,15 @@ export function GameOnForm({
                 </Field>
               ) : null}
 
-              {memberRate && reg.membershipStatus !== "not-claimed" ? (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3.5 rounded-feature bg-[rgb(var(--c-surface-soft))] p-4"
-                >
-                  <Field
-                    label="Membership number"
-                    required
-                    error={errors.membershipNumber}
-                    hint="We check this before the discount is confirmed."
-                  >
-                    <Input
-                      value={reg.membershipNumber ?? ""}
-                      onChange={(e) => set("membershipNumber", e.target.value)}
-                      invalid={!!errors.membershipNumber}
-                    />
-                  </Field>
-
-                  <Field label="Name on the membership" hint="If different from above.">
-                    <Input
-                      value={reg.membershipName ?? ""}
-                      onChange={(e) => set("membershipName", e.target.value)}
-                    />
-                  </Field>
-
-                  <Field label="Membership proof" hint="Optional — a photo speeds up verification.">
-                    <Input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) =>
-                        set("membershipProofFileName", e.target.files?.[0]?.name ?? "")
-                      }
-                    />
-                  </Field>
-                </motion.div>
-              ) : null}
+              {/*
+                * No membership number, name or proof is collected.
+                *
+                * The organizer does not want them: three extra fields to claim a
+                * discount is more friction than the discount is worth, and it
+                * asks people to hand over documents to save PKR 300. The claim
+                * is taken at face value here and checked against the association
+                * list before the payment is verified.
+                */}
 
               {onCampaignCode ? (
                 <Field label="Promotion code" hint="Optional.">
@@ -1202,6 +1233,7 @@ function ReviewBlock({
     ["Email", reg.email ?? "—"],
     ["Mobile", reg.mobile ?? "—"],
     ["City", reg.city ?? "—"],
+    ["Area", reg.area ?? "—"],
   ];
 
   if (reg.track) rows.push(["Joining", TRACK_LABEL[reg.track]]);

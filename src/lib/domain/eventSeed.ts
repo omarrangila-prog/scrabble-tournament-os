@@ -126,7 +126,9 @@ const EVENT: PublicEvent = {
   rounds: 0,
   roundMinutes: 0,
   breakMinutes: 0,
-  divisions: ["beginner", "recreational", "advanced", "masters"],
+  // No Masters. The organizer places those players in Advanced, so offering the
+  // category would invite a preference nobody can honour.
+  divisions: ["beginner", "recreational", "advanced"],
 
   unconfirmed: [
     "Registration deadline",

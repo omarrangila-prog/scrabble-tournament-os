@@ -130,6 +130,8 @@ export default function RegisterPage() {
         ...(reg.favouriteGames ? { favouriteGames: reg.favouriteGames } : {}),
         ...(reg.attendingWith ? { attendingWith: reg.attendingWith } : {}),
         ...(reg.membershipNumber ? { membershipNumber: reg.membershipNumber } : {}),
+        // Stored so the organizer can see where entrants travel from.
+        ...(reg.area ? { area: reg.area } : {}),
         ...(reg.jammingSessionInterest
           ? { jammingSessionInterest: reg.jammingSessionInterest }
           : {}),

@@ -136,6 +136,8 @@ export interface GameOnRegistration {
   mobile: string;
   dateOfBirth: string;
   city: string;
+  /** Area within the city — the demographic a city field cannot show. */
+  area: string;
   affiliation?: string;
 
   /**
@@ -251,21 +253,18 @@ export function validateRegistration(
   need("email", reg.email, "We send your confirmation here.");
   need("mobile", reg.mobile, "We use this to reach you on the day.");
   need("city", reg.city, "City is required.");
+  need("area", reg.area, "Please tell us which area you travel from.");
 
   if (reg.track && playsScrabble(reg.track)) {
     need("requestedLevel", reg.requestedLevel, "Choose your preferred playing level.");
   }
 
-  if (
-    reg.membershipStatus &&
-    reg.membershipStatus !== "not-claimed" &&
-    !reg.membershipNumber?.trim()
-  ) {
-    problems.push({
-      field: "membershipNumber",
-      message: "Your membership number is needed to verify the discount.",
-    });
-  }
+  /*
+   * No membership-number rule. The form no longer asks for one, and a required
+   * field with nowhere to type would block registration with an error the
+   * participant cannot clear. The claim is checked against the association list
+   * before the payment is verified instead.
+   */
 
   /*
    * The payment screenshot is required. Without it a registration arrives with
