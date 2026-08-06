@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Geist_Mono } from "next/font/google";
+import { Manrope, Fraunces, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/design/theme";
 
@@ -9,6 +9,23 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
+/*
+ * Display face for participant-facing headlines.
+ *
+ * Manrope is a clean UI sans and stays the interface font. Headlines on the
+ * public pages carry the printed poster's character, which a UI sans cannot —
+ * Fraunces is a high-contrast display serif with a soft, slightly playful axis
+ * that suits a games evening without becoming a novelty face.
+ */
+const fraunces = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+  // Variable weight: axes cannot be combined with a fixed weight list, and the
+  // full range is what lets one face carry both headlines and small labels.
+  axes: ["SOFT", "WONK"],
+  display: "swap",
+});
+
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -33,7 +50,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="light"
-      className={`${manrope.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${manrope.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

@@ -79,7 +79,7 @@ function faqFor(hasBoardGames: boolean): { q: string; a: string }[] {
       },
       {
         q: "Can I come on my own?",
-        a: "Yes — most people do. You are paired with an opponent for every game.",
+        a: "Yes. You are paired with an opponent for every game, so you never need to bring someone.",
       },
       shared,
       {
@@ -95,7 +95,7 @@ function faqFor(hasBoardGames: boolean): { q: string; a: string }[] {
     },
     {
       q: "Can I come on my own?",
-      a: "Yes — most people do. The board-game floor is built around meeting new people.",
+      a: "Yes. The board-game floor is set up for people arriving on their own.",
     },
     shared,
     {
@@ -116,7 +116,7 @@ const TRACK_COPY: Record<ParticipationTrack, { title: string; body: string }> = 
   },
   both: {
     title: "Both",
-    body: "Join the board-game floor and enter the Speed Scrabble competition. Most people do.",
+    body: "Join the board-game floor and enter the Speed Scrabble competition.",
   },
 };
 
@@ -190,8 +190,13 @@ export default function PublicEventPage() {
             className="text-[52px] font-extrabold leading-[0.95] tracking-[-0.03em] sm:text-[72px]"
             style={{ color: BROWN }}
           >
+            {/*
+              * Only the event's own punctuation is coloured. Appending "!"
+              * unconditionally renamed "Blufy's AlphaBattle" to
+              * "Blufy's AlphaBattle!".
+              */}
             {event.name.replace(/!$/, "")}
-            <span style={{ color: FOREST }}>!</span>
+            {event.name.endsWith("!") ? <span style={{ color: FOREST }}>!</span> : null}
           </h1>
 
           {event.subtitle ? (
@@ -212,7 +217,9 @@ export default function PublicEventPage() {
             {
               icon: <Clock className="size-4" />,
               label: event.timeDisplay ?? event.startTime,
-              sub: "Doors open",
+              // "Doors open" named a time nobody stated. AlphaBattle's display
+              // time is a full span (12:00 PM to 3:30 PM), not a doors time.
+              sub: event.expectedFinish ? "Start to finish" : "Start time",
             },
             {
               icon: <MapPin className="size-4" />,
