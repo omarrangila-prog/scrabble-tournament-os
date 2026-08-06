@@ -249,8 +249,8 @@ const ALPHABATTLE: PublicEvent = {
 
   prizes: [
     { place: "Winner, each category", award: "PKR 5,000" },
-    { place: "Runner-up, each category", award: "PKR 3,000" },
-    { place: "First to name each song", award: "PKR 1,000 per song" },
+    { place: "Runner-up, each category", award: "PKR 2,000" },
+    { place: "Winner of each guess-the-song", award: "PKR 1,000" },
   ],
 
   unconfirmed: ["Maximum capacity", "Contact email"],

@@ -14,7 +14,6 @@ import {
   useEventStore,
 } from "@/lib/store/useEventStore";
 import {
-  BundleEvent,
   CampaignReduction,
   GameOnRegistration,
   quoteFee,
@@ -45,21 +44,16 @@ export default function RegisterPage() {
   const registrations = event ? selectRegistrations(store, event.id) : [];
 
   /*
-   * The other events someone can add, each with its date.
+   * No cross-event picker on the registration form.
    *
-   * This was never passed before, so `otherEvents.length` was always 0 and the
-   * whole event-selection block — the only place the other event's date appears
-   * — never rendered on either form. Only events open for registration are
-   * offered: adding a draft would take money for something unannounced.
+   * The form is opened from one event's own link, and offering to add a second
+   * event there turned a single decision into a shopping basket — someone
+   * registering for 23 August was asked about 8 August mid-form. Each event is
+   * registered for through its own link.
+   *
+   * The form still accepts `otherEvents` and prices a bundle correctly; nothing
+   * is passed, so the block does not render.
    */
-  const otherEvents: BundleEvent[] = store.events
-    .filter((e) => e.id !== event?.id && e.state === "registration-open")
-    .map((e) => ({
-      id: e.id,
-      name: e.name,
-      date: formatDate(e.startDate),
-      fee: e.fee,
-    }));
 
   const [submitted, setSubmitted] = React.useState<{
     token: string;
@@ -260,7 +254,6 @@ export default function RegisterPage() {
             event={event}
             onSubmit={submit}
             campaign={campaign}
-            otherEvents={otherEvents}
             onCampaignCode={applyCode}
           />
           {codeError ? (

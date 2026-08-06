@@ -294,6 +294,39 @@ describe("seeded event data", () => {
    * quotes a different account would send money somewhere nobody is watching,
    * and the divergence would be invisible until someone paid into it.
    */
+  /**
+   * "Choose your experience — you can join either, or both" is only true where
+   * there is more than one track. AlphaBattle runs Speed Scrabble alone, so the
+   * page offered a choice that did not exist. A one-track event must instead
+   * have playing categories to show, or the section has nothing to say.
+   */
+  it("gives a single-track event categories to choose instead of tracks", () => {
+    for (const ev of seed.events) {
+      if ((ev.participationTracks?.length ?? 0) > 1) continue;
+      expect(ev.divisions?.length ?? 0).toBeGreaterThan(0);
+    }
+  });
+
+  it("offers AlphaBattle the three categories the organizer named", () => {
+    const alphaBattle = seed.events.find((e) => e.slug === "alphabattle-23-august");
+    expect(alphaBattle?.divisions).toEqual(["beginner", "recreational", "advanced"]);
+    // Masters would imply a standard this event does not claim to run.
+    expect(alphaBattle?.divisions).not.toContain("masters");
+  });
+
+  /** The amounts the organizer stated. A wrong figure here is a broken promise. */
+  it("lists AlphaBattle's prizes exactly as stated", () => {
+    const alphaBattle = seed.events.find((e) => e.slug === "alphabattle-23-august");
+
+    expect(alphaBattle?.prizes).toEqual([
+      { place: "Winner, each category", award: "PKR 5,000" },
+      { place: "Runner-up, each category", award: "PKR 2,000" },
+      { place: "Winner of each guess-the-song", award: "PKR 1,000" },
+    ]);
+    // The runner-up prize was seeded at 3,000; the organizer says 2,000.
+    expect(JSON.stringify(alphaBattle?.prizes)).not.toContain("3,000");
+  });
+
   it("quotes the one shared account on every event", () => {
     for (const ev of seed.events) {
       expect(ev.bankDetails).toBe(PAYMENT_ACCOUNTS.bank);

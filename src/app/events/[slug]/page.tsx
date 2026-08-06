@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { Button, Card, EmptyState } from "@/components/ui";
 import {
+  CATEGORY_DESCRIPTION,
+  CATEGORY_LABEL,
+  PlayerCategory,
+} from "@/lib/domain/identity";
+import {
   registrationStatusOf,
   selectEventBySlug,
   selectRegistrations,
@@ -22,13 +27,83 @@ import {
 } from "@/lib/store/useEventStore";
 import { memberFee } from "@/lib/domain/gameOn";
 import { ParticipationTrack } from "@/lib/firebase/schema";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 /** Poster palette. Applied here and on the other participant-facing surfaces. */
 const CREAM = "#F5F0E4";
 const FOREST = "#2F5D3A";
 const GOLD = "#C89B3C";
 const BROWN = "#3E2F23";
+
+/**
+ * Public wording for the playing categories, as the organizer states them.
+ *
+ * The internal labels are single words ("Beginner", "Recreational"). Entrants
+ * pick from these on the event page, where the plainer phrasing makes it
+ * obvious which one applies to them.
+ */
+const CATEGORY_HEADING: Partial<Record<PlayerCategory, { title: string; body: string }>> = {
+  beginner: {
+    title: "Beginners / new to the game",
+    body: "New to Scrabble, or playing your first event. No experience expected.",
+  },
+  recreational: {
+    title: "Intermediate / recreational",
+    body: "You play for fun and know your way around a board.",
+  },
+  advanced: {
+    title: "Advanced / regulars",
+    body: "You play often and know the words, the racks and the clock.",
+  },
+};
+
+/**
+ * Common questions, matched to what the event actually runs.
+ *
+ * These were hardcoded for a board-games evening. On a Scrabble-only event they
+ * told entrants they "can join purely for the board games" and could pick
+ * "Both" — neither of which exists at an event the page itself describes as
+ * Speed Scrabble only.
+ */
+function faqFor(hasBoardGames: boolean): { q: string; a: string }[] {
+  const shared = {
+    q: "Do I need an app or an account?",
+    a: "No. You register through a link, and check in at the venue by scanning a QR code.",
+  };
+
+  if (!hasBoardGames)
+    return [
+      {
+        q: "Do I need to be good at Scrabble?",
+        a: "No. There are three categories — beginners, intermediate and advanced — so you play people at your own level.",
+      },
+      {
+        q: "Can I come on my own?",
+        a: "Yes — most people do. You are paired with an opponent for every game.",
+      },
+      shared,
+      {
+        q: "What if I do not know the songs?",
+        a: "The song round is a bit of fun alongside the Scrabble. It does not affect your placing in your category.",
+      },
+    ];
+
+  return [
+    {
+      q: "Do I need to be good at Scrabble?",
+      a: "No. You can join purely for the board games, and the Speed Scrabble competition has levels from Beginner upwards.",
+    },
+    {
+      q: "Can I come on my own?",
+      a: "Yes — most people do. The board-game floor is built around meeting new people.",
+    },
+    shared,
+    {
+      q: "Can I do both board games and Speed Scrabble?",
+      a: "Yes. Choose “Both” when you register.",
+    },
+  ];
+}
 
 const TRACK_COPY: Record<ParticipationTrack, { title: string; body: string }> = {
   board_games: {
@@ -77,6 +152,7 @@ export default function PublicEventPage() {
 
   const status = registrationStatusOf(event, registrations.length);
   const tracks = event.participationTracks ?? [];
+  const hasBoardGames = tracks.some((t) => t === "board_games" || t === "both");
   const discounted = event.memberDiscountPercent
     ? memberFee(event.fee)
     : null;
@@ -210,8 +286,15 @@ export default function PublicEventPage() {
           </p>
         </section>
 
-        {/* ---- Choose your experience ------------------------------------ */}
-        {tracks.length ? (
+        {/*
+          * Choose your experience — only where there is a genuine choice.
+          *
+          * With a single track the heading and "you can join either, or both"
+          * described an option that does not exist. A one-track event shows its
+          * playing categories instead, which is the choice its entrants
+          * actually make.
+          */}
+        {tracks.length > 1 ? (
           <section className="mt-10">
             <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
               Choose your experience
@@ -232,6 +315,32 @@ export default function PublicEventPage() {
                   </p>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
                     {TRACK_COPY[t].body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : event.divisions?.length ? (
+          <section className="mt-10">
+            <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+              Playing categories
+            </h2>
+            <p className="mt-1 text-[13.5px]" style={{ color: `${BROWN}99` }}>
+              Pick the one that fits you when you register.
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {event.divisions.map((d) => (
+                <div
+                  key={d}
+                  className="rounded-2xl border bg-white/70 p-4"
+                  style={{ borderColor: `${BROWN}1A` }}
+                >
+                  <p className="text-[14px] font-bold" style={{ color: FOREST }}>
+                    {CATEGORY_HEADING[d]?.title ?? CATEGORY_LABEL[d]}
+                  </p>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
+                    {CATEGORY_HEADING[d]?.body ?? CATEGORY_DESCRIPTION[d]}
                   </p>
                 </div>
               ))}
@@ -280,6 +389,44 @@ export default function PublicEventPage() {
           </div>
         </section>
 
+        {/*
+          * Prizes. Shown only when the organizer has stated them — an event with
+          * an empty list says nothing rather than implying there are none.
+          */}
+        {event.prizes?.length ? (
+          <section className="mt-10">
+            <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+              Prizes
+            </h2>
+
+            <div
+              className="mt-3 overflow-hidden rounded-2xl border bg-white/70"
+              style={{ borderColor: `${BROWN}1A` }}
+            >
+              {event.prizes.map((p, i) => (
+                <div
+                  key={p.place}
+                  className={cn(
+                    "flex flex-col gap-0.5 p-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4",
+                    i > 0 && "border-t",
+                  )}
+                  style={i > 0 ? { borderColor: `${BROWN}14` } : undefined}
+                >
+                  <span className="text-[14px]" style={{ color: `${BROWN}CC` }}>
+                    {p.place}
+                  </span>
+                  <span
+                    className="num shrink-0 text-[17px] font-extrabold"
+                    style={{ color: BROWN }}
+                  >
+                    {p.award}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {/* ---- Venue ----------------------------------------------------- */}
         <section className="mt-10">
           <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
@@ -316,24 +463,7 @@ export default function PublicEventPage() {
           </h2>
 
           <div className="mt-3 space-y-2">
-            {[
-              {
-                q: "Do I need to be good at Scrabble?",
-                a: "No. You can join purely for the board games, and the Speed Scrabble competition has levels from Beginner upwards.",
-              },
-              {
-                q: "Can I come on my own?",
-                a: "Yes — most people do. The board-game floor is built around meeting new people.",
-              },
-              {
-                q: "Do I need an app or an account?",
-                a: "No. You register through a link, and check in at the venue by scanning a QR code.",
-              },
-              {
-                q: "Can I do both board games and Speed Scrabble?",
-                a: "Yes. Choose “Both” when you register.",
-              },
-            ].map((item) => (
+            {faqFor(hasBoardGames).map((item) => (
               <details
                 key={item.q}
                 className="rounded-2xl border bg-white/70 p-4"
