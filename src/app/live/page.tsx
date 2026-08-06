@@ -506,7 +506,7 @@ export default function PublicSitePage() {
           <p className="text-[12.5px] text-muted">
             {tournament.organizer} · Powered by Bluffy Alphabattle
           </p>
-          <Link href="/signin" className="text-[12px] text-primary underline underline-offset-2">
+          <Link href="/" className="text-[12px] text-primary underline underline-offset-2">
             Organizer sign in
           </Link>
         </div>

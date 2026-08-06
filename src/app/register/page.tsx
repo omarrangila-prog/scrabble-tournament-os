@@ -60,7 +60,7 @@ export default function TournamentDiscoveryPage() {
           <Link href="/live">
             <Button size="sm" variant="secondary">Live results</Button>
           </Link>
-          <Link href="/signin">
+          <Link href="/">
             <Button size="sm" variant="ghost">Organizer sign in</Button>
           </Link>
         </div>

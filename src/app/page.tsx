@@ -2,516 +2,477 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  CalendarDays,
-  Clock,
-  MapPin,
-  Ticket,
-  Trophy,
+  CalendarCheck,
+  CheckCircle2,
+  CloudUpload,
+  Globe,
+  LayoutGrid,
+  Lock,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Sun,
 } from "lucide-react";
-import {
-  PublicEvent,
-  registrationStatusOf,
-  splitEventsForPublic,
-} from "@/lib/domain/events";
-import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
-import { TileWord } from "@/components/public/Tiles";
-import { formatDate } from "@/lib/utils";
+import { Badge, Button, Field, Input, Select } from "@/components/ui";
+import { useStore } from "@/lib/store/useStore";
+import { useGuidedDemo } from "@/lib/store/guidedDemo";
+import { ROLE_SUMMARY } from "@/lib/store/permissions";
+import { useTheme } from "@/lib/design/theme";
+import { Role } from "@/lib/domain/types";
+import { cn } from "@/lib/utils";
 
-/* Poster palette, shared with the event and registration pages. */
-const CREAM = "#F5F0E4";
-const FOREST = "#2F5D3A";
-const GOLD = "#C89B3C";
-const BROWN = "#3E2F23";
+const ROLE_OPTIONS: { role: Role; label: string }[] = [
+  { role: "director", label: "Tournament Director" },
+  { role: "scorekeeper", label: "Scorekeeper" },
+  { role: "checkin", label: "Check-in Officer" },
+  { role: "arbiter", label: "Arbiter" },
+  { role: "display", label: "Public Display Operator" },
+];
 
-/**
- * The public homepage.
- *
- * This was an organizer sign-in form, so the first thing a player saw was a
- * password field for an account they will never have. The events are the
- * product; sign-in lives at /signin.
- *
- * Every fact on this page is read from a real event record. Where the organizer
- * has not supplied something it is absent, not filled in — a page claiming an
- * invented venue or attendance figure is worse than one that says less.
- *
- * The `overflow-x-hidden` below contains the gold wash in `Texture`, which is
- * positioned deliberately off-canvas to bleed off the right edge. It is not
- * masking a layout overflow: the content itself fits from 320px up.
- */
-export default function HomePage() {
-  const store = useEventStore();
-  const { upcoming, past } = splitEventsForPublic(store.events);
+const ROLE_EMAIL: Record<Role, string> = {
+  director: "director@tournamentos.demo",
+  scorekeeper: "scorekeeper@tournamentos.demo",
+  checkin: "checkin@tournamentos.demo",
+  arbiter: "arbiter@tournamentos.demo",
+  display: "display@tournamentos.demo",
+  volunteer: "volunteer@tournamentos.demo",
+};
+
+/** Floating capability cards that frame the hero artwork. */
+/** Demo-safe capability claims — no fabricated player or country counts. */
+const CAPABILITIES = [
+  "Multi-Division Support",
+  "Real-Time Standings",
+  "Secure Result Verification",
+  "Offline Tournament Control",
+  "Public Live Broadcast",
+];
+
+export default function LandingPage() {
+  const router = useRouter();
+  const signIn = useStore((s) => s.signIn);
+  const startDemo = useGuidedDemo((s) => s.start);
+  const { theme, toggle } = useTheme();
+
+  const [role, setRole] = React.useState<Role>("director");
+  const [email, setEmail] = React.useState(ROLE_EMAIL.director);
+  const [password, setPassword] = React.useState("demo1234");
+  const [remember, setRemember] = React.useState(true);
+  const [busy, setBusy] = React.useState<"signin" | "demo" | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const changeRole = (next: Role) => {
+    setRole(next);
+    setEmail(ROLE_EMAIL[next]);
+  };
+
+  const enter = (mode: "signin" | "demo") => {
+    if (!email.trim() || password.length < 4) {
+      setError("Enter the demo email and password shown below.");
+      return;
+    }
+    setError(null);
+    setBusy(mode);
+    signIn(role);
+    if (mode === "demo") startDemo();
+    window.setTimeout(() => router.push(mode === "demo" ? "/app" : "/app/tournaments"), 380);
+  };
 
   return (
-    <main className="min-h-dvh overflow-x-hidden" style={{ background: CREAM }}>
-      <Texture />
+    <div className="min-h-dvh">
+      {/* ---------------------------------------------------------------- */}
+      {/* Top navigation                                                    */}
+      {/* ---------------------------------------------------------------- */}
+      <header className="sticky top-0 z-40 border-b border-line bg-[rgb(var(--c-surface))] backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-[1680px] items-center gap-4 px-5 sm:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white shadow-[0_8px_22px_rgba(115,87,246,0.34)]">
+              <LayoutGrid className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-ink">
+                Bluffy Alphabattle
+              </p>
+              <p className="hidden text-[11.5px] text-muted sm:block">
+                Official Tournament Platform
+              </p>
+            </div>
+          </div>
 
-      <div className="relative mx-auto w-full max-w-[1080px] px-5 py-12 sm:py-20">
-        <Hero hasEvents={upcoming.length > 0} />
+          <nav className="ml-8 hidden items-center gap-1 lg:flex" aria-label="Product">
+            {["Platform", "Features", "Tournament Experience", "Support"].map((item) => (
+              <a
+                key={item}
+                href="#platform"
+                className="rounded-[10px] px-3 py-2 text-[13.5px] font-semibold text-muted transition-colors hover:bg-[rgb(var(--c-surface-soft))] hover:text-ink"
+              >
+                {item}
+              </a>
+            ))}
+          </nav>
 
-        <section id="events" className="mt-16 sm:mt-24">
-          {upcoming.length ? (
-            <>
-              <SectionHead
-                eyebrow="What's on"
-                title="Upcoming events"
-                sub={
-                  upcoming.length === 1
-                    ? "One event is open for registration."
-                    : `${upcoming.length} events are open for registration.`
-                }
-              />
-              <div className="mt-7 grid gap-5 md:grid-cols-2">
-                {upcoming.map((e, i) => (
-                  <EventCard key={e.id} event={e} index={i} />
-                ))}
-              </div>
-            </>
-          ) : (
-            <NoEvents />
-          )}
-        </section>
+          <div className="ml-auto flex items-center gap-2">
+            <Select
+              aria-label="Language"
+              defaultValue="en"
+              className="hidden h-10 w-[104px] sm:block"
+            >
+              <option value="en">English</option>
+              <option value="ur">اردو</option>
+            </Select>
 
-        <HowItWorks />
+            <button
+              onClick={toggle}
+              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              className="grid size-10 place-items-center rounded-control border border-line bg-[rgb(var(--c-surface))] text-muted transition-colors hover:text-ink"
+            >
+              {theme === "light" ? <Moon className="size-4.5" /> : <Sun className="size-4.5" />}
+            </button>
 
-        {past.length ? (
-          <section className="mt-16 sm:mt-24">
-            <SectionHead
-              eyebrow="Archive"
-              title="Past events"
-              sub="Results stay online after the day."
-            />
-            <div className="mt-7 space-y-3">
-              {past.map((e) => (
-                <PastRow key={e.id} event={e} />
+            <Button variant="primary" size="sm" onClick={() => enter("demo")}>
+              Request Demo
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Hero                                                              */}
+      {/* ---------------------------------------------------------------- */}
+      <main
+        id="platform"
+        className="mx-auto grid max-w-[1680px] grid-cols-1 gap-10 px-5 py-10 sm:px-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12 lg:py-16"
+      >
+        {/* LEFT — story and artwork */}
+        <section className="min-w-0">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Badge tone="primary" dot pulse>
+              Built for national championships
+            </Badge>
+
+            <h1 className="mt-4 text-[38px] font-extrabold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[52px] lg:text-[62px]">
+              Run every round
+              <br />
+              with <span className="text-champion">confidence</span>.
+            </h1>
+
+            <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-muted sm:text-[17px]">
+              Registration, seating, pairings, scoring and live results—beautifully connected.
+              From the first check-in to the final champion, every player, board and decision
+              stays organized.
+            </p>
+
+          </motion.div>
+
+          {/*
+            Product previews rather than decoration. Each panel is a real screen
+            from the app, so what a visitor sees is what they get.
+          */}
+          <div className="relative mt-10 lg:mt-12">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <PreviewPanel
+                title="Event workspace"
+                caption="Everything for one tournament in one place, with the next action named."
+                className="sm:col-span-2"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 border-b border-line pb-2">
+                    {["Overview", "Registrations", "Payments", "Live Event"].map((t, i) => (
+                      <span
+                        key={t}
+                        className={cn(
+                          "rounded-control px-2 py-1 text-[10.5px] font-semibold",
+                          i === 0 ? "bg-primary-050 text-primary" : "text-muted",
+                        )}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[12.5px] font-bold text-ink">Registration is open.</p>
+                  <p className="text-[11.5px] text-muted">Share the link so people can register.</p>
+                  <div className="flex gap-1.5 pt-1">
+                    <span className="rounded-control bg-primary px-2.5 py-1 text-[10.5px] font-semibold text-white">
+                      Share registration
+                    </span>
+                    <span className="rounded-control border border-line px-2.5 py-1 text-[10.5px] font-semibold text-muted">
+                      View registrations
+                    </span>
+                  </div>
+                </div>
+              </PreviewPanel>
+
+              <PreviewPanel
+                title="Receipt review"
+                caption="A receipt is a claim. Only a verified payment counts."
+              >
+                <div className="space-y-1.5">
+                  {/*
+                   * Illustrative only. Real names beside "Duplicate transaction"
+                   * would read as an accusation against an actual participant.
+                   */}
+                  {[
+                    ["Participant A", "Receipt under review", "warning"],
+                    ["Participant B", "Duplicate transaction", "critical"],
+                    ["Participant C", "Payment verified", "success"],
+                  ].map(([name, status, tone]) => (
+                    <div key={name} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[11.5px] text-ink">{name}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          tone === "success"
+                            ? "bg-success-050 text-[#12855c]"
+                            : tone === "critical"
+                              ? "bg-critical-050 text-critical"
+                              : "bg-warning-050 text-[#a76d16]",
+                        )}
+                      >
+                        {status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </PreviewPanel>
+
+              <PreviewPanel
+                title="Live standings"
+                caption="Derived from verified results, never entered by hand."
+              >
+                <div className="space-y-1.5">
+                  {[
+                    ["1", "First place", "8", "+1,204"],
+                    ["2", "Second place", "7", "+842"],
+                    ["3", "Third place", "7", "+610"],
+                  ].map(([rank, name, wins, spread]) => (
+                    <div key={rank} className="flex items-center gap-2 text-[11.5px]">
+                      <span className="num w-4 font-bold text-muted">{rank}</span>
+                      <span className="min-w-0 flex-1 truncate text-ink">{name}</span>
+                      <span className="num font-semibold text-success">{wins}</span>
+                      <span className="num w-[52px] text-right text-muted">{spread}</span>
+                    </div>
+                  ))}
+                </div>
+              </PreviewPanel>
+            </div>
+
+            {/* Capability band — demo-safe claims, no fabricated statistics. */}
+            <div className="glass mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-feature p-4 sm:grid-cols-3 lg:grid-cols-5">
+              {CAPABILITIES.map((c) => (
+                <div key={c} className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4 shrink-0 text-success" />
+                  <span className="text-[12.5px] font-semibold leading-tight text-ink">{c}</span>
+                </div>
               ))}
             </div>
-          </section>
-        ) : null}
+          </div>
+        </section>
 
-        <Footer />
-      </div>
-    </main>
-  );
-}
-
-/** The poster's diamond weave, plus two soft washes for depth. */
-function Texture() {
-  return (
-    <>
-      <div
-        className="pointer-events-none fixed inset-0 opacity-[0.35]"
-        style={{
-          backgroundImage: `repeating-linear-gradient(45deg, ${BROWN}0A 0 1px, transparent 1px 22px),
-                            repeating-linear-gradient(-45deg, ${BROWN}0A 0 1px, transparent 1px 22px)`,
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[560px]"
-        style={{
-          background: `radial-gradient(70% 100% at 50% -10%, ${FOREST}1F, transparent 68%)`,
-        }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute right-[-120px] top-[220px] h-[420px] w-[420px] rounded-full blur-3xl"
-        style={{ background: `${GOLD}1A` }}
-        aria-hidden
-      />
-    </>
-  );
-}
-
-function Hero({ hasEvents }: { hasEvents: boolean }) {
-  return (
-    <header className="text-center">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <span
-          className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em]"
-          style={{ borderColor: `${BROWN}26`, color: `${BROWN}B3`, background: "#FFFFFF66" }}
-        >
-          <span
-            className="size-1.5 rounded-full"
-            style={{ background: FOREST }}
-            aria-hidden
-          />
-          Karachi
-        </span>
-      </motion.div>
-
-      {/* The name in tiles: the asset and the wordmark in one. */}
-      <div className="mt-7 flex justify-center sm:mt-8">
-        <TileWord
-          word="ALPHABATTLE"
-          className="max-w-full"
-          size={38}
-          gap={5}
-        />
-      </div>
-
-      <motion.h1
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-        className="font-display mx-auto mt-8 max-w-[20ch] text-[42px] leading-[0.92] tracking-[-0.02em] sm:text-[68px] lg:text-[80px]"
-        style={{ color: BROWN, fontWeight: 900 }}
-      >
-        Come for the words.
-        <br />
-        <span style={{ color: FOREST }}>Stay for the people.</span>
-      </motion.h1>
-
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="mx-auto mt-6 max-w-[52ch] text-[16px] leading-[1.65] sm:text-[17.5px]"
-        style={{ color: `${BROWN}C9` }}
-      >
-        Scrabble and board-game evenings in Karachi. Beginners, casual players
-        and regulars each play in their own category, so every game is a fair
-        one.
-      </motion.p>
-
-      {hasEvents ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.42 }}
-          className="mt-9"
-        >
-          <a
-            href="#events"
-            className="group inline-flex items-center gap-2.5 rounded-full px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:gap-3.5"
-            style={{ background: FOREST, boxShadow: `0 10px 30px ${FOREST}40` }}
-          >
-            See upcoming events
-            <ArrowRight className="size-4" />
-          </a>
-        </motion.div>
-      ) : null}
-    </header>
-  );
-}
-
-function SectionHead({
-  eyebrow,
-  title,
-  sub,
-}: {
-  eyebrow: string;
-  title: string;
-  sub: string;
-}) {
-  return (
-    <div>
-      <p
-        className="text-[11px] font-bold uppercase tracking-[0.16em]"
-        style={{ color: GOLD }}
-      >
-        {eyebrow}
-      </p>
-      <h2
-        className="font-display mt-2 text-[30px] leading-[1.05] tracking-[-0.02em] sm:text-[40px]"
-        style={{ color: BROWN, fontWeight: 900 }}
-      >
-        {title}
-      </h2>
-      <p className="mt-2 text-[14.5px]" style={{ color: `${BROWN}A6` }}>
-        {sub}
-      </p>
-    </div>
-  );
-}
-
-/**
- * One upcoming event.
- *
- * The registration state is read, never assumed: an open event gets a working
- * button, and a closed one says why rather than offering a link to a closed
- * door.
- */
-function EventCard({ event, index }: { event: PublicEvent; index: number }) {
-  const store = useEventStore();
-  const status = registrationStatusOf(event, selectRegistrations(store, event.id).length);
-
-  const day = new Date(event.startDate);
-  const weekday = Number.isNaN(day.getTime())
-    ? ""
-    : day.toLocaleDateString("en-GB", { weekday: "long" });
-
-  const facts = [
-    { icon: <CalendarDays className="size-3.5" />, text: formatDate(event.startDate) },
-    { icon: <Clock className="size-3.5" />, text: event.timeDisplay ?? event.startTime },
-    { icon: <MapPin className="size-3.5" />, text: event.venueName },
-    {
-      icon: <Ticket className="size-3.5" />,
-      text: `${event.currency} ${event.fee.toLocaleString("en-PK")}`,
-    },
-  ];
-
-  return (
-    <motion.article
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.08 * index, ease: [0.22, 1, 0.36, 1] }}
-      className="group flex flex-col overflow-hidden rounded-[28px] border bg-white/80 transition-shadow hover:shadow-[0_18px_50px_rgba(62,47,35,0.13)]"
-      style={{ borderColor: `${BROWN}1F` }}
-    >
-      {/* A woven band standing in for a photograph nobody has taken yet. */}
-      <div
-        className="relative h-[120px] shrink-0 overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, ${FOREST} 0%, ${FOREST}E6 52%, ${GOLD} 100%)`,
-        }}
-      >
-        <div
-          className="absolute inset-0 opacity-[0.22]"
-          style={{
-            backgroundImage: `repeating-linear-gradient(45deg, #FFF3 0 1px, transparent 1px 13px),
-                              repeating-linear-gradient(-45deg, #FFF3 0 1px, transparent 1px 13px)`,
-          }}
-          aria-hidden
-        />
-
-        <span
-          className="absolute left-5 top-5 rounded-full px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.1em]"
-          style={{ background: CREAM, color: status.open ? FOREST : BROWN }}
-        >
-          {status.open ? "Registration open" : status.label}
-        </span>
-
-        {weekday ? (
-          <span
-            className="absolute bottom-4 right-5 font-display text-[13px] uppercase tracking-[0.14em] text-white/85"
-            style={{ fontWeight: 700 }}
-          >
-            {weekday}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <h3
-          className="font-display text-[26px] leading-[1.05] tracking-[-0.02em] sm:text-[30px]"
-          style={{ color: BROWN, fontWeight: 900 }}
-        >
-          {event.name}
-        </h3>
-        {event.subtitle ? (
-          <p className="mt-1.5 text-[13.5px] font-semibold" style={{ color: FOREST }}>
-            {event.subtitle}
-          </p>
-        ) : null}
-
-        <dl className="mt-5 grid grid-cols-1 gap-x-5 gap-y-2.5 sm:grid-cols-2">
-          {facts.map((f, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="shrink-0" style={{ color: GOLD }} aria-hidden>
-                {f.icon}
-              </span>
-              <dd className="min-w-0 truncate text-[13px]" style={{ color: `${BROWN}CC` }}>
-                {f.text}
-              </dd>
-            </div>
-          ))}
-        </dl>
-
-        <div className="mt-6 flex flex-wrap items-center gap-2.5 pt-1">
-          {status.open ? (
-            <Link
-              href={`/events/${event.slug}/register`}
-              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13.5px] font-bold text-white transition-transform hover:scale-[1.03]"
-              style={{ background: FOREST }}
-            >
-              Register
-              <ArrowRight className="size-3.5" />
-            </Link>
-          ) : (
-            <span
-              className="inline-flex items-center rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
-              style={{ background: `${GOLD}26`, color: BROWN }}
-            >
-              {status.detail}
-            </span>
-          )}
-
-          <Link
-            href={`/events/${event.slug}`}
-            className="inline-flex items-center rounded-full border px-5 py-2.5 text-[13.5px] font-bold transition-colors hover:bg-white"
-            style={{ borderColor: `${BROWN}26`, color: BROWN }}
-          >
-            Full details
-          </Link>
-        </div>
-      </div>
-    </motion.article>
-  );
-}
-
-/**
- * How it works.
- *
- * Three steps, each one true of the software as built: you register from a
- * link, you check in with a QR code, and results are published as they are
- * verified.
- */
-function HowItWorks() {
-  const steps = [
-    {
-      n: "01",
-      title: "Register from a link",
-      body: "No app and no account. Four short steps on your phone, and you can pay by bank transfer or EasyPaisa.",
-    },
-    {
-      n: "02",
-      title: "Check in at the door",
-      body: "Scan the QR code at the venue to check in. You are told your category, your board and who you are playing.",
-    },
-    {
-      n: "03",
-      title: "Play, and watch it count",
-      /*
-       * Stated precisely. Both players confirm the score and the scorekeeper
-       * verifies it — saying "verified by both players" would skip the person
-       * who actually makes it official, and standings are derived only from
-       * verified games.
-       */
-      body: "Both players confirm the score, the scorekeeper verifies it, and the standings follow from there.",
-    },
-  ];
-
-  return (
-    <section className="mt-16 sm:mt-24">
-      <SectionHead
-        eyebrow="How it works"
-        title="Turning up is easy"
-        sub="From the link to the last game."
-      />
-
-      <div className="mt-7 grid gap-4 sm:grid-cols-3">
-        {steps.map((s, i) => (
+        {/* RIGHT — login panel */}
+        <section className="min-w-0">
           <motion.div
-            key={s.n}
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.45, delay: 0.07 * i, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-3xl border bg-white/65 p-5 sm:p-6"
-            style={{ borderColor: `${BROWN}1A` }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="glass-raised sticky top-[96px] rounded-panel p-6 sm:p-8"
           >
-            <span
-              className="font-display text-[15px] tracking-[0.08em]"
-              style={{ color: GOLD, fontWeight: 900 }}
-            >
-              {s.n}
-            </span>
-            <p
-              className="font-display mt-2.5 text-[20px] leading-[1.15]"
-              style={{ color: BROWN, fontWeight: 700 }}
-            >
-              {s.title}
+            <h2 className="text-center text-[26px] font-extrabold tracking-[-0.025em] text-ink">
+              Welcome Back
+            </h2>
+            <p className="mt-1 text-center text-[14px] text-muted">
+              Sign in to manage your Scrabble tournament.
             </p>
-            <p className="mt-2 text-[13.5px] leading-[1.6]" style={{ color: `${BROWN}B3` }}>
-              {s.body}
+
+            <div className="mt-6 space-y-4">
+              <Field label="Email address" required>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                />
+              </Field>
+
+              <Field label="Password" required error={error ?? undefined}>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  invalid={!!error}
+                />
+              </Field>
+
+              <Field label="Role">
+                <Select value={role} onChange={(e) => changeRole(e.target.value as Role)}>
+                  {ROLE_OPTIONS.map((o) => (
+                    <option key={o.role} value={o.role}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+
+              <p className="rounded-control bg-primary-050 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-primary-600">
+                {ROLE_SUMMARY[role]}
+              </p>
+
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="size-4 rounded-[5px] accent-[#7357F6]"
+                  />
+                  Remember me
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    useStore.getState().toast({
+                      title: "Password reset",
+                      description:
+                        "In production this emails a secure reset link. Demo accounts use demo1234.",
+                      tone: "info",
+                    })
+                  }
+                  className="text-[13px] font-semibold text-primary-600 hover:underline"
+                >
+                  Forgot password
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2.5">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                loading={busy === "signin"}
+                onClick={() => enter("signin")}
+              >
+                Sign In
+                <ArrowRight className="size-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full"
+                loading={busy === "demo"}
+                onClick={() => enter("demo")}
+                icon={<Sparkles className="size-4" />}
+              >
+                Enter Guided Demo
+              </Button>
+            </div>
+
+            <div className="mt-6 rounded-compact border border-line bg-[rgb(var(--c-surface-soft))] p-4">
+              <p className="flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted">
+                <Lock className="size-3.5" />
+                Demo credentials
+              </p>
+              <dl className="mt-2 space-y-1 text-[13px]">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted">Email</dt>
+                  <dd className="font-semibold text-ink">director@tournamentos.demo</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted">Password</dt>
+                  <dd className="font-semibold text-ink">demo1234</dd>
+                </div>
+              </dl>
+            </div>
+
+            <p className="mt-5 text-center text-[13px] text-muted">
+              Don&apos;t have organizer access?{" "}
+              <span className="font-semibold text-ink">Contact your Tournament Director</span>
+            </p>
+
+            {/* Security strip */}
+            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-4">
+              {[
+                { icon: ShieldCheck, label: "Role-Based Access" },
+                { icon: CloudUpload, label: "Secure Cloud Backup" },
+                { icon: Lock, label: "Encrypted Data" },
+              ].map((s) => (
+                <div key={s.label} className="flex flex-col items-center gap-1.5 text-center">
+                  <s.icon className="size-4 text-success" />
+                  <span className="text-[10.5px] font-semibold leading-tight text-muted">
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-4 text-center text-[12px] text-faint">
+              <Link href="/live" className="underline underline-offset-2 hover:text-muted">
+                View the public championship site
+              </Link>
             </p>
           </motion.div>
-        ))}
-      </div>
-    </section>
-  );
-}
+        </section>
+      </main>
 
-function NoEvents() {
-  return (
-    <div
-      className="rounded-[28px] border bg-white/70 px-6 py-14 text-center"
-      style={{ borderColor: `${BROWN}1F` }}
-    >
-      <div className="flex justify-center">
-        <TileWord word="SOON" size={44} gap={5} />
-      </div>
-      <p
-        className="font-display mt-6 text-[24px] leading-tight"
-        style={{ color: BROWN, fontWeight: 900 }}
-      >
-        No events announced yet
-      </p>
-      <p className="mx-auto mt-2 max-w-[36ch] text-[14px]" style={{ color: `${BROWN}A6` }}>
-        The next one will appear here as soon as registration opens.
-      </p>
+      <footer className="border-t border-line px-5 py-8 sm:px-8">
+        <div className="mx-auto flex max-w-[1680px] flex-col items-center gap-2 text-center">
+          <p className="text-[12.5px] text-muted">
+            Bluffy Alphabattle · Championship management for federations, clubs and schools
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-[12px] text-faint">
+            <span className="inline-flex items-center gap-1.5">
+              <Globe className="size-3.5" />
+              Public live results
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarCheck className="size-3.5" />
+              Multi-day events
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="size-3.5" />
+              Full audit trail
+            </span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
 
-/** A past event: a record, not an invitation. No Register button. */
-function PastRow({ event }: { event: PublicEvent }) {
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A framed glimpse of a real screen.
+ *
+ * Deliberately built from the same tokens as the app rather than a screenshot,
+ * so it cannot drift out of date the way an exported image would.
+ */
+function PreviewPanel({
+  title,
+  caption,
+  className,
+  children,
+}: {
+  title: string;
+  caption: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <Link
-      href={`/events/${event.slug}`}
-      className="flex flex-col gap-2.5 rounded-3xl border bg-white/55 p-4 transition-colors hover:bg-white/85 sm:flex-row sm:items-center sm:gap-4 sm:p-5"
-      style={{ borderColor: `${BROWN}14` }}
-    >
-      <span
-        className="grid size-11 shrink-0 place-items-center rounded-2xl"
-        style={{ background: `${GOLD}26`, color: BROWN }}
-        aria-hidden
-      >
-        <Trophy className="size-4.5" />
-      </span>
-
-      <span className="min-w-0 flex-1">
-        <span
-          className="font-display block text-[19px] leading-tight"
-          style={{ color: BROWN, fontWeight: 700 }}
-        >
-          {event.name}
-        </span>
-        <span className="mt-0.5 block text-[13px]" style={{ color: `${BROWN}A6` }}>
-          {formatDate(event.startDate)} · {event.venueName}
-        </span>
-      </span>
-
-      <span
-        className="shrink-0 text-[13px] font-bold sm:text-right"
-        style={{ color: FOREST }}
-      >
-        View results →
-      </span>
-    </Link>
-  );
-}
-
-function Footer() {
-  return (
-    <footer
-      className="mt-20 border-t pt-9 text-center sm:mt-28"
-      style={{ borderColor: `${BROWN}1F` }}
-    >
-      <p
-        className="font-display text-[17px]"
-        style={{ color: BROWN, fontWeight: 700 }}
-      >
-        Bluffy Alphabattle
-      </p>
-      <p className="mt-1 text-[12.5px]" style={{ color: `${BROWN}8C` }}>
-        Karachi, Pakistan
-      </p>
-      <Link
-        href="/signin"
-        className="mt-4 inline-block text-[12px] underline underline-offset-4 transition-colors hover:opacity-70"
-        style={{ color: `${BROWN}80` }}
-      >
-        Organizer sign in
-      </Link>
-    </footer>
+    <div className={cn("glass-raised rounded-feature p-4", className)}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{title}</p>
+      <div className="mt-2.5 rounded-control bg-[rgb(var(--c-surface-strong))] p-3">
+        {children}
+      </div>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-faint">{caption}</p>
+    </div>
   );
 }
