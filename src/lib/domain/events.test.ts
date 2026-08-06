@@ -5,7 +5,10 @@ import {
   defaultForm,
   Discount,
   generateToken,
+  EventState,
+  PublicEvent,
   registrationStatusOf,
+  splitEventsForPublic,
   slugify,
   STATE_DESTINATION,
 } from "./events";
@@ -204,6 +207,69 @@ describe("default form", () => {
     expect(locked).toContain("fullName");
     expect(locked).toContain("email");
     expect(locked).toContain("consent");
+  });
+});
+
+describe("splitEventsForPublic", () => {
+  const at = (slug: string, startDate: string, state: EventState = "registration-open") =>
+    ({ ...EVENT, id: slug, slug, startDate, state }) as PublicEvent;
+
+  const NOW = new Date("2026-08-15T12:00:00+05:00");
+
+  it("puts a future event under upcoming", () => {
+    const { upcoming, past } = splitEventsForPublic([at("a", "2026-08-23")], NOW);
+    expect(upcoming.map((e) => e.slug)).toEqual(["a"]);
+    expect(past).toEqual([]);
+  });
+
+  /**
+   * The rule that matters. An event whose day has gone but which nobody marked
+   * `completed` is still over, and listing it under "Upcoming" invites people
+   * to register for a night that has already happened.
+   */
+  it("treats a past date as past even when the state was never updated", () => {
+    const { upcoming, past } = splitEventsForPublic([at("a", "2026-08-08")], NOW);
+    expect(upcoming).toEqual([]);
+    expect(past.map((e) => e.slug)).toEqual(["a"]);
+  });
+
+  it("treats a completed event as past even when its date is ahead", () => {
+    const { past } = splitEventsForPublic([at("a", "2026-09-30", "completed")], NOW);
+    expect(past.map((e) => e.slug)).toEqual(["a"]);
+  });
+
+  /** An event is not over until its own day is. */
+  it("keeps an event running today under upcoming", () => {
+    const { upcoming } = splitEventsForPublic([at("a", "2026-08-15")], NOW);
+    expect(upcoming.map((e) => e.slug)).toEqual(["a"]);
+  });
+
+  /** A draft is unannounced: listing it publishes an uncommitted date. */
+  it("never shows a draft to the public", () => {
+    const { upcoming, past } = splitEventsForPublic(
+      [at("d", "2026-09-01", "draft"), at("live", "2026-09-02")],
+      NOW,
+    );
+    expect(upcoming.map((e) => e.slug)).toEqual(["live"]);
+    expect(past).toEqual([]);
+  });
+
+  it("orders upcoming soonest first and past most recent first", () => {
+    const { upcoming, past } = splitEventsForPublic(
+      [
+        at("later", "2026-10-01"),
+        at("sooner", "2026-08-20"),
+        at("old", "2026-01-10"),
+        at("recent", "2026-07-01"),
+      ],
+      NOW,
+    );
+    expect(upcoming.map((e) => e.slug)).toEqual(["sooner", "later"]);
+    expect(past.map((e) => e.slug)).toEqual(["recent", "old"]);
+  });
+
+  it("handles an organization with no events", () => {
+    expect(splitEventsForPublic([], NOW)).toEqual({ upcoming: [], past: [] });
   });
 });
 

@@ -2,477 +2,329 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  CalendarCheck,
-  CheckCircle2,
-  CloudUpload,
-  Globe,
-  LayoutGrid,
-  Lock,
-  Moon,
-  ShieldCheck,
-  Sparkles,
-  Sun,
+  CalendarDays,
+  Clock,
+  MapPin,
+  Ticket,
+  Trophy,
 } from "lucide-react";
-import { Badge, Button, Field, Input, Select } from "@/components/ui";
-import { useStore } from "@/lib/store/useStore";
-import { useGuidedDemo } from "@/lib/store/guidedDemo";
-import { ROLE_SUMMARY } from "@/lib/store/permissions";
-import { useTheme } from "@/lib/design/theme";
-import { Role } from "@/lib/domain/types";
-import { cn } from "@/lib/utils";
+import { PublicEvent, splitEventsForPublic, registrationStatusOf } from "@/lib/domain/events";
+import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
+import { formatDate } from "@/lib/utils";
 
-const ROLE_OPTIONS: { role: Role; label: string }[] = [
-  { role: "director", label: "Tournament Director" },
-  { role: "scorekeeper", label: "Scorekeeper" },
-  { role: "checkin", label: "Check-in Officer" },
-  { role: "arbiter", label: "Arbiter" },
-  { role: "display", label: "Public Display Operator" },
-];
+/* Poster palette, shared with the event and registration pages. */
+const CREAM = "#F5F0E4";
+const FOREST = "#2F5D3A";
+const GOLD = "#C89B3C";
+const BROWN = "#3E2F23";
 
-const ROLE_EMAIL: Record<Role, string> = {
-  director: "director@tournamentos.demo",
-  scorekeeper: "scorekeeper@tournamentos.demo",
-  checkin: "checkin@tournamentos.demo",
-  arbiter: "arbiter@tournamentos.demo",
-  display: "display@tournamentos.demo",
-  volunteer: "volunteer@tournamentos.demo",
-};
-
-/** Floating capability cards that frame the hero artwork. */
-/** Demo-safe capability claims — no fabricated player or country counts. */
-const CAPABILITIES = [
-  "Multi-Division Support",
-  "Real-Time Standings",
-  "Secure Result Verification",
-  "Offline Tournament Control",
-  "Public Live Broadcast",
-];
-
-export default function LandingPage() {
-  const router = useRouter();
-  const signIn = useStore((s) => s.signIn);
-  const startDemo = useGuidedDemo((s) => s.start);
-  const { theme, toggle } = useTheme();
-
-  const [role, setRole] = React.useState<Role>("director");
-  const [email, setEmail] = React.useState(ROLE_EMAIL.director);
-  const [password, setPassword] = React.useState("demo1234");
-  const [remember, setRemember] = React.useState(true);
-  const [busy, setBusy] = React.useState<"signin" | "demo" | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const changeRole = (next: Role) => {
-    setRole(next);
-    setEmail(ROLE_EMAIL[next]);
-  };
-
-  const enter = (mode: "signin" | "demo") => {
-    if (!email.trim() || password.length < 4) {
-      setError("Enter the demo email and password shown below.");
-      return;
-    }
-    setError(null);
-    setBusy(mode);
-    signIn(role);
-    if (mode === "demo") startDemo();
-    window.setTimeout(() => router.push(mode === "demo" ? "/app" : "/app/tournaments"), 380);
-  };
+/**
+ * The public homepage.
+ *
+ * This used to be an organizer sign-in form, which meant the first thing a
+ * player saw was a password field for an account they will never have. The
+ * events are the product; sign-in moved to /signin and is linked from the
+ * footer.
+ *
+ * Everything here is read from real event records. Nothing is invented — an
+ * organization with no past events shows no past section rather than filler.
+ */
+export default function HomePage() {
+  const store = useEventStore();
+  const { upcoming, past } = splitEventsForPublic(store.events);
 
   return (
-    <div className="min-h-dvh">
-      {/* ---------------------------------------------------------------- */}
-      {/* Top navigation                                                    */}
-      {/* ---------------------------------------------------------------- */}
-      <header className="sticky top-0 z-40 border-b border-line bg-[rgb(var(--c-surface))] backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-[1680px] items-center gap-4 px-5 sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white shadow-[0_8px_22px_rgba(115,87,246,0.34)]">
-              <LayoutGrid className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-ink">
-                Bluffy Alphabattle
+    <main className="min-h-dvh" style={{ background: CREAM }}>
+      {/* The poster's diamond weave, behind everything. */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(45deg, ${BROWN}0A 0 1px, transparent 1px 22px),
+                            repeating-linear-gradient(-45deg, ${BROWN}0A 0 1px, transparent 1px 22px)`,
+        }}
+        aria-hidden
+      />
+
+      <div className="relative mx-auto w-full max-w-[1040px] px-5 py-12 sm:py-16">
+        <Hero count={upcoming.length} />
+
+        {upcoming.length ? (
+          <section className="mt-14">
+            <SectionHeading
+              title="Upcoming events"
+              sub={
+                upcoming.length === 1
+                  ? "One event open now."
+                  : `${upcoming.length} events open now.`
+              }
+            />
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              {upcoming.map((e, i) => (
+                <EventCard key={e.id} event={e} index={i} />
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="mt-14">
+            <div
+              className="rounded-3xl border bg-white/70 p-10 text-center"
+              style={{ borderColor: `${BROWN}1A` }}
+            >
+              <CalendarDays className="mx-auto size-6" style={{ color: GOLD }} />
+              <p className="mt-3 text-[17px] font-extrabold" style={{ color: BROWN }}>
+                No events announced yet
               </p>
-              <p className="hidden text-[11.5px] text-muted sm:block">
-                Official Tournament Platform
+              <p className="mt-1.5 text-[13.5px]" style={{ color: `${BROWN}99` }}>
+                The next one will appear here as soon as it opens.
               </p>
             </div>
-          </div>
+          </section>
+        )}
 
-          <nav className="ml-8 hidden items-center gap-1 lg:flex" aria-label="Product">
-            {["Platform", "Features", "Tournament Experience", "Support"].map((item) => (
-              <a
-                key={item}
-                href="#platform"
-                className="rounded-[10px] px-3 py-2 text-[13.5px] font-semibold text-muted transition-colors hover:bg-[rgb(var(--c-surface-soft))] hover:text-ink"
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
+        {past.length ? (
+          <section className="mt-16">
+            <SectionHeading title="Past events" sub="What we have run before." />
+            <div className="mt-5 space-y-3">
+              {past.map((e) => (
+                <PastRow key={e.id} event={e} />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
-          <div className="ml-auto flex items-center gap-2">
-            <Select
-              aria-label="Language"
-              defaultValue="en"
-              className="hidden h-10 w-[104px] sm:block"
-            >
-              <option value="en">English</option>
-              <option value="ur">اردو</option>
-            </Select>
+        <Footer />
+      </div>
+    </main>
+  );
+}
 
-            <button
-              onClick={toggle}
-              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-              className="grid size-10 place-items-center rounded-control border border-line bg-[rgb(var(--c-surface))] text-muted transition-colors hover:text-ink"
-            >
-              {theme === "light" ? <Moon className="size-4.5" /> : <Sun className="size-4.5" />}
-            </button>
-
-            <Button variant="primary" size="sm" onClick={() => enter("demo")}>
-              Request Demo
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Hero                                                              */}
-      {/* ---------------------------------------------------------------- */}
-      <main
-        id="platform"
-        className="mx-auto grid max-w-[1680px] grid-cols-1 gap-10 px-5 py-10 sm:px-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12 lg:py-16"
+function Hero({ count }: { count: number }) {
+  return (
+    <motion.header
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="text-center"
+    >
+      <p
+        className="text-[11px] font-bold uppercase tracking-[0.16em] sm:tracking-[0.22em]"
+        style={{ color: `${BROWN}99` }}
       >
-        {/* LEFT — story and artwork */}
-        <section className="min-w-0">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Badge tone="primary" dot pulse>
-              Built for national championships
-            </Badge>
+        Karachi · Board games &amp; Scrabble
+      </p>
 
-            <h1 className="mt-4 text-[38px] font-extrabold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[52px] lg:text-[62px]">
-              Run every round
-              <br />
-              with <span className="text-champion">confidence</span>.
-            </h1>
+      <h1
+        className="mt-4 text-[40px] font-extrabold leading-[0.95] tracking-[-0.03em] sm:text-[64px]"
+        style={{ color: BROWN }}
+      >
+        Come for the words
+        <span style={{ color: FOREST }}>.</span>
+        <br />
+        Stay for the people
+        <span style={{ color: GOLD }}>.</span>
+      </h1>
 
-            <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-muted sm:text-[17px]">
-              Registration, seating, pairings, scoring and live results—beautifully connected.
-              From the first check-in to the final champion, every player, board and decision
-              stays organized.
-            </p>
+      <p
+        className="mx-auto mt-5 max-w-[46ch] text-[15px] leading-relaxed sm:text-[16px]"
+        style={{ color: `${BROWN}CC` }}
+      >
+        Friendly, well-run evenings of Scrabble and board games. Newcomers and
+        regulars play in their own categories, so everyone gets a real game.
+      </p>
 
-          </motion.div>
+      {count > 0 ? (
+        <a
+          href="#events"
+          className="mt-7 inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-bold text-white transition-transform hover:scale-[1.02]"
+          style={{ background: FOREST }}
+        >
+          See what&rsquo;s on
+          <ArrowRight className="size-4" />
+        </a>
+      ) : null}
+    </motion.header>
+  );
+}
 
-          {/*
-            Product previews rather than decoration. Each panel is a real screen
-            from the app, so what a visitor sees is what they get.
-          */}
-          <div className="relative mt-10 lg:mt-12">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PreviewPanel
-                title="Event workspace"
-                caption="Everything for one tournament in one place, with the next action named."
-                className="sm:col-span-2"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 border-b border-line pb-2">
-                    {["Overview", "Registrations", "Payments", "Live Event"].map((t, i) => (
-                      <span
-                        key={t}
-                        className={cn(
-                          "rounded-control px-2 py-1 text-[10.5px] font-semibold",
-                          i === 0 ? "bg-primary-050 text-primary" : "text-muted",
-                        )}
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[12.5px] font-bold text-ink">Registration is open.</p>
-                  <p className="text-[11.5px] text-muted">Share the link so people can register.</p>
-                  <div className="flex gap-1.5 pt-1">
-                    <span className="rounded-control bg-primary px-2.5 py-1 text-[10.5px] font-semibold text-white">
-                      Share registration
-                    </span>
-                    <span className="rounded-control border border-line px-2.5 py-1 text-[10.5px] font-semibold text-muted">
-                      View registrations
-                    </span>
-                  </div>
-                </div>
-              </PreviewPanel>
-
-              <PreviewPanel
-                title="Receipt review"
-                caption="A receipt is a claim. Only a verified payment counts."
-              >
-                <div className="space-y-1.5">
-                  {/*
-                   * Illustrative only. Real names beside "Duplicate transaction"
-                   * would read as an accusation against an actual participant.
-                   */}
-                  {[
-                    ["Participant A", "Receipt under review", "warning"],
-                    ["Participant B", "Duplicate transaction", "critical"],
-                    ["Participant C", "Payment verified", "success"],
-                  ].map(([name, status, tone]) => (
-                    <div key={name} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[11.5px] text-ink">{name}</span>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          tone === "success"
-                            ? "bg-success-050 text-[#12855c]"
-                            : tone === "critical"
-                              ? "bg-critical-050 text-critical"
-                              : "bg-warning-050 text-[#a76d16]",
-                        )}
-                      >
-                        {status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </PreviewPanel>
-
-              <PreviewPanel
-                title="Live standings"
-                caption="Derived from verified results, never entered by hand."
-              >
-                <div className="space-y-1.5">
-                  {[
-                    ["1", "First place", "8", "+1,204"],
-                    ["2", "Second place", "7", "+842"],
-                    ["3", "Third place", "7", "+610"],
-                  ].map(([rank, name, wins, spread]) => (
-                    <div key={rank} className="flex items-center gap-2 text-[11.5px]">
-                      <span className="num w-4 font-bold text-muted">{rank}</span>
-                      <span className="min-w-0 flex-1 truncate text-ink">{name}</span>
-                      <span className="num font-semibold text-success">{wins}</span>
-                      <span className="num w-[52px] text-right text-muted">{spread}</span>
-                    </div>
-                  ))}
-                </div>
-              </PreviewPanel>
-            </div>
-
-            {/* Capability band — demo-safe claims, no fabricated statistics. */}
-            <div className="glass mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-feature p-4 sm:grid-cols-3 lg:grid-cols-5">
-              {CAPABILITIES.map((c) => (
-                <div key={c} className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 shrink-0 text-success" />
-                  <span className="text-[12.5px] font-semibold leading-tight text-ink">{c}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* RIGHT — login panel */}
-        <section className="min-w-0">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="glass-raised sticky top-[96px] rounded-panel p-6 sm:p-8"
-          >
-            <h2 className="text-center text-[26px] font-extrabold tracking-[-0.025em] text-ink">
-              Welcome Back
-            </h2>
-            <p className="mt-1 text-center text-[14px] text-muted">
-              Sign in to manage your Scrabble tournament.
-            </p>
-
-            <div className="mt-6 space-y-4">
-              <Field label="Email address" required>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="username"
-                />
-              </Field>
-
-              <Field label="Password" required error={error ?? undefined}>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  invalid={!!error}
-                />
-              </Field>
-
-              <Field label="Role">
-                <Select value={role} onChange={(e) => changeRole(e.target.value as Role)}>
-                  {ROLE_OPTIONS.map((o) => (
-                    <option key={o.role} value={o.role}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <p className="rounded-control bg-primary-050 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-primary-600">
-                {ROLE_SUMMARY[role]}
-              </p>
-
-              <div className="flex items-center justify-between gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="size-4 rounded-[5px] accent-[#7357F6]"
-                  />
-                  Remember me
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    useStore.getState().toast({
-                      title: "Password reset",
-                      description:
-                        "In production this emails a secure reset link. Demo accounts use demo1234.",
-                      tone: "info",
-                    })
-                  }
-                  className="text-[13px] font-semibold text-primary-600 hover:underline"
-                >
-                  Forgot password
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-2.5">
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full"
-                loading={busy === "signin"}
-                onClick={() => enter("signin")}
-              >
-                Sign In
-                <ArrowRight className="size-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="w-full"
-                loading={busy === "demo"}
-                onClick={() => enter("demo")}
-                icon={<Sparkles className="size-4" />}
-              >
-                Enter Guided Demo
-              </Button>
-            </div>
-
-            <div className="mt-6 rounded-compact border border-line bg-[rgb(var(--c-surface-soft))] p-4">
-              <p className="flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted">
-                <Lock className="size-3.5" />
-                Demo credentials
-              </p>
-              <dl className="mt-2 space-y-1 text-[13px]">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Email</dt>
-                  <dd className="font-semibold text-ink">director@tournamentos.demo</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Password</dt>
-                  <dd className="font-semibold text-ink">demo1234</dd>
-                </div>
-              </dl>
-            </div>
-
-            <p className="mt-5 text-center text-[13px] text-muted">
-              Don&apos;t have organizer access?{" "}
-              <span className="font-semibold text-ink">Contact your Tournament Director</span>
-            </p>
-
-            {/* Security strip */}
-            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-4">
-              {[
-                { icon: ShieldCheck, label: "Role-Based Access" },
-                { icon: CloudUpload, label: "Secure Cloud Backup" },
-                { icon: Lock, label: "Encrypted Data" },
-              ].map((s) => (
-                <div key={s.label} className="flex flex-col items-center gap-1.5 text-center">
-                  <s.icon className="size-4 text-success" />
-                  <span className="text-[10.5px] font-semibold leading-tight text-muted">
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-4 text-center text-[12px] text-faint">
-              <Link href="/live" className="underline underline-offset-2 hover:text-muted">
-                View the public championship site
-              </Link>
-            </p>
-          </motion.div>
-        </section>
-      </main>
-
-      <footer className="border-t border-line px-5 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-[1680px] flex-col items-center gap-2 text-center">
-          <p className="text-[12.5px] text-muted">
-            Bluffy Alphabattle · Championship management for federations, clubs and schools
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-[12px] text-faint">
-            <span className="inline-flex items-center gap-1.5">
-              <Globe className="size-3.5" />
-              Public live results
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarCheck className="size-3.5" />
-              Multi-day events
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5" />
-              Full audit trail
-            </span>
-          </div>
-        </div>
-      </footer>
+function SectionHeading({ title, sub }: { title: string; sub: string }) {
+  return (
+    <div id="events">
+      <h2
+        className="text-[24px] font-extrabold tracking-[-0.02em] sm:text-[28px]"
+        style={{ color: BROWN }}
+      >
+        {title}
+      </h2>
+      <p className="mt-1 text-[13.5px]" style={{ color: `${BROWN}99` }}>
+        {sub}
+      </p>
     </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-
 /**
- * A framed glimpse of a real screen.
+ * One upcoming event.
  *
- * Deliberately built from the same tokens as the app rather than a screenshot,
- * so it cannot drift out of date the way an exported image would.
+ * The registration state is read rather than assumed: an event that is open
+ * gets a working button, and one that is not says so plainly instead of
+ * offering a link that leads to a closed door.
  */
-function PreviewPanel({
-  title,
-  caption,
-  className,
-  children,
-}: {
-  title: string;
-  caption: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
+function EventCard({ event, index }: { event: PublicEvent; index: number }) {
+  const store = useEventStore();
+  const status = registrationStatusOf(event, selectRegistrations(store, event.id).length);
+
+  const facts = [
+    { icon: <CalendarDays className="size-3.5" />, text: formatDate(event.startDate) },
+    { icon: <Clock className="size-3.5" />, text: event.timeDisplay ?? event.startTime },
+    { icon: <MapPin className="size-3.5" />, text: event.venueName },
+    {
+      icon: <Ticket className="size-3.5" />,
+      text: `${event.currency} ${event.fee.toLocaleString("en-PK")}`,
+    },
+  ];
+
   return (
-    <div className={cn("glass-raised rounded-feature p-4", className)}>
-      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{title}</p>
-      <div className="mt-2.5 rounded-control bg-[rgb(var(--c-surface-strong))] p-3">
-        {children}
+    <motion.article
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay: 0.06 * index, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col overflow-hidden rounded-3xl border bg-white/75"
+      style={{ borderColor: `${BROWN}1A` }}
+    >
+      {/* A woven band standing in for a photograph nobody has taken yet. */}
+      <div
+        className="relative h-[104px] shrink-0"
+        style={{
+          background: `linear-gradient(135deg, ${FOREST} 0%, ${FOREST}D9 55%, ${GOLD} 100%)`,
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-25"
+          style={{
+            backgroundImage: `repeating-linear-gradient(45deg, #FFFFFF22 0 1px, transparent 1px 14px),
+                              repeating-linear-gradient(-45deg, #FFFFFF22 0 1px, transparent 1px 14px)`,
+          }}
+          aria-hidden
+        />
+        <span
+          className="absolute left-5 top-5 rounded-full px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.1em]"
+          style={{ background: CREAM, color: BROWN }}
+        >
+          {status.open ? "Registration open" : status.label}
+        </span>
       </div>
-      <p className="mt-2 text-[11.5px] leading-relaxed text-faint">{caption}</p>
-    </div>
+
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <h3
+          className="text-[22px] font-extrabold leading-tight tracking-[-0.02em]"
+          style={{ color: BROWN }}
+        >
+          {event.name}
+        </h3>
+        {event.subtitle ? (
+          <p className="mt-1 text-[13px] font-semibold" style={{ color: FOREST }}>
+            {event.subtitle}
+          </p>
+        ) : null}
+
+        <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+          {facts.map((f, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="shrink-0" style={{ color: GOLD }}>
+                {f.icon}
+              </span>
+              <dd className="min-w-0 truncate text-[12.5px]" style={{ color: `${BROWN}CC` }}>
+                {f.text}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-5 flex flex-wrap gap-2.5 pt-1">
+          {status.open ? (
+            <Link
+              href={`/events/${event.slug}/register`}
+              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13.5px] font-bold text-white transition-transform hover:scale-[1.02]"
+              style={{ background: FOREST }}
+            >
+              Register
+              <ArrowRight className="size-3.5" />
+            </Link>
+          ) : (
+            <span
+              className="inline-flex items-center rounded-full px-4 py-2.5 text-[12.5px] font-semibold"
+              style={{ background: `${GOLD}26`, color: BROWN }}
+            >
+              {status.detail}
+            </span>
+          )}
+
+          <Link
+            href={`/events/${event.slug}`}
+            className="inline-flex items-center rounded-full border px-5 py-2.5 text-[13.5px] font-bold transition-colors hover:bg-white"
+            style={{ borderColor: `${BROWN}26`, color: BROWN }}
+          >
+            Details
+          </Link>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+/** A past event: a record, not an invitation. No register button. */
+function PastRow({ event }: { event: PublicEvent }) {
+  return (
+    <Link
+      href={`/events/${event.slug}`}
+      className="flex flex-col gap-2 rounded-2xl border bg-white/55 p-4 transition-colors hover:bg-white/80 sm:flex-row sm:items-center sm:gap-4"
+      style={{ borderColor: `${BROWN}14` }}
+    >
+      <span
+        className="grid size-10 shrink-0 place-items-center rounded-full"
+        style={{ background: `${GOLD}26`, color: BROWN }}
+      >
+        <Trophy className="size-4" />
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-bold" style={{ color: BROWN }}>
+          {event.name}
+        </span>
+        <span className="block text-[12.5px]" style={{ color: `${BROWN}99` }}>
+          {formatDate(event.startDate)} · {event.venueName}
+        </span>
+      </span>
+
+      <span
+        className="shrink-0 text-[12.5px] font-semibold sm:text-right"
+        style={{ color: FOREST }}
+      >
+        View results
+      </span>
+    </Link>
+  );
+}
+
+function Footer() {
+  return (
+    <footer
+      className="mt-20 border-t pt-8 text-center"
+      style={{ borderColor: `${BROWN}1A` }}
+    >
+      <p className="text-[12.5px]" style={{ color: `${BROWN}99` }}>
+        Bluffy Alphabattle · Karachi
+      </p>
+      <Link
+        href="/signin"
+        className="mt-2 inline-block text-[12px] underline underline-offset-2"
+        style={{ color: `${BROWN}80` }}
+      >
+        Organizer sign in
+      </Link>
+    </footer>
   );
 }

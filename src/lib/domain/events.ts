@@ -574,3 +574,49 @@ export function defaultForm(eventId: string): RegistrationForm {
     updatedAt: new Date().toISOString(),
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Public listing                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Splits events for the public homepage.
+ *
+ * Two rules matter here, because this is the page strangers see first.
+ *
+ * Drafts never appear. A draft is unannounced by definition, and listing one
+ * publishes a date and venue the organizer has not committed to.
+ *
+ * "Past" is decided by the date, not only by the state. An event whose day has
+ * gone but which nobody remembered to mark `completed` is still over, and
+ * listing it under "Upcoming" invites people to register for a night that has
+ * already happened.
+ */
+export function splitEventsForPublic(
+  events: PublicEvent[],
+  now = new Date(),
+): { upcoming: PublicEvent[]; past: PublicEvent[] } {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  const visible = events.filter((e) => e.state !== "draft");
+
+  const isPast = (e: PublicEvent) => {
+    if (e.state === "completed" || e.state === "archived") return true;
+    // Single-day events: the start date is also the last day.
+    const end = new Date(e.startDate);
+    if (Number.isNaN(end.getTime())) return false;
+    end.setHours(23, 59, 59, 999);
+    return end.getTime() < today.getTime();
+  };
+
+  const byDateAsc = (a: PublicEvent, b: PublicEvent) =>
+    a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : 0;
+
+  return {
+    // Soonest first: the next thing someone can attend leads the page.
+    upcoming: visible.filter((e) => !isPast(e)).sort(byDateAsc),
+    // Most recent first: last year's event is more interesting than 2019's.
+    past: visible.filter(isPast).sort((a, b) => byDateAsc(b, a)),
+  };
+}

@@ -166,7 +166,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const logOut = () => {
     signOut();
-    router.push("/");
+    // The homepage is now the public events listing, so signing out goes to the
+    // sign-in screen rather than dropping an organizer on a visitor page.
+    router.push("/signin");
   };
 
   /**
