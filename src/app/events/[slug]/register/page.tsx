@@ -8,6 +8,7 @@ import { CalendarDays, CheckCircle2, Clock, Copy, Mail, MapPin } from "lucide-re
 import { Badge, Button, Card, EmptyState } from "@/components/ui";
 import { GameOnForm } from "./GameOnForm";
 import {
+  GuestPaymentStatus,
   registrationStatusOf,
   selectEventBySlug,
   selectRegistrations,
@@ -16,6 +17,7 @@ import {
 import {
   CampaignReduction,
   GameOnRegistration,
+  paymentSummary,
   quoteFee,
 } from "@/lib/domain/gameOn";
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
@@ -128,14 +130,6 @@ export default function RegisterPage() {
       previousEvents: reg.previousTournaments,
       answers: {
         ...(reg.favouriteGames ? { favouriteGames: reg.favouriteGames } : {}),
-        /*
-         * Group size, stored because it justifies the group rate. Without it the
-         * organizer cannot check that someone charged the 3+ rate actually
-         * registered with two others.
-         */
-        ...(reg.accompanyingCount
-          ? { groupSize: String(reg.accompanyingCount + 1) }
-          : {}),
         ...(reg.membershipNumber ? { membershipNumber: reg.membershipNumber } : {}),
         // Stored so the organizer can see where entrants travel from.
         ...(reg.area ? { area: reg.area } : {}),
@@ -172,6 +166,16 @@ export default function RegisterPage() {
         registration={submitted.registration}
         event={event}
         payable={quote.payable}
+        /*
+         * The status actually recorded, not an assumption. The confirmation used
+         * to say "Amount due" and badge "Awaiting payment" unconditionally,
+         * which contradicted the record it had just written: a receipt is
+         * required now, so every submission arrives with one.
+         */
+        paymentStatus={
+          store.registrations.find((r) => r.token === submitted.token)?.paymentStatus ??
+          "not-submitted"
+        }
       />
     );
   }
@@ -296,11 +300,13 @@ function GameOnConfirmation({
   registration,
   event,
   payable,
+  paymentStatus,
 }: {
   token: string;
   registration: GameOnRegistration;
   event: ReturnType<typeof selectEventBySlug>;
   payable: number;
+  paymentStatus: GuestPaymentStatus;
 }) {
   const origin = React.useSyncExternalStore(
     () => () => {},
@@ -312,6 +318,12 @@ function GameOnConfirmation({
 
   const personalUrl = origin ? `${origin}/r/${token}` : "";
   const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
+
+  /*
+   * Wording follows the recorded status — see paymentSummary. Saying a fee is
+   * due after it has been paid invites a second transfer.
+   */
+  const pay = paymentSummary(paymentStatus, event.paymentMethods.length > 0);
 
   return (
     <main className="min-h-dvh px-4 py-10 sm:py-16" style={{ background: CREAM }}>
@@ -338,7 +350,7 @@ function GameOnConfirmation({
               ["Time", event.timeDisplay ?? event.startTime],
               ["Venue", `${event.venueName}, ${event.city}`],
               ["Joining", TRACK_LABEL[registration.track]],
-              ["Amount due", money(payable)],
+              [pay.amountLabel, money(payable)],
             ].map(([label, value]) => (
               <div key={label} className="flex items-baseline justify-between gap-4">
                 <span className="shrink-0 text-[12.5px] text-muted">{label}</span>
@@ -348,9 +360,7 @@ function GameOnConfirmation({
 
             <div className="flex items-baseline justify-between gap-4 border-t border-line pt-2.5">
               <span className="shrink-0 text-[12.5px] text-muted">Payment</span>
-              <Badge tone="warning">
-                {event.paymentMethods.length ? "Awaiting payment" : "Details to follow"}
-              </Badge>
+              <Badge tone={pay.tone}>{pay.badge}</Badge>
             </div>
           </div>
         </Card>

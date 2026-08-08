@@ -692,3 +692,44 @@ export function statusAfterUpload(hasReceipt: boolean, paysCash: boolean): strin
   if (!hasReceipt) return "not-submitted";
   return AUTO_VERIFY_ON_UPLOAD ? "verified" : "receipt-uploaded";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation wording                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How the confirmation describes the money, given what was actually recorded.
+ *
+ * The confirmation used to say "Amount due" and badge "Awaiting payment" for
+ * everyone, which contradicted the record it had just written — a receipt is
+ * required to register now, so every submission arrives with one. Telling
+ * somebody a fee is still due after they have paid it invites a second
+ * transfer.
+ *
+ * `verified` is separated from `receipt-uploaded` deliberately: a receipt that
+ * has not been checked is a claim, and the participant should see that it is
+ * being looked at rather than be told the money is confirmed.
+ */
+export function paymentSummary(
+  status: string,
+  hasPaymentMethods: boolean,
+): { amountLabel: string; badge: string; tone: "success" | "warning" | "neutral" } {
+  if (status === "verified" || status === "complimentary")
+    return { amountLabel: "Amount paid", badge: "Payment received", tone: "success" };
+
+  if (status === "receipt-uploaded" || status === "processing")
+    return {
+      amountLabel: "Amount paid",
+      badge: "Receipt received — being checked",
+      tone: "warning",
+    };
+
+  if (status === "cash-at-venue")
+    return { amountLabel: "Pay at the venue", badge: "Paying at the venue", tone: "neutral" };
+
+  return {
+    amountLabel: "Amount due",
+    badge: hasPaymentMethods ? "Awaiting payment" : "Details to follow",
+    tone: "warning",
+  };
+}

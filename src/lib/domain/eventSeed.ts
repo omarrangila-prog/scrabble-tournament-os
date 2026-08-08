@@ -203,34 +203,25 @@ const ALPHABATTLE: PublicEvent = {
   registrationOpensAt: T("2026-07-01"),
   registrationClosesAt: T("2026-08-23", "11:45"),
 
-  fee: 1250,
+  fee: 800,
   currency: "PKR",
 
   /*
-   * Four rates. A participant qualifying for several pays the cheapest — three
-   * PSA members registering together would otherwise stack their way down to
-   * almost nothing.
+   * Two rates, as the organizer set them: PKR 450 for anyone registering on or
+   * before 9 August, PKR 800 from the 10th. A participant qualifying for both
+   * pays the cheaper one — rates are never stacked.
+   *
+   * The PSA member and family rates were removed. Both sat above the new 800
+   * standard, so the pricing engine would never have applied either, and the
+   * questions behind them would have changed nothing.
    */
   rates: [
-    { id: "standard", label: "Standard entry", amount: 1250, basis: "Everyone" },
-    {
-      id: "member",
-      label: "PSA member",
-      amount: 950,
-      basis: "Members of the Pakistan Scrabble Association",
-    },
-    {
-      id: "family",
-      label: "Family rate",
-      amount: 850,
-      basis: "Three or more registering together",
-      minGroupSize: 3,
-    },
+    { id: "standard", label: "Standard entry", amount: 800, basis: "Everyone" },
     {
       id: "early-bird",
       label: "Early bird",
-      amount: 800,
-      basis: "Until 9 August",
+      amount: 450,
+      basis: "Register on or before 9 August",
       availableUntil: "2026-08-09T23:59:59+05:00",
     },
   ],

@@ -310,7 +310,7 @@ describe("seeded event data", () => {
     expect(gameOn.startDate).toBe("2026-08-08");
     expect(alphaBattle.startDate).toBe("2026-08-23");
     expect(gameOn.fee).toBe(1200);
-    expect(alphaBattle.fee).toBe(1250);
+    expect(alphaBattle.fee).toBe(800);
   });
 
   it("gives each event its own registration form", () => {
@@ -318,17 +318,12 @@ describe("seeded event data", () => {
     expect(new Set(seed.forms.map((f) => f.eventId)).size).toBe(2);
   });
 
-  it("carries the AlphaBattle rate tiers from the organizer's form", () => {
+  it("carries the two AlphaBattle rates the organizer set", () => {
     const alphaBattle = seed.events[1];
     const amounts = Object.fromEntries(
       (alphaBattle.rates ?? []).map((r) => [r.id, r.amount]),
     );
-    expect(amounts).toMatchObject({
-      standard: 1250,
-      member: 950,
-      family: 850,
-      "early-bird": 800,
-    });
+    expect(amounts).toEqual({ standard: 800, "early-bird": 450 });
   });
 
   /** Money goes to a real account or the step says details are coming. */
@@ -395,49 +390,49 @@ describe("seeded event data", () => {
   });
 
   /**
-   * The early bird, as the organizer states it: register on 9 August or before
-   * and pay PKR 800 — a PKR 450 saving on the standard 1,250.
+   * The early bird, as the organizer set it: PKR 450 for anyone registering on
+   * or before 9 August, PKR 800 from the 10th.
    */
-  describe("AlphaBattle early bird", () => {
+  describe("AlphaBattle pricing", () => {
     const rates = seed.events.find((e) => e.slug === "alphabattle-23-august")!.rates!;
-    const solo = (at: string) =>
+    const on = (at: string) =>
       priceRegistration(rates, { isMember: false, groupSize: 1, at });
 
-    it("charges 800 on 9 August, saving 450", () => {
-      const r = solo("2026-08-09T14:00:00+05:00");
-      expect(r.perPerson).toBe(800);
-      expect(r.applied.id).toBe("early-bird");
-      expect(r.savedPerPerson).toBe(450);
+    it("charges 450 on or before 9 August", () => {
+      expect(on("2026-08-01T10:00:00+05:00").perPerson).toBe(450);
+      const ninth = on("2026-08-09T14:00:00+05:00");
+      expect(ninth.perPerson).toBe(450);
+      expect(ninth.applied.id).toBe("early-bird");
     });
 
     /** The last minute of the 9th still counts as "on or before". */
-    it("still charges 800 at 23:59 on 9 August", () => {
-      expect(solo("2026-08-09T23:59:00+05:00").perPerson).toBe(800);
+    it("still charges 450 at 23:59 on 9 August", () => {
+      expect(on("2026-08-09T23:59:00+05:00").perPerson).toBe(450);
     });
 
-    it("charges the standard 1,250 from 10 August", () => {
-      const r = solo("2026-08-10T00:01:00+05:00");
-      expect(r.perPerson).toBe(1250);
-      expect(r.applied.id).toBe("standard");
+    it("charges 800 from 10 August", () => {
+      const tenth = on("2026-08-10T00:01:00+05:00");
+      expect(tenth.perPerson).toBe(800);
+      expect(tenth.applied.id).toBe("standard");
+      expect(on("2026-08-23T09:00:00+05:00").perPerson).toBe(800);
     });
 
     /**
-     * The group rate has to be reachable. It was priced correctly but the form
-     * only asked for group size inside the board-game questions, so on this
-     * Scrabble-only event nobody could ever qualify for it.
+     * No rate may sit above the standard entry. A member or group rate dearer
+     * than 800 could never apply, and the question behind it would change
+     * nothing while appearing to offer a discount.
      */
-    it("offers the group rate to three or more after the early bird closes", () => {
-      const r = priceRegistration(rates, {
-        isMember: false,
-        groupSize: 3,
-        at: "2026-08-15T10:00:00+05:00",
-      });
-      expect(r.perPerson).toBe(850);
-      expect(r.applied.minGroupSize).toBe(3);
+    it("offers no rate that can never apply", () => {
+      const standard = rates.find((r) => r.id === "standard")!;
+      for (const r of rates) {
+        if (r.id === "standard") continue;
+        expect(r.amount).toBeLessThan(standard.amount);
+      }
     });
 
-    it("keeps a group rate the form can actually ask about", () => {
-      expect(rates.some((r) => (r.minGroupSize ?? 0) > 1)).toBe(true);
+    /** Group size is no longer asked, so no rate may depend on it. */
+    it("has no rate requiring a group", () => {
+      expect(rates.some((r) => (r.minGroupSize ?? 0) > 1)).toBe(false);
     });
   });
 

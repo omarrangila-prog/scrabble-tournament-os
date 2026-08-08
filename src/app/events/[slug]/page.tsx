@@ -79,7 +79,7 @@ function faqFor(hasBoardGames: boolean): { q: string; a: string }[] {
       },
       {
         q: "Can I come on my own?",
-        a: "Yes, but bringing more players — family or friends — adds to the atmosphere, and three or more registering together qualify for the group rate.",
+        a: "Yes, but bringing more players — family or friends — adds to the atmosphere.",
       },
       shared,
       {
