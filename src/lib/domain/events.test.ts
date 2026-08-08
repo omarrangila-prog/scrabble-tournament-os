@@ -13,6 +13,7 @@ import {
   STATE_DESTINATION,
 } from "./events";
 import { buildEventSeed, PAYMENT_ACCOUNTS } from "./eventSeed";
+import { priceRegistration } from "./pricing";
 
 const seed = buildEventSeed();
 const EVENT = seed.events[0];
@@ -391,6 +392,53 @@ describe("seeded event data", () => {
     ]);
     // The runner-up prize was seeded at 3,000; the organizer says 2,000.
     expect(JSON.stringify(alphaBattle?.prizes)).not.toContain("3,000");
+  });
+
+  /**
+   * The early bird, as the organizer states it: register on 9 August or before
+   * and pay PKR 800 — a PKR 450 saving on the standard 1,250.
+   */
+  describe("AlphaBattle early bird", () => {
+    const rates = seed.events.find((e) => e.slug === "alphabattle-23-august")!.rates!;
+    const solo = (at: string) =>
+      priceRegistration(rates, { isMember: false, groupSize: 1, at });
+
+    it("charges 800 on 9 August, saving 450", () => {
+      const r = solo("2026-08-09T14:00:00+05:00");
+      expect(r.perPerson).toBe(800);
+      expect(r.applied.id).toBe("early-bird");
+      expect(r.savedPerPerson).toBe(450);
+    });
+
+    /** The last minute of the 9th still counts as "on or before". */
+    it("still charges 800 at 23:59 on 9 August", () => {
+      expect(solo("2026-08-09T23:59:00+05:00").perPerson).toBe(800);
+    });
+
+    it("charges the standard 1,250 from 10 August", () => {
+      const r = solo("2026-08-10T00:01:00+05:00");
+      expect(r.perPerson).toBe(1250);
+      expect(r.applied.id).toBe("standard");
+    });
+
+    /**
+     * The group rate has to be reachable. It was priced correctly but the form
+     * only asked for group size inside the board-game questions, so on this
+     * Scrabble-only event nobody could ever qualify for it.
+     */
+    it("offers the group rate to three or more after the early bird closes", () => {
+      const r = priceRegistration(rates, {
+        isMember: false,
+        groupSize: 3,
+        at: "2026-08-15T10:00:00+05:00",
+      });
+      expect(r.perPerson).toBe(850);
+      expect(r.applied.minGroupSize).toBe(3);
+    });
+
+    it("keeps a group rate the form can actually ask about", () => {
+      expect(rates.some((r) => (r.minGroupSize ?? 0) > 1)).toBe(true);
+    });
   });
 
   it("quotes the one shared account on every event", () => {

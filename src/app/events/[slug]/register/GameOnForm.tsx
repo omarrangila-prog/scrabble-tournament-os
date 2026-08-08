@@ -215,6 +215,9 @@ export function GameOnForm({
    * that earns them nothing. An event with no member rate shows no question.
    */
   const memberRate = event.rates?.find((r) => r.id === "member") ?? null;
+
+  /** A rate that needs several people together, e.g. the family rate. */
+  const groupRate = event.rates?.find((r) => (r.minGroupSize ?? 0) > 1) ?? null;
   const memberBody = memberRate?.label.replace(/ member$/i, "") ?? "";
   const memberQuestion = memberRate
     ? `Are you ${/^[aeiou]/i.test(memberBody) ? "an" : "a"} ${memberBody} member?`
@@ -665,32 +668,6 @@ export function GameOnForm({
                     </Select>
                   </Field>
 
-                  <Field label="Are you coming alone or with friends?">
-                    <Select
-                      value={reg.attendingWith ?? ""}
-                      onChange={(e) =>
-                        set("attendingWith", e.target.value as "alone" | "with-friends")
-                      }
-                    >
-                      <option value="">Select…</option>
-                      <option value="alone">On my own</option>
-                      <option value="with-friends">With friends</option>
-                    </Select>
-                  </Field>
-
-                  {reg.attendingWith === "with-friends" ? (
-                    <Field label="How many are coming with you?" hint="They register separately.">
-                      <Input
-                        type="number"
-                        className="num"
-                        value={reg.accompanyingCount ?? ""}
-                        onChange={(e) =>
-                          set("accompanyingCount", Math.max(0, Number(e.target.value)))
-                        }
-                      />
-                    </Field>
-                  ) : null}
-
                   <Field label="Games you enjoy" hint="Optional — helps us pick what to bring.">
                     <Input
                       value={reg.favouriteGames ?? ""}
@@ -782,6 +759,33 @@ export function GameOnForm({
           {/* ---- Step 3: Membership and payment ---------------------------- */}
           {STEPS[step].id === "payment" ? (
             <>
+              {/*
+                * Group size, asked wherever a group rate exists.
+                *
+                * This used to sit inside the board-game questions, so on a
+                * Scrabble-only event it never appeared — and the group rate,
+                * which needs three or more, could never be reached. The event
+                * page promised it and the form could not deliver it.
+                */}
+              {groupRate ? (
+                <Field
+                  label={`Registering as a group of ${groupRate.minGroupSize} or more?`}
+                  hint={`${groupRate.minGroupSize} or more together pay ${money(groupRate.amount)} each. Everyone still registers separately.`}
+                >
+                  <Select
+                    value={String(reg.accompanyingCount ?? 0)}
+                    onChange={(e) => set("accompanyingCount", Number(e.target.value))}
+                  >
+                    <option value="0">No, just me</option>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        Yes — {n + 1} of us in total
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+
               {memberRate ? (
                 <Field label={memberQuestion}>
                   <div className="grid grid-cols-2 gap-2">

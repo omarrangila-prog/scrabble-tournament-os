@@ -128,7 +128,14 @@ export default function RegisterPage() {
       previousEvents: reg.previousTournaments,
       answers: {
         ...(reg.favouriteGames ? { favouriteGames: reg.favouriteGames } : {}),
-        ...(reg.attendingWith ? { attendingWith: reg.attendingWith } : {}),
+        /*
+         * Group size, stored because it justifies the group rate. Without it the
+         * organizer cannot check that someone charged the 3+ rate actually
+         * registered with two others.
+         */
+        ...(reg.accompanyingCount
+          ? { groupSize: String(reg.accompanyingCount + 1) }
+          : {}),
         ...(reg.membershipNumber ? { membershipNumber: reg.membershipNumber } : {}),
         // Stored so the organizer can see where entrants travel from.
         ...(reg.area ? { area: reg.area } : {}),
