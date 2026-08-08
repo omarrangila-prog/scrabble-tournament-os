@@ -221,6 +221,39 @@ function freshState(): EventState_ {
   };
 }
 
+/** Bump when an event's own details change and existing visitors must see it. */
+export const EVENT_STATE_VERSION = 2;
+
+/**
+ * Brings a persisted store up to date.
+ *
+ * Event definitions follow the code; registrations belong to the person who
+ * submitted them. Without this, a browser that opened the site once kept its
+ * first copy of the events for ever — anyone who visited while the two August
+ * events were drafts went on being told "Registration Not Open" however many
+ * times the seed was corrected, and saw the old prices and removed categories
+ * too. Clearing site data was the only escape, which nobody would think to do.
+ */
+export function migrateEventState(persisted: unknown, from: number): EventStore {
+  const state = (persisted ?? {}) as Partial<EventStore>;
+  if (from >= EVENT_STATE_VERSION) return state as EventStore;
+
+  const fresh = freshState();
+  return {
+    ...state,
+    // Reference data, refreshed from the seed.
+    events: fresh.events,
+    forms: fresh.forms,
+    discounts: fresh.discounts,
+    tokens: fresh.tokens,
+    // Real submissions are kept exactly as they were.
+    registrations: state.registrations ?? fresh.registrations,
+    // A selection made against the old copy may no longer resolve.
+    activeEventId: null,
+    activeOrganizationId: null,
+  } as EventStore;
+}
+
 export const useEventStore = create<EventStore>()(
   persist(
     (set, get) => ({
@@ -500,6 +533,23 @@ export const useEventStore = create<EventStore>()(
     {
       name: EVENT_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
+
+      /*
+       * Event definitions follow the code; registrations belong to the person.
+       *
+       * Without this, a browser that opened the site once kept its first copy of
+       * the events for ever. Anyone who visited while the two August events were
+       * still drafts went on being told "Registration Not Open" no matter how
+       * many times the seed was corrected, and would have seen the old prices,
+       * the removed Masters category and the earlier venue too.
+       *
+       * Bumping this version re-reads the event definitions, forms, discounts
+       * and tokens from the seed, while keeping every registration somebody
+       * actually submitted. Raise it again whenever an event's own details
+       * change and existing visitors must pick the change up.
+       */
+      version: EVENT_STATE_VERSION,
+      migrate: (persisted, from) => migrateEventState(persisted, from),
       partialize: (s) => {
         const { hydrated, ...rest } = s as EventStore;
         void hydrated;

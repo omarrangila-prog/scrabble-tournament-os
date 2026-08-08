@@ -679,6 +679,35 @@ export const useStore = create<Store>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
+
+      /*
+       * Reference data follows the code; play data belongs to the tournament.
+       *
+       * A browser that opened the app before the fabricated data was removed
+       * kept it: the invented venue with its 72 boards, the tournament claiming
+       * to be live on round 5 with no players, and the four made-up sponsors.
+       * Clearing the cache was the only way out, which nobody would think to do.
+       *
+       * This refreshes the organization, venue, divisions, users and tournament
+       * from the seed while keeping players, pairings and results, so a
+       * tournament in progress is never wiped by an update.
+       */
+      version: 2,
+      migrate: (persisted, from) => {
+        const state = (persisted ?? {}) as Partial<Store>;
+        if (from >= 2) return state as Store;
+
+        const fresh = freshState();
+        return {
+          ...state,
+          organization: fresh.organization,
+          venue: fresh.venue,
+          divisions: fresh.divisions,
+          users: fresh.users,
+          tournament: fresh.tournament,
+          tournaments: fresh.tournaments,
+        } as Store;
+      },
       // Session flags stay out of storage so a refresh keeps data but the
       // sign-in state is re-established by the app shell.
       partialize: (s) => {

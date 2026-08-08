@@ -208,7 +208,7 @@ const ALPHABATTLE: PublicEvent = {
 
   /*
    * Two rates, as the organizer set them: PKR 450 for anyone registering on or
-   * before 9 August, PKR 800 from the 10th. A participant qualifying for both
+   * before 10 August, PKR 800 from the 11th. A participant qualifying for both
    * pays the cheaper one — rates are never stacked.
    *
    * The PSA member and family rates were removed. Both sat above the new 800
@@ -221,8 +221,8 @@ const ALPHABATTLE: PublicEvent = {
       id: "early-bird",
       label: "Early bird",
       amount: 450,
-      basis: "Register on or before 9 August",
-      availableUntil: "2026-08-09T23:59:59+05:00",
+      basis: "Register on or before 10 August",
+      availableUntil: "2026-08-10T23:59:59+05:00",
     },
   ],
 
@@ -258,7 +258,31 @@ const ALPHABATTLE: PublicEvent = {
  * No seeded discount codes. The five that used to ship carried invented
  * redemption counts and read as though an organizer had created and used them.
  */
-const DISCOUNTS: Discount[] = [];
+/**
+ * Promotion codes.
+ *
+ * EARLYBIRD exists because the organizer wants a code to hand out, not only a
+ * date the software applies silently. It brings the fee to the same PKR 450 the
+ * early-bird rate gives, and expires with it, so a code shared on 11 August
+ * cannot reopen a closed offer.
+ *
+ * It is deliberately not stacked on the automatic rate: someone already paying
+ * 450 gains nothing from typing it. See `campaignFor` in the registration form.
+ */
+const DISCOUNTS: Discount[] = [
+  {
+    id: "disc-alphabattle-earlybird",
+    eventId: "evt-alphabattle-23-august",
+    code: "EARLYBIRD",
+    label: "Early bird",
+    kind: "fixed",
+    value: 350,
+    expiresAt: "2026-08-10T23:59:59+05:00",
+    maxRedemptions: 0,
+    redemptions: 0,
+    active: true,
+  },
+];
 
 export function buildEventSeed(): {
   events: PublicEvent[];

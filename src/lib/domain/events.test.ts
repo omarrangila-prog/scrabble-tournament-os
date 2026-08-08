@@ -7,6 +7,7 @@ import {
   generateToken,
   EventState,
   PublicEvent,
+  redeemDiscount,
   registrationStatusOf,
   splitEventsForPublic,
   slugify,
@@ -211,6 +212,90 @@ describe("default form", () => {
   });
 });
 
+describe("redeemDiscount", () => {
+  const code = (over: Partial<Discount> = {}): Discount => ({
+    id: "d1",
+    eventId: "evt-a",
+    code: "EARLYBIRD",
+    label: "Early bird",
+    kind: "fixed",
+    value: 350,
+    expiresAt: "2026-08-10T23:59:59+05:00",
+    maxRedemptions: 0,
+    redemptions: 0,
+    active: true,
+    ...over,
+  });
+
+  const ok = (r: ReturnType<typeof redeemDiscount>) => !("refusal" in r);
+
+  it("accepts a live code for its own event", () => {
+    const r = redeemDiscount([code()], "earlybird", "evt-a", new Date("2026-08-05"));
+    expect(ok(r)).toBe(true);
+  });
+
+  it("is case-insensitive and ignores surrounding space", () => {
+    expect(ok(redeemDiscount([code()], "  eArLyBiRd  ", "evt-a", new Date("2026-08-05")))).toBe(true);
+  });
+
+  /**
+   * The bug this function exists for. `expiresAt` was on the record from the
+   * start but nothing read it, so a dated code stayed usable for ever — an
+   * early bird the organizer had no way to close.
+   */
+  it("refuses a code after it expires", () => {
+    const r = redeemDiscount([code()], "EARLYBIRD", "evt-a", new Date("2026-08-11T00:01:00+05:00"));
+    expect(r).toMatchObject({ refusal: "expired" });
+  });
+
+  it("still accepts it in the last minute before expiry", () => {
+    expect(
+      ok(redeemDiscount([code()], "EARLYBIRD", "evt-a", new Date("2026-08-10T23:59:00+05:00"))),
+    ).toBe(true);
+  });
+
+  /** A code for another event must not silently discount this one. */
+  it("refuses a code belonging to a different event", () => {
+    const r = redeemDiscount([code()], "EARLYBIRD", "evt-b", new Date("2026-08-05"));
+    expect(r).toMatchObject({ refusal: "wrong-event" });
+  });
+
+  it("refuses a deactivated code", () => {
+    const r = redeemDiscount([code({ active: false })], "EARLYBIRD", "evt-a", new Date("2026-08-05"));
+    expect(r).toMatchObject({ refusal: "inactive" });
+  });
+
+  it("refuses a code that has hit its limit", () => {
+    const r = redeemDiscount(
+      [code({ maxRedemptions: 5, redemptions: 5 })],
+      "EARLYBIRD",
+      "evt-a",
+      new Date("2026-08-05"),
+    );
+    expect(r).toMatchObject({ refusal: "exhausted" });
+  });
+
+  it("treats zero max redemptions as unlimited", () => {
+    expect(
+      ok(redeemDiscount([code({ redemptions: 999 })], "EARLYBIRD", "evt-a", new Date("2026-08-05"))),
+    ).toBe(true);
+  });
+
+  /** Sending someone hunting for a typo that is not there wastes their time. */
+  it("distinguishes an expired code from an unrecognised one", () => {
+    const expired = redeemDiscount([code()], "EARLYBIRD", "evt-a", new Date("2026-09-01"));
+    const unknown = redeemDiscount([code()], "NOSUCHCODE", "evt-a", new Date("2026-08-05"));
+    expect(expired).toMatchObject({ refusal: "expired" });
+    expect(unknown).toMatchObject({ refusal: "unknown" });
+    if ("message" in expired && "message" in unknown)
+      expect(expired.message).not.toBe(unknown.message);
+  });
+
+  it("refuses an empty code without claiming it is unknown to the event", () => {
+    expect(redeemDiscount([code()], "   ", "evt-a")).toMatchObject({ refusal: "unknown" });
+  });
+});
+
 describe("splitEventsForPublic", () => {
   const at = (slug: string, startDate: string, state: EventState = "registration-open") =>
     ({ ...EVENT, id: slug, slug, startDate, state }) as PublicEvent;
@@ -398,22 +483,22 @@ describe("seeded event data", () => {
     const on = (at: string) =>
       priceRegistration(rates, { isMember: false, groupSize: 1, at });
 
-    it("charges 450 on or before 9 August", () => {
+    it("charges 450 on or before 10 August", () => {
       expect(on("2026-08-01T10:00:00+05:00").perPerson).toBe(450);
-      const ninth = on("2026-08-09T14:00:00+05:00");
-      expect(ninth.perPerson).toBe(450);
-      expect(ninth.applied.id).toBe("early-bird");
+      const tenth = on("2026-08-10T14:00:00+05:00");
+      expect(tenth.perPerson).toBe(450);
+      expect(tenth.applied.id).toBe("early-bird");
     });
 
-    /** The last minute of the 9th still counts as "on or before". */
-    it("still charges 450 at 23:59 on 9 August", () => {
-      expect(on("2026-08-09T23:59:00+05:00").perPerson).toBe(450);
+    /** The last minute of the 10th still counts as "on or before". */
+    it("still charges 450 at 23:59 on 10 August", () => {
+      expect(on("2026-08-10T23:59:00+05:00").perPerson).toBe(450);
     });
 
-    it("charges 800 from 10 August", () => {
-      const tenth = on("2026-08-10T00:01:00+05:00");
-      expect(tenth.perPerson).toBe(800);
-      expect(tenth.applied.id).toBe("standard");
+    it("charges 800 from 11 August", () => {
+      const eleventh = on("2026-08-11T00:01:00+05:00");
+      expect(eleventh.perPerson).toBe(800);
+      expect(eleventh.applied.id).toBe("standard");
       expect(on("2026-08-23T09:00:00+05:00").perPerson).toBe(800);
     });
 
@@ -444,8 +529,16 @@ describe("seeded event data", () => {
     }
   });
 
-  it("offers no fabricated discount codes", () => {
-    expect(seed.discounts).toEqual([]);
+  /** One real code the organizer asked for, expiring with the early-bird rate. */
+  it("offers only the early-bird code, tied to AlphaBattle and dated", () => {
+    expect(seed.discounts).toHaveLength(1);
+    const [code] = seed.discounts;
+    expect(code.code).toBe("EARLYBIRD");
+    expect(code.eventId).toBe("evt-alphabattle-23-august");
+    expect(code.value).toBe(350);
+    expect(code.active).toBe(true);
+    // Expires with the rate, so a code shared later cannot reopen the offer.
+    expect(code.expiresAt).toContain("2026-08-10");
   });
 
   /**

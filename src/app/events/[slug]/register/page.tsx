@@ -20,6 +20,7 @@ import {
   paymentSummary,
   quoteFee,
 } from "@/lib/domain/gameOn";
+import { redeemDiscount } from "@/lib/domain/events";
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
 import { qrToDataUri } from "@/lib/qr/qrcode";
@@ -83,19 +84,18 @@ export default function RegisterPage() {
     const code = raw.trim().toUpperCase();
     if (!code) return;
 
-    const found = store.discounts.find(
-      (d) => d.eventId === event.id && d.active && d.code === code,
-    );
-    if (!found) {
-      setCodeError("That code is not recognised for this event.");
+    /*
+     * Validated in the domain, so expiry is actually enforced. The old check
+     * read `active` and the redemption count but never `expiresAt`, so a dated
+     * code stayed usable for ever — an early bird the organizer could not close.
+     */
+    const outcome = redeemDiscount(store.discounts, code, event.id);
+    if ("refusal" in outcome) {
+      setCodeError(outcome.message);
       setCampaign(undefined);
       return;
     }
-    if (found.maxRedemptions > 0 && found.redemptions >= found.maxRedemptions) {
-      setCodeError("This code has reached its limit.");
-      setCampaign(undefined);
-      return;
-    }
+    const found = outcome.discount;
 
     setCodeError(null);
     setCampaign({
@@ -154,18 +154,23 @@ export default function RegisterPage() {
   };
 
   if (submitted) {
-    const quote = quoteFee(
-      submitted.registration.membershipStatus,
-      campaign,
-      event.fee,
-      event.currency,
-    );
+    /*
+     * The amount that was recorded, not a fresh calculation.
+     *
+     * Recomputing here called quoteFee with the participant's membership status,
+     * which applies a hardcoded 10% Alliance Française discount and ignores the
+     * event's own rate table — so an AlphaBattle entrant priced at PKR 450 by
+     * the form was told they had paid PKR 1,125. The confirmation must report
+     * the figure the payment queue holds, or the two disagree about money.
+     */
+    const stored = store.registrations.find((r) => r.token === submitted.token);
+
     return (
       <GameOnConfirmation
         token={submitted.token}
         registration={submitted.registration}
         event={event}
-        payable={quote.payable}
+        payable={stored?.amountDue ?? submitted.registration.bundleTotal ?? event.fee}
         /*
          * The status actually recorded, not an assumption. The confirmation used
          * to say "Amount due" and badge "Awaiting payment" unconditionally,
@@ -325,6 +330,10 @@ function GameOnConfirmation({
    */
   const pay = paymentSummary(paymentStatus, event.paymentMethods.length > 0);
 
+  /** The body this event actually discounts for, if any. */
+  const memberBody =
+    event.rates?.find((r) => r.id === "member")?.label.replace(/ member$/i, "") ?? "";
+
   return (
     <main className="min-h-dvh px-4 py-10 sm:py-16" style={{ background: CREAM }}>
       <div className="mx-auto w-full max-w-[560px] text-center">
@@ -365,10 +374,14 @@ function GameOnConfirmation({
           </div>
         </Card>
 
-        {registration.membershipStatus !== "not-claimed" ? (
+        {/*
+          * Named from the event, not hardcoded. An AlphaBattle entrant was told
+          * about an Alliance Française discount belonging to the other event.
+          */}
+        {registration.membershipStatus !== "not-claimed" && memberBody ? (
           <p className="mt-3 rounded-control px-4 py-3 text-[12.5px] leading-relaxed"
              style={{ background: "#C89B3C22", color: "#8A6A1F" }}>
-            Your Alliance Française member discount is applied above and confirmed once we have
+            Your {memberBody} member discount is applied above and confirmed once we have
             checked your membership number.
           </p>
         ) : null}

@@ -198,6 +198,9 @@ export function GameOnForm({
 
   const onlyTrack = availableTracks.length === 1 ? availableTracks[0] : null;
 
+  /** The Jamming Session is on 23 August; never advertise it at that day's event. */
+  const showJammingSession = event.startDate !== "2026-08-23";
+
   /*
    * Playing levels the event actually runs. Masters sits above Advanced and
    * neither August event fields it, so offering it invites a preference the
@@ -228,12 +231,23 @@ export function GameOnForm({
       })
     : null;
 
+  /*
+   * A code must not stack on a rate that already gave the same reduction.
+   *
+   * EARLYBIRD takes PKR 350 off, which is exactly what the early-bird rate
+   * already does by date. Applying both would charge PKR 100 for an 800 event.
+   * Somebody already on the early-bird rate keeps their price and is told the
+   * code adds nothing, rather than being quietly given it twice.
+   */
+  const codeAlreadyApplied = rateResult?.applied.id === "early-bird" && Boolean(campaign);
+  const effectiveCampaign = codeAlreadyApplied ? undefined : campaign;
+
   const quote = rateResult
     ? quoteFee(
         // The rate already reflects membership, so the older discount must not
         // be applied on top of it.
         "not-claimed",
-        campaign,
+        effectiveCampaign,
         rateResult.perPerson,
         event.currency,
       )
@@ -807,6 +821,13 @@ export function GameOnForm({
                 </Field>
               ) : null}
 
+              {/* Say so when a code changes nothing, rather than ignoring it. */}
+              {codeAlreadyApplied ? (
+                <p className="rounded-control bg-[#C89B3C]/12 px-3.5 py-3 text-[12.5px] leading-relaxed text-[#8A6A1F]">
+                  You already have the early-bird price, so this code does not reduce it further.
+                </p>
+              ) : null}
+
               {rateResult ? (
                 <div className="rounded-feature bg-[#2F5D3A]/8 p-4">
                   <p className="flex items-start gap-2 text-[13px] font-semibold" style={{ color: "#2F5D3A" }}>
@@ -993,7 +1014,15 @@ export function GameOnForm({
                 bundleOff={bundle.bundleOff}
               />
 
-              {/* Jamming Session — a separate event, and a separate consent. */}
+              {/*
+                * Jamming Session — a separate event, and a separate consent.
+                *
+                * Hidden on an event held on the same day. This upsell advertises
+                * a session on 23 August, and showing it to somebody registering
+                * for the 23 August event invites them to something they cannot
+                * attend instead of what they are signing up for.
+                */}
+              {showJammingSession ? (
               <div className="rounded-feature border border-[#C89B3C]/40 bg-[#C89B3C]/10 p-4">
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#8A6A1F]">
                   Keep the vibe going
@@ -1029,10 +1058,11 @@ export function GameOnForm({
                 </Field>
 
                 <p className="mt-2 text-[11px] text-faint">
-                  This does not affect your GAME ON! registration, and does not register you for a
-                  paid event.
+                  This does not affect your {event.name} registration, and does not register you
+                  for a paid event.
                 </p>
               </div>
+              ) : null}
 
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input

@@ -620,3 +620,60 @@ export function splitEventsForPublic(
     past: visible.filter(isPast).sort((a, b) => byDateAsc(b, a)),
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Promotion codes                                                             */
+/* -------------------------------------------------------------------------- */
+
+export type DiscountRefusal =
+  | "unknown"
+  | "wrong-event"
+  | "inactive"
+  | "expired"
+  | "exhausted";
+
+/**
+ * Resolves a typed promotion code.
+ *
+ * Every reason a code can fail is returned, because "that code is not
+ * recognised" for a code that has merely expired sends someone hunting for a
+ * typo that is not there.
+ *
+ * `expiresAt` is enforced here. It was part of the Discount record from the
+ * start but nothing ever read it, so a code stayed usable for ever — an early
+ * bird that never ended is a discount the organizer cannot close.
+ */
+export function redeemDiscount(
+  discounts: Discount[],
+  rawCode: string,
+  eventId: string,
+  now = new Date(),
+): { discount: Discount } | { refusal: DiscountRefusal; message: string } {
+  const code = rawCode.trim().toUpperCase();
+  if (!code) return { refusal: "unknown", message: "Enter a promotion code." };
+
+  const matches = discounts.filter((d) => d.code.toUpperCase() === code);
+  if (matches.length === 0)
+    return { refusal: "unknown", message: "That code is not recognised." };
+
+  const forEvent = matches.find((d) => d.eventId === eventId);
+  if (!forEvent)
+    return {
+      refusal: "wrong-event",
+      message: "That code belongs to a different event.",
+    };
+
+  if (!forEvent.active)
+    return { refusal: "inactive", message: "That code is no longer active." };
+
+  if (forEvent.expiresAt) {
+    const ends = new Date(forEvent.expiresAt).getTime();
+    if (!Number.isNaN(ends) && now.getTime() > ends)
+      return { refusal: "expired", message: "That code has expired." };
+  }
+
+  if (forEvent.maxRedemptions > 0 && forEvent.redemptions >= forEvent.maxRedemptions)
+    return { refusal: "exhausted", message: "This code has reached its limit." };
+
+  return { discount: forEvent };
+}
