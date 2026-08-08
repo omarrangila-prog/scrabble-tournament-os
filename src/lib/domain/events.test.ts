@@ -403,12 +403,12 @@ describe("seeded event data", () => {
     expect(new Set(seed.forms.map((f) => f.eventId)).size).toBe(2);
   });
 
-  it("carries the two AlphaBattle rates the organizer set", () => {
+  it("carries the single AlphaBattle rate the organizer set", () => {
     const alphaBattle = seed.events[1];
     const amounts = Object.fromEntries(
       (alphaBattle.rates ?? []).map((r) => [r.id, r.amount]),
     );
-    expect(amounts).toEqual({ standard: 800, "early-bird": 450 });
+    expect(amounts).toEqual({ standard: 800 });
   });
 
   /** Money goes to a real account or the step says details are coming. */
@@ -475,44 +475,35 @@ describe("seeded event data", () => {
   });
 
   /**
-   * The early bird, as the organizer set it: PKR 450 for anyone registering on
-   * or before 9 August, PKR 800 from the 10th.
+   * The early bird is given by the EARLYBIRD code, not by the calendar.
+   *
+   * With both a date-based rate and a code, everyone paid 450 until 10 August
+   * whether they knew the code or not — the code changed nothing. The entry fee
+   * is now 800 for everyone and the code is the only route to 450.
    */
   describe("AlphaBattle pricing", () => {
-    const rates = seed.events.find((e) => e.slug === "alphabattle-23-august")!.rates!;
-    const on = (at: string) =>
-      priceRegistration(rates, { isMember: false, groupSize: 1, at });
+    const alphaBattle = seed.events.find((e) => e.slug === "alphabattle-23-august")!;
+    const rates = alphaBattle.rates!;
 
-    it("charges 450 on or before 10 August", () => {
-      expect(on("2026-08-01T10:00:00+05:00").perPerson).toBe(450);
-      const tenth = on("2026-08-10T14:00:00+05:00");
-      expect(tenth.perPerson).toBe(450);
-      expect(tenth.applied.id).toBe("early-bird");
-    });
-
-    /** The last minute of the 10th still counts as "on or before". */
-    it("still charges 450 at 23:59 on 10 August", () => {
-      expect(on("2026-08-10T23:59:00+05:00").perPerson).toBe(450);
-    });
-
-    it("charges 800 from 11 August", () => {
-      const eleventh = on("2026-08-11T00:01:00+05:00");
-      expect(eleventh.perPerson).toBe(800);
-      expect(eleventh.applied.id).toBe("standard");
-      expect(on("2026-08-23T09:00:00+05:00").perPerson).toBe(800);
-    });
-
-    /**
-     * No rate may sit above the standard entry. A member or group rate dearer
-     * than 800 could never apply, and the question behind it would change
-     * nothing while appearing to offer a discount.
-     */
-    it("offers no rate that can never apply", () => {
-      const standard = rates.find((r) => r.id === "standard")!;
-      for (const r of rates) {
-        if (r.id === "standard") continue;
-        expect(r.amount).toBeLessThan(standard.amount);
+    it("charges 800 whatever the date", () => {
+      for (const at of [
+        "2026-08-01T10:00:00+05:00",
+        "2026-08-10T23:59:00+05:00",
+        "2026-08-23T09:00:00+05:00",
+      ]) {
+        expect(priceRegistration(rates, { isMember: false, groupSize: 1, at }).perPerson).toBe(800);
       }
+    });
+
+    /** The code, not a rate, is what reduces it — so it must actually exist. */
+    it("brings the fee to 450 with the early-bird code", () => {
+      const code = seed.discounts.find((d) => d.code === "EARLYBIRD")!;
+      expect(code.eventId).toBe(alphaBattle.id);
+      expect(computeFee(alphaBattle.fee, alphaBattle.currency, code).amountDue).toBe(450);
+    });
+
+    it("offers no date-based rate that would make the code pointless", () => {
+      expect(rates.some((r) => r.availableUntil)).toBe(false);
     });
 
     /** Group size is no longer asked, so no rate may depend on it. */

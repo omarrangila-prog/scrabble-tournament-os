@@ -207,24 +207,18 @@ const ALPHABATTLE: PublicEvent = {
   currency: "PKR",
 
   /*
-   * Two rates, as the organizer set them: PKR 450 for anyone registering on or
-   * before 10 August, PKR 800 from the 11th. A participant qualifying for both
-   * pays the cheaper one — rates are never stacked.
+   * One rate: PKR 800.
    *
-   * The PSA member and family rates were removed. Both sat above the new 800
-   * standard, so the pricing engine would never have applied either, and the
-   * questions behind them would have changed nothing.
+   * The early bird is delivered by the EARLYBIRD code rather than automatically
+   * by date. With both in place everyone got 450 until 10 August whether they
+   * knew the code or not, which left the code with nothing to do — the organizer
+   * wants it to be the thing that reduces the price.
+   *
+   * The PSA member and family rates were removed earlier: both sat above 800, so
+   * the engine would never have applied either and the questions behind them
+   * would have changed nothing.
    */
-  rates: [
-    { id: "standard", label: "Standard entry", amount: 800, basis: "Everyone" },
-    {
-      id: "early-bird",
-      label: "Early bird",
-      amount: 450,
-      basis: "Register on or before 10 August",
-      availableUntil: "2026-08-10T23:59:59+05:00",
-    },
-  ],
+  rates: [{ id: "standard", label: "Standard entry", amount: 800, basis: "Everyone" }],
 
   // Shared across every event — see PAYMENT_ACCOUNTS.
   paymentMethods: [...PAYMENT_ACCOUNTS.methods],
@@ -261,13 +255,12 @@ const ALPHABATTLE: PublicEvent = {
 /**
  * Promotion codes.
  *
- * EARLYBIRD exists because the organizer wants a code to hand out, not only a
- * date the software applies silently. It brings the fee to the same PKR 450 the
- * early-bird rate gives, and expires with it, so a code shared on 11 August
- * cannot reopen a closed offer.
+ * EARLYBIRD is how the early bird is given: PKR 350 off the 800 entry, bringing
+ * it to 450. There is no date-based early-bird rate, so this code is the only
+ * route to the lower price and typing it changes the amount.
  *
- * It is deliberately not stacked on the automatic rate: someone already paying
- * 450 gains nothing from typing it. See `campaignFor` in the registration form.
+ * It expires at the end of 10 August, so a code shared afterwards cannot reopen
+ * a closed offer.
  */
 const DISCOUNTS: Discount[] = [
   {

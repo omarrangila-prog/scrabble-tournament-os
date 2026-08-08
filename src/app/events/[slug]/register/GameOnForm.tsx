@@ -234,10 +234,10 @@ export function GameOnForm({
   /*
    * A code must not stack on a rate that already gave the same reduction.
    *
-   * EARLYBIRD takes PKR 350 off, which is exactly what the early-bird rate
-   * already does by date. Applying both would charge PKR 100 for an 800 event.
-   * Somebody already on the early-bird rate keeps their price and is told the
-   * code adds nothing, rather than being quietly given it twice.
+   * AlphaBattle currently has no date-based early-bird rate, so this does not
+   * fire — EARLYBIRD is the only route to the lower price. The guard stays
+   * because reinstating that rate alongside the code would otherwise charge
+   * PKR 100 for an 800 event, and the mistake would be invisible.
    */
   const codeAlreadyApplied = rateResult?.applied.id === "early-bird" && Boolean(campaign);
   const effectiveCampaign = codeAlreadyApplied ? undefined : campaign;
