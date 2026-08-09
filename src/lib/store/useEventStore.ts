@@ -26,6 +26,12 @@ import {
   slugify,
   TokenKind,
 } from "../domain/events";
+import {
+  checkInOutcome,
+  type CheckInMethod,
+  type CheckInOutcome,
+  generateCheckInCode,
+} from "../domain/checkIn";
 import { PaymentMethod, PlayerCategory } from "../domain/identity";
 import { ParticipationTrack } from "../firebase/schema";
 import { AUTO_VERIFY_ON_UPLOAD } from "../domain/gameOn";
@@ -132,6 +138,28 @@ export interface GuestRegistration {
   reviewedBy?: string;
   reviewNote?: string;
   timeline: { at: string; by: string; entry: string }[];
+
+  /* ---- Self check-in --------------------------------------------------- */
+
+  /**
+   * Six-digit code the participant types after scanning the venue QR.
+   *
+   * Unique within the event. Deliberately not derived from any id: a code that
+   * encoded the record would leak it, and this is typed on a public page.
+   */
+  checkInCode?: string;
+
+  /**
+   * When they arrived. Absent until they do.
+   *
+   * Set once. A second tap returns "already checked in" rather than moving the
+   * time, because this is the arrival record and the figure the director sets
+   * tables out from.
+   */
+  checkedInAt?: string;
+  checkInMethod?: "personal_link" | "venue_qr" | "staff_manual";
+  /** Staff member who checked them in, for the manual route only. */
+  checkedInBy?: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -177,6 +205,20 @@ interface EventActions {
       "id" | "token" | "status" | "paymentStatus" | "submittedAt" | "timeline"
     >,
   ) => string;
+
+  /**
+   * Records an arrival, once.
+   *
+   * Reads the current state and only writes when nobody has checked in yet, so
+   * a second tap returns `already-checked-in` instead of counting twice or
+   * moving the arrival time. The decision itself lives in `checkInOutcome`, so
+   * a server function can apply the same rule inside a transaction.
+   */
+  checkIn: (
+    registrationId: string,
+    method: CheckInMethod,
+    by?: string,
+  ) => CheckInOutcome;
 
   reviewRegistration: (
     registrationId: string,
@@ -421,12 +463,24 @@ export const useEventStore = create<EventStore>()(
                   : "receipt-uploaded"
                 : "not-submitted";
 
+        /*
+         * The check-in code is issued now, so it can travel in the confirmation
+         * and be typed at the venue. Unique within the event: two participants
+         * sharing one would check each other in.
+         */
+        const checkInCode = generateCheckInCode(
+          get()
+            .registrations.filter((r) => r.eventId === input.eventId)
+            .map((r) => r.checkInCode ?? ""),
+        );
+
         const registration: GuestRegistration = {
           ...input,
           id,
           token,
           status,
           paymentStatus,
+          checkInCode,
           submittedAt: now(),
           timeline: [
             { at: now(), by: input.fullName, entry: "Registration submitted." },
@@ -457,6 +511,44 @@ export const useEventStore = create<EventStore>()(
         }));
 
         return token;
+      },
+
+      checkIn: (registrationId, method, by) => {
+        const registration = get().registrations.find((r) => r.id === registrationId);
+        if (!registration)
+          return { result: "blocked", reason: "We could not find that registration." };
+
+        const outcome = checkInOutcome(registration, method, now());
+        if (outcome.result !== "checked-in") return outcome;
+
+        set((s) => ({
+          registrations: s.registrations.map((r) =>
+            // Re-checked inside the write: nothing may overwrite an arrival.
+            r.id === registrationId && !r.checkedInAt
+              ? {
+                  ...r,
+                  checkedInAt: outcome.at,
+                  checkInMethod: method,
+                  ...(by ? { checkedInBy: by } : {}),
+                  timeline: [
+                    ...r.timeline,
+                    {
+                      at: outcome.at,
+                      by: by ?? r.fullName,
+                      entry:
+                        method === "staff_manual"
+                          ? "Checked in at the desk."
+                          : method === "personal_link"
+                            ? "Checked in from their personal link."
+                            : "Checked in by scanning the venue code.",
+                    },
+                  ],
+                }
+              : r,
+          ),
+        }));
+
+        return outcome;
       },
 
       reviewRegistration: (registrationId, decision, by, note, division) =>

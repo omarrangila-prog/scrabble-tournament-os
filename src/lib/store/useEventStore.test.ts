@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   EVENT_STATE_VERSION,
   migrateEventState,
@@ -77,5 +77,113 @@ describe("migrateEventState", () => {
   it("survives an empty or missing persisted state", () => {
     expect(migrateEventState(undefined, 1).events.length).toBeGreaterThan(0);
     expect(migrateEventState({}, 1).registrations).toEqual([]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Self check-in                                                              */
+/* -------------------------------------------------------------------------- */
+
+import { arrivalCounts } from "../domain/checkIn";
+import { useEventStore } from "./useEventStore";
+
+/** A registration made through the real action, so codes and tokens are real. */
+const submitOne = (fullName: string, over: Record<string, unknown> = {}) => {
+  const store = useEventStore.getState();
+  const eventId = store.events[0].id;
+  return store.submitRegistration({
+    eventId,
+    fullName,
+    email: `${fullName.split(" ")[0].toLowerCase()}@example.com`,
+    mobile: "03001234567",
+    dateOfBirth: "",
+    city: "Karachi",
+    club: "Unaffiliated",
+    experience: "",
+    preferredDivision: "recreational",
+    answers: {},
+    paymentMethod: "bank-transfer",
+    receiptFileName: "receipt.jpg",
+    amountDue: 1250,
+    discountAmount: 0,
+    currency: "PKR",
+    ...over,
+  } as never);
+};
+
+describe("check-in through the store", () => {
+  beforeEach(() => {
+    useEventStore.getState().resetEvents();
+  });
+
+  it("issues a six-digit code with every registration", () => {
+    submitOne("Ahmed Khan");
+    const [r] = useEventStore.getState().registrations;
+    expect(r.checkInCode).toMatch(/^\d{6}$/);
+  });
+
+  /** Two participants sharing a code would check each other in. */
+  it("issues a different code to each participant", () => {
+    for (let i = 0; i < 25; i += 1) submitOne(`Player ${i}`);
+    const codes = useEventStore.getState().registrations.map((r) => r.checkInCode);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it("records the arrival with its method", () => {
+    submitOne("Ahmed Khan");
+    const { id } = useEventStore.getState().registrations[0];
+    const outcome = useEventStore.getState().checkIn(id, "venue_qr");
+
+    expect(outcome.result).toBe("checked-in");
+    const after = useEventStore.getState().registrations[0];
+    expect(after.checkedInAt).toBeTruthy();
+    expect(after.checkInMethod).toBe("venue_qr");
+  });
+
+  /**
+   * The guarantee the arrivals figure rests on. A second tap, or a scan
+   * followed by opening the personal link, must not count twice or move the
+   * time somebody actually arrived.
+   */
+  it("never counts a second check-in or moves the arrival time", () => {
+    submitOne("Ahmed Khan");
+    const { id } = useEventStore.getState().registrations[0];
+
+    const first = useEventStore.getState().checkIn(id, "venue_qr");
+    const firstAt = first.result === "checked-in" ? first.at : "";
+
+    const second = useEventStore.getState().checkIn(id, "personal_link");
+    expect(second).toEqual({ result: "already-checked-in", at: firstAt });
+
+    const after = useEventStore.getState().registrations[0];
+    expect(after.checkedInAt).toBe(firstAt);
+    expect(after.checkInMethod).toBe("venue_qr");
+    expect(arrivalCounts(useEventStore.getState().registrations).checkedIn).toBe(1);
+  });
+
+  it("names the staff member on a manual check-in", () => {
+    submitOne("Ahmed Khan");
+    const { id } = useEventStore.getState().registrations[0];
+    useEventStore.getState().checkIn(id, "staff_manual", "Sir Hani");
+    expect(useEventStore.getState().registrations[0].checkedInBy).toBe("Sir Hani");
+  });
+
+  it("refuses an unknown registration without throwing", () => {
+    expect(useEventStore.getState().checkIn("reg-nope", "venue_qr").result).toBe("blocked");
+  });
+
+  it("keeps the arrivals count in step as people arrive", () => {
+    submitOne("A One");
+    submitOne("B Two");
+    submitOne("C Three");
+    const ids = useEventStore.getState().registrations.map((r) => r.id);
+
+    expect(arrivalCounts(useEventStore.getState().registrations).checkedIn).toBe(0);
+    useEventStore.getState().checkIn(ids[0], "venue_qr");
+    useEventStore.getState().checkIn(ids[1], "personal_link");
+    const counts = arrivalCounts(useEventStore.getState().registrations);
+    expect(counts.checkedIn).toBe(2);
+    expect(counts.expected).toBe(3);
+    expect(counts.notArrived).toBe(1);
   });
 });
