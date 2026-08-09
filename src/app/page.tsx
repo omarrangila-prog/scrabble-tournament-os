@@ -6,7 +6,6 @@ import { ArrowRight, Camera, Mail } from "lucide-react";
 import { EventCard } from "@/components/public/EventCard";
 import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
 import { FeaturedEvent } from "@/components/public/FeaturedEvent";
-import { Tile } from "@/components/public/Tile";
 import { lowestPrice } from "@/lib/seo";
 import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
 
@@ -55,37 +54,30 @@ export default function HomePage() {
       <Header hasPast={past.length > 0} />
 
       <main className="relative mx-auto w-full max-w-[1120px] px-5 pb-20 sm:px-8">
-        <Hero hasEvents={upcoming.length > 0} hasPast={past.length > 0} />
+        <section className="grid items-center gap-10 pt-4 sm:pt-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pt-12">
+          <Hero hasEvents={upcoming.length > 0} hasPast={past.length > 0} />
 
-        <Section
-          id="events"
-          eyebrow="What's on"
-          title="Upcoming experiences"
-          sub=""
-        >
           {upcoming.length ? (
-            <div className="space-y-6">
-              <FeaturedFor event={upcoming[0]} />
-
-              {/*
-                A grid of one leaves two empty cells and reads as unfinished, so
-                the rest only appears when there is a rest.
-              */}
-              {upcoming.length > 1 ? (
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {upcoming.slice(1).map((e) => (
-                    <EventCardFor key={e.id} event={e} />
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <FeaturedFor event={upcoming[0]} />
           ) : (
             <Empty
               title="No events announced yet"
               body="The next experience will appear here as soon as registration opens."
             />
           )}
-        </Section>
+        </section>
+
+        {/* The rest only when there is a rest — a lone card in a grid of three
+            leaves two empty cells and reads as unfinished. */}
+        {upcoming.length > 1 ? (
+          <Section id="events" eyebrow="What's on" title="More upcoming experiences" sub="">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {upcoming.slice(1).map((e) => (
+                <EventCardFor key={e.id} event={e} />
+              ))}
+            </div>
+          </Section>
+        ) : null}
 
         <Community />
 
@@ -207,33 +199,22 @@ function Header({ hasPast }: { hasPast: boolean }) {
 
 function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) {
   return (
-    <section className="pt-6 sm:pt-12">
-      {/*
-        Tiles as accent, not wallpaper. They give the hero something to look at
-        that belongs to the subject, rather than a stock photograph of strangers.
-      */}
-      <div className="flex gap-1.5" aria-hidden>
-        {["B", "L", "U", "F", "Y"].map((l, i) => (
-          <Tile key={l} letter={l} size={40} rotate={i % 2 ? 3 : -3} />
-        ))}
-      </div>
-
+    <section className="min-w-0">
       <p
-        className="mt-6 text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.26em]"
+        className="text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.2em]"
         style={{ color: `${BROWN}99` }}
       >
         Karachi&rsquo;s social game experiences
       </p>
 
       <h1
-        className="mt-5 text-[46px] font-extrabold leading-[0.9] tracking-[-0.035em] sm:mt-5 sm:text-[74px] lg:text-[88px]"
-        style={{ color: BROWN }}
+        className="font-display mt-4 text-[42px] leading-[1.02] tracking-[-0.02em] sm:text-[56px] lg:text-[64px]"
+        style={{ color: BROWN, fontWeight: 600 }}
       >
-        Play.
+        Scrabble nights
         <br />
-        Meet.
-        <br />
-        <span style={{ color: FOREST }}>Compete.</span>
+        worth turning up for
+        <span style={{ color: GOLD }}>.</span>
       </h1>
 
       <p
@@ -290,14 +271,14 @@ function Section({
   return (
     <section id={id} className="scroll-mt-8 pt-16 sm:pt-24">
       <p
-        className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
+        className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
         style={{ color: GOLD }}
       >
         {eyebrow}
       </p>
       <h2
-        className="mt-2.5 text-[30px] font-extrabold leading-[1.04] tracking-[-0.025em] sm:text-[44px]"
-        style={{ color: BROWN }}
+        className="font-display mt-2.5 text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
+        style={{ color: BROWN, fontWeight: 600 }}
       >
         {title}
       </h2>
@@ -339,28 +320,28 @@ function Community() {
   return (
     <section id="community" className="scroll-mt-8 pt-16 sm:pt-24">
       <div
-        className="rounded-[30px] px-6 py-12 text-center sm:px-12 sm:py-16"
-        style={{ background: `${GOLD}18` }}
+        className="rounded-[20px] px-6 py-11 sm:px-11 sm:py-14"
+        style={{ background: `${GOLD}1F` }}
       >
         <h2
-          className="text-[28px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[40px]"
-          style={{ color: BROWN }}
+          className="font-display text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
+          style={{ color: BROWN, fontWeight: 600 }}
         >
           More than a game.
         </h2>
         <p
-          className="mx-auto mt-4 max-w-[52ch] text-[15px] leading-[1.65] sm:text-[16.5px]"
+          className="mt-4 max-w-[52ch] text-[15px] leading-[1.65] sm:text-[16.5px]"
           style={{ color: `${BROWN}C9` }}
         >
           Blufy&rsquo;s AlphaBattle brings people together through words,
           competition, conversation and memorable social experiences.
         </p>
 
-        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+        <div className="mt-9 grid gap-6 border-t pt-8 sm:grid-cols-3" style={{ borderColor: `${BROWN}1A` }}>
           {pillars.map((p) => (
             <div key={p.title}>
               <p
-                className="text-[12px] font-bold uppercase tracking-[0.18em]"
+                className="text-[12px] font-bold uppercase tracking-[0.14em]"
                 style={{ color: GOLD }}
               >
                 {p.title}
@@ -396,23 +377,23 @@ function Collaborations() {
   return (
     <section className="scroll-mt-8 pt-16 sm:pt-24">
       <p
-        className="text-center text-[10.5px] font-bold uppercase tracking-[0.18em]"
+        className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
         style={{ color: GOLD }}
       >
         Events &amp; collaborations
       </p>
       <h2
-        className="mt-2.5 text-center text-[24px] font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-[32px]"
-        style={{ color: BROWN }}
+        className="font-display mt-2.5 text-[24px] leading-[1.12] tracking-[-0.02em] sm:text-[32px]"
+        style={{ color: BROWN, fontWeight: 600 }}
       >
         We&rsquo;ve brought people together with
       </h2>
 
-      <ul className="mx-auto mt-8 grid max-w-[900px] gap-4 sm:grid-cols-3">
+      <ul className="mt-8 grid gap-4 sm:grid-cols-3">
         {COLLABORATORS.map((c) => (
           <li
             key={c.name}
-            className="rounded-2xl border bg-white/60 px-5 py-6 text-center"
+            className="rounded-2xl border bg-white/60 px-5 py-6"
             style={{ borderColor: `${BROWN}14` }}
           >
             <p
@@ -442,8 +423,8 @@ function About() {
           About
         </p>
         <h2
-          className="mt-2.5 text-[26px] font-extrabold leading-[1.12] tracking-[-0.02em] sm:text-[36px]"
-          style={{ color: BROWN }}
+          className="font-display mt-2.5 text-[26px] leading-[1.12] tracking-[-0.02em] sm:text-[36px]"
+          style={{ color: BROWN, fontWeight: 600 }}
         >
           Everyone plays someone their own level
         </h2>
@@ -470,20 +451,17 @@ function About() {
 function Footer({ hasPast }: { hasPast: boolean }) {
   const nav = navFor(hasPast);
   return (
-    <footer
-      className="relative mt-4 border-t"
-      style={{ borderColor: `${BROWN}1F`, background: `${BROWN}06` }}
-    >
+    <footer className="relative mt-4" style={{ background: BROWN }}>
       <div className="mx-auto w-full max-w-[1120px] px-5 py-12 sm:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p
               className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
-              style={{ color: BROWN }}
+              style={{ color: CREAM }}
             >
               Blufy&rsquo;s AlphaBattle
             </p>
-            <p className="mt-1.5 text-[13px]" style={{ color: `${BROWN}99` }}>
+            <p className="mt-1.5 text-[13px]" style={{ color: `${CREAM}8C` }}>
               Karachi, Pakistan
             </p>
           </div>
@@ -494,7 +472,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
                 key={item.href}
                 href={item.href}
                 className="text-[13.5px] font-semibold transition-opacity hover:opacity-70"
-                style={{ color: `${BROWN}CC` }}
+                style={{ color: `${CREAM}CC` }}
               >
                 {item.label}
               </a>
@@ -502,7 +480,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
             <a
               href="https://instagram.com"
               className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
-              style={{ color: `${BROWN}CC` }}
+              style={{ color: `${CREAM}CC` }}
             >
               <Camera className="size-3.5" aria-hidden />
               Instagram
@@ -510,7 +488,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
             <a
               href="mailto:info@blufysalphabattle.com"
               className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
-              style={{ color: `${BROWN}CC` }}
+              style={{ color: `${CREAM}CC` }}
             >
               <Mail className="size-3.5" aria-hidden />
               Contact

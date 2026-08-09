@@ -390,3 +390,16 @@ body {
     backdrop-filter: none !important;
   }
 }
+
+/*
+ * Display type for the public pages only.
+ *
+ * The organizer app stays on Manrope: a dashboard wants a neutral interface
+ * face. The public site needs editorial contrast, which is what stops a page
+ * reading as a template built from one weight scale.
+ */
+@utility font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 30, "WONK" 0;
+}

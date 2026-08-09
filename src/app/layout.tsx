@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Geist_Mono } from "next/font/google";
+import { Manrope, Fraunces, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/seo";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/lib/design/theme";
@@ -10,6 +10,20 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
+/*
+ * Display face for public headlines.
+ *
+ * One typeface doing headlines, labels, prices and body is what makes a page read
+ * as a template. Manrope stays the interface font; a high-contrast serif carries
+ * the editorial voice that a hospitality brand needs and a UI sans cannot give.
+ */
+const fraunces = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+  axes: ["SOFT", "WONK"],
+  display: "swap",
+});
+
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 /**
@@ -60,7 +74,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="light"
-      className={`${manrope.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${manrope.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

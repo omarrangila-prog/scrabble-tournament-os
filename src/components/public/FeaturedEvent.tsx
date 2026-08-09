@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Clock, MapPin, Ticket } from "lucide-react";
 import { badgesFor } from "@/components/public/EventCard";
-import { Tile } from "@/components/public/Tile";
 import { PublicEvent, registrationStatusOf } from "@/lib/domain/events";
 
 const CREAM = "#F5F0E4";
@@ -66,29 +65,41 @@ export function FeaturedEvent({
 
   return (
     <article
-      className="relative overflow-hidden rounded-[32px]"
+      className="relative overflow-hidden rounded-[20px]"
       style={{
-        background: `linear-gradient(152deg, ${FOREST} 0%, #26492E 58%, #1E3A25 100%)`,
-        boxShadow: "0 30px 80px rgba(30,58,37,0.32)",
+        background: FOREST,
+        boxShadow: "0 18px 48px rgba(30,58,37,0.22)",
       }}
     >
       {/* The poster's weave, faint, so the panel is not a flat slab. */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.16]"
+        className="pointer-events-none absolute inset-0 opacity-[0.10]"
         style={{
           backgroundImage: `repeating-linear-gradient(45deg, #FFF6 0 1px, transparent 1px 20px),
                             repeating-linear-gradient(-45deg, #FFF6 0 1px, transparent 1px 20px)`,
         }}
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute -right-24 -top-24 size-[320px] rounded-full blur-3xl"
-        style={{ background: `${GOLD}33` }}
-        aria-hidden
-      />
-
-      <div className="relative grid gap-8 p-7 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-end lg:gap-12 lg:p-12">
+      <div className="relative p-7 sm:p-9">
         <div className="min-w-0">
+          {/* The date leads, as on a ticket. */}
+          {valid ? (
+            <div className="mb-6 flex items-baseline gap-2.5">
+              <span
+                className="num text-[46px] font-extrabold leading-none tracking-[-0.04em]"
+                style={{ color: CREAM }}
+              >
+                {day.getDate()}
+              </span>
+              <span
+                className="text-[13px] font-bold uppercase tracking-[0.18em]"
+                style={{ color: GOLD }}
+              >
+                {MONTHS[day.getMonth()]} {day.getFullYear()}
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-2">
             <span
               className="rounded-full px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em]"
@@ -107,9 +118,7 @@ export function FeaturedEvent({
             ))}
           </div>
 
-          <h3
-            className="mt-5 text-[34px] font-extrabold leading-[0.98] tracking-[-0.03em] text-white sm:text-[52px] lg:text-[60px]"
-          >
+          <h3 className="font-display mt-4 text-[30px] leading-[1.06] tracking-[-0.02em] text-white sm:text-[36px]" style={{ fontWeight: 600 }}>
             {event.name}
           </h3>
           {event.subtitle ? (
@@ -118,7 +127,7 @@ export function FeaturedEvent({
             </p>
           ) : null}
 
-          <dl className="mt-7 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+          <dl className="mt-6 space-y-2.5 border-t pt-5" style={{ borderColor: "rgba(255,255,255,0.16)" }}>
             {facts.map((f, i) => (
               <div key={i} className="flex items-center gap-2.5">
                 <span className="shrink-0" style={{ color: GOLD }} aria-hidden>
@@ -138,7 +147,7 @@ export function FeaturedEvent({
             ))}
           </dl>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-7 flex flex-col gap-2.5">
             {status.open ? (
               <Link
                 href={`/events/${event.slug}/register`}
@@ -167,34 +176,6 @@ export function FeaturedEvent({
           </div>
         </div>
 
-        {/* The date, as a physical thing. Tiles instead of a photograph. */}
-        {valid ? (
-          <div className="flex items-end gap-3 lg:flex-col lg:items-end">
-            <div
-              className="rounded-[24px] px-6 py-5 text-center"
-              style={{ background: CREAM }}
-            >
-              <p
-                className="num text-[52px] font-extrabold leading-none tracking-[-0.04em] sm:text-[68px]"
-                style={{ color: BROWN }}
-              >
-                {day.getDate()}
-              </p>
-              <p
-                className="mt-1 text-[12px] font-bold uppercase tracking-[0.2em]"
-                style={{ color: `${BROWN}A6` }}
-              >
-                {MONTHS[day.getMonth()]} {day.getFullYear()}
-              </p>
-            </div>
-
-            <div className="hidden gap-1.5 lg:flex">
-              {["W", "I", "N"].map((l, i) => (
-                <Tile key={l} letter={l} size={38} rotate={i % 2 ? 2.5 : -2.5} />
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
     </article>
   );
