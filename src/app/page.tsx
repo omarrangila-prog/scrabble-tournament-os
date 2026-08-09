@@ -60,7 +60,6 @@ export default function LandingPage() {
 
   const [role, setRole] = React.useState<Role>("director");
   const [email, setEmail] = React.useState(ROLE_EMAIL.director);
-  const [password, setPassword] = React.useState("");
   const [remember, setRemember] = React.useState(true);
   const [busy, setBusy] = React.useState<"signin" | "demo" | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -71,8 +70,8 @@ export default function LandingPage() {
   };
 
   const enter = (mode: "signin" | "demo") => {
-    if (!email.trim() || password.length < 4) {
-      setError("Enter your email and password.");
+    if (!email.trim()) {
+      setError("Enter your email address.");
       return;
     }
     setError(null);
@@ -292,21 +291,12 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-6 space-y-4">
-              <Field label="Email address" required>
+              <Field label="Email address" required error={error ?? undefined}>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="username"
-                />
-              </Field>
-
-              <Field label="Password" required error={error ?? undefined}>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
                   invalid={!!error}
                 />
               </Field>
@@ -335,20 +325,6 @@ export default function LandingPage() {
                   />
                   Remember me
                 </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    useStore.getState().toast({
-                      title: "Password reset",
-                      description:
-                        "In production this emails a secure reset link. Demo accounts use demo1234.",
-                      tone: "info",
-                    })
-                  }
-                  className="text-[13px] font-semibold text-primary-600 hover:underline"
-                >
-                  Forgot password
-                </button>
               </div>
             </div>
 
