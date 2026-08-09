@@ -80,7 +80,15 @@ export default function PublicSitePage() {
     .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
     .slice(0, 8);
 
-  const leaders = computeStandings(players, pairings, tournament, { division: "masters" }).slice(0, 5);
+  /*
+   * Leaders from the event's own top division, not a hardcoded "masters".
+   * AlphaBattle runs beginner, recreational and advanced — asking for Masters
+   * returned nothing and labelled the empty card "Masters division".
+   */
+  const topDivision = divisions[divisions.length - 1]?.id ?? tournament.divisions[0];
+  const leaders = computeStandings(players, pairings, tournament, {
+    division: topDivision,
+  }).slice(0, 5);
 
   const copyLink = () => {
     navigator.clipboard?.writeText(window.location.href);
@@ -163,12 +171,12 @@ export default function PublicSitePage() {
                   </span>
                 </p>
 
-                <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {[
                     ["Current round", `${tournament.currentRound} of ${tournament.totalRounds}`],
                     ["Boards live", String(liveCount)],
                     ["Divisions", String(divisions.length)],
-                    ["Next round", "14:15"],
+
                   ].map(([l, v]) => (
                     <div key={l} className="rounded-compact bg-[rgb(var(--c-surface))] px-3.5 py-3">
                       <p className="text-[19px] font-semibold text-ink num">{v}</p>
@@ -181,7 +189,11 @@ export default function PublicSitePage() {
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <Card className="lg:col-span-1">
-                <CardHeader title="Featured leaders" subtitle="Masters division" icon={<Trophy className="size-4.5" />} />
+                <CardHeader
+                  title="Featured leaders"
+                  subtitle={divisions.find((d) => d.id === topDivision)?.name ?? "Top division"}
+                  icon={<Trophy className="size-4.5" />}
+                />
                 <div className="space-y-1.5 px-4 pb-4">
                   {leaders.map((r) => {
                     const p = playerOf(r.playerId);

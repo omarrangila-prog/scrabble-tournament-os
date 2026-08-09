@@ -20,8 +20,6 @@ const T = (day: string, time = "10:00") => {
   return new Date(`${day}T${hh}:${mm}:00+05:00`).toISOString();
 };
 
-export const DEMO_EVENT_SLUG = "game-on-8-august";
-
 /**
  * The one set of accounts every event collects into.
  *
@@ -44,120 +42,26 @@ export const PAYMENT_ACCOUNTS = {
 } as const;
 
 /**
- * GAME ON!
+ * The 23 August prices — the single source for every surface.
  *
- * Built from the event poster plus what the organizer has since confirmed.
- * Anything neither source states is left empty and listed in `unconfirmed`,
- * which blocks publication until it is supplied — a public page carrying an
- * invented capacity or payment account is worse than one that admits the gap.
+ * PKR 1,250 is the figure on the organizer's own registration form, alongside
+ * PSA 950 and Early Bird 800. GAME ON! charges 1,200; that is a different event,
+ * not a competing figure for this one.
  *
- * The payment accounts came from the organizer directly, not from the poster:
- * both August events collect into the same HabibMetro and EasyPaisa accounts.
- *
- * The year is the one exception, and it is a deduction rather than an
- * invention: the poster says "8th August, Saturday", and 8 August falls on a
- * Saturday in 2026 but not 2025. It remains editable in Event Settings.
+ * Stated once because the same number was previously written into the event fee,
+ * the rate table and the price rules independently. Three copies diverge the
+ * moment one is edited, and the landing page then quotes a price the form does
+ * not charge.
  */
-const EVENT: PublicEvent = {
-  id: "evt-game-on-8-august",
-  organizationId: "org-federation",
-  slug: DEMO_EVENT_SLUG,
-
-  name: "GAME ON!",
-  subtitle: "An Evening of Board Games & Speed Scrabble",
-
-  shortDescription: "Board games. New people. Great vibes. Countless memories.",
-  description:
-    "Get ready for an evening of board games, Speed Scrabble, new connections and great energy. Whether you are joining for friendly board games, competitive wordplay or both, GAME ON! brings together new people, great vibes and countless memories.",
-  bannerCaption: "Board games. New people. Great vibes. Countless memories.",
-
-  // Who runs the platform. The three names on the poster are collaborators.
-  organizer: "Bluffy Alphabattle",
-  collaborators: ["Boardgame Baithak", "Blufy's AlphaBattle", "Alliance Française"],
-
-  venueName: "Alliance Française de Karachi",
-  address: "Clifton, Karachi",
-  city: "Karachi",
-  mapsUrl: "https://maps.google.com/?q=Alliance+Française+de+Karachi+Clifton",
-
-  startDate: "2026-08-08",
-  startTime: "17:00",
-  // The poster says "onwards" and states no finish, so none is claimed.
-  expectedFinish: "",
-  timeDisplay: "5:00 PM onwards",
-  timeZone: "Asia/Karachi (PKT, UTC+5)",
-
-  // Same organizer contact as the August 23 event.
-  contactPhone: "0300 8278594",
-  contactEmail: "",
-
-  visibility: "public",
-  // Not stated on the poster.
-  capacity: 0,
-
-  registrationOpensAt: T("2026-07-01"),
-  // No deadline is printed, so registration is open until the organizer closes it.
-  registrationClosesAt: T("2026-08-08", "17:00"),
-
-  fee: 1200,
+export const ALPHABATTLE_PRICES = {
+  base: 1250,
+  psaMember: 950,
+  hhs: 1000,
+  earlyBird: 800,
   currency: "PKR",
-  memberDiscountPercent: 10,
-  memberDiscountBody: "Alliance Française de Karachi",
-
-  rates: [
-    { id: "standard", label: "Standard entry", amount: 1200, basis: "Everyone" },
-    {
-      id: "member",
-      label: "Alliance Française member",
-      amount: 1080,
-      basis: "Members of Alliance Française de Karachi",
-    },
-  ],
-
-  // Shared across every event — see PAYMENT_ACCOUNTS.
-  paymentMethods: [...PAYMENT_ACCOUNTS.methods],
-  bankDetails: PAYMENT_ACCOUNTS.bank,
-  walletDetails: PAYMENT_ACCOUNTS.wallet,
-  waitingList: true,
-
-  participationTracks: ["board_games", "speed_scrabble", "both"],
-
-  // Speed Scrabble format is not printed on the poster.
-  rounds: 0,
-  roundMinutes: 0,
-  breakMinutes: 0,
-  // No Masters. The organizer places those players in Advanced, so offering the
-  // category would invite a preference nobody can honour.
-  divisions: ["beginner", "recreational", "advanced"],
-
-  unconfirmed: [
-    "Registration deadline",
-    "Maximum capacity",
-    "Number of Speed Scrabble rounds",
-    "Round duration",
-    "Closing time",
-    "Prize structure",
-    "Refund policy",
-    "Whether certificates are issued",
-    "Contact email",
-  ],
-
-  // The poster announces no prizes. Carrying over the previous event's would
-  // publish amounts nobody has committed to paying.
-  prizes: [],
-
-  /*
-   * Open. The two blockers the setup checklist enforces — a payment method and
-   * a receiving account — are both now supplied, so people can register and
-   * pay. The items still in `unconfirmed` above are genuinely unknown but none
-   * of them stops someone entering; they surface as gaps on the event page
-   * rather than as a closed door.
-   */
-  state: "registration-open",
-  createdAt: T("2026-07-28"),
-  createdBy: "Sir Hani",
-  publishedAt: T("2026-08-01"),
-};
+  /** Early Bird closes at the end of this day. Extend it to reopen the offer. */
+  earlyBirdUntil: "2026-08-09T23:59:59+05:00",
+} as const;
 
 /**
  * Blufy's AlphaBattle — 23 August.
@@ -203,8 +107,8 @@ const ALPHABATTLE: PublicEvent = {
   registrationOpensAt: T("2026-07-01"),
   registrationClosesAt: T("2026-08-23", "11:45"),
 
-  fee: 1250,
-  currency: "PKR",
+  fee: ALPHABATTLE_PRICES.base,
+  currency: ALPHABATTLE_PRICES.currency,
 
   /*
    * One rate: PKR 800.
@@ -218,7 +122,15 @@ const ALPHABATTLE: PublicEvent = {
    * the engine would never have applied either and the questions behind them
    * would have changed nothing.
    */
-  rates: [{ id: "standard", label: "Regular registration", amount: 1250, basis: "Everyone" }],
+  // Derived, so the rate table can never disagree with the price rules.
+  rates: [
+    {
+      id: "standard",
+      label: "Regular registration",
+      amount: ALPHABATTLE_PRICES.base,
+      basis: "Everyone",
+    },
+  ],
 
   /*
    * The prices the organizer set, in the order they apply.
@@ -232,24 +144,24 @@ const ALPHABATTLE: PublicEvent = {
    * which left the code with nothing to do.
    */
   priceRules: {
-    regular: 1250,
+    regular: ALPHABATTLE_PRICES.base,
     regularLabel: "Regular registration",
-    member: { price: 950, label: "PSA Member" },
+    member: { price: ALPHABATTLE_PRICES.psaMember, label: "PSA Member" },
     coupons: [
       {
         code: "EARLYBIRD",
         label: "Early Bird",
-        price: 800,
+        price: ALPHABATTLE_PRICES.earlyBird,
         /*
          * Today only, as instructed — the 9th, taken from the system clock
          * rather than from a date written in conversation. Extend this to
          * reopen the offer; the code is refused the moment it passes.
          */
-        availableUntil: "2026-08-09T23:59:59+05:00",
+        availableUntil: ALPHABATTLE_PRICES.earlyBirdUntil,
       },
-      { code: "HHS", label: "HHS Promotional Rate", price: 1000 },
+      { code: "HHS", label: "HHS Promotional Rate", price: ALPHABATTLE_PRICES.hhs },
     ],
-    currency: "PKR",
+    currency: ALPHABATTLE_PRICES.currency,
   },
 
   // Shared across every event — see PAYMENT_ACCOUNTS.
@@ -317,11 +229,19 @@ export function buildEventSeed(): {
   tokens: QrToken[];
 } {
   /*
-   * Two events, each starting empty. Their registrations are the ones people
-   * actually submit — seeding invented entrants would put fabricated names in
-   * the participant list, the payment queue and eventually on certificates.
+   * One active event: Blufy's AlphaBattle on 23 August.
+   *
+   * GAME ON! (8 August) has passed and is no longer in the active system. The
+   * organizer should not have to pick an event on every visit, and stale details
+   * from a finished evening should not be able to surface in a workspace, a
+   * report or a certificate. The store still holds a list, so publishing the
+   * next event needs no code change.
+   *
+   * Registrations start empty and are only the ones people actually submit —
+   * seeding invented entrants would put fabricated names in the participant
+   * list, the payment queue and eventually on certificates.
    */
-  const events = [EVENT, ALPHABATTLE];
+  const events = [ALPHABATTLE];
   const registrations: GuestRegistration[] = [];
 
   return {
@@ -331,7 +251,7 @@ export function buildEventSeed(): {
     discounts: DISCOUNTS,
     registrations,
     tokens: events.map((e) => ({
-      token: e.id === EVENT.id ? "GAMEON8AUG" : "ALPHA23AUG",
+      token: "ALPHA23AUG",
       kind: "event" as const,
       eventId: e.id,
       issuedAt: e.publishedAt ?? e.createdAt,

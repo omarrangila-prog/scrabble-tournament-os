@@ -60,7 +60,7 @@ export default function LandingPage() {
 
   const [role, setRole] = React.useState<Role>("director");
   const [email, setEmail] = React.useState(ROLE_EMAIL.director);
-  const [password, setPassword] = React.useState("demo1234");
+  const [password, setPassword] = React.useState("");
   const [remember, setRemember] = React.useState(true);
   const [busy, setBusy] = React.useState<"signin" | "demo" | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -72,7 +72,7 @@ export default function LandingPage() {
 
   const enter = (mode: "signin" | "demo") => {
     if (!email.trim() || password.length < 4) {
-      setError("Enter the demo email and password shown below.");
+      setError("Enter your email and password.");
       return;
     }
     setError(null);
@@ -375,22 +375,11 @@ export default function LandingPage() {
               </Button>
             </div>
 
-            <div className="mt-6 rounded-compact border border-line bg-[rgb(var(--c-surface-soft))] p-4">
-              <p className="flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-[0.05em] text-muted">
-                <Lock className="size-3.5" />
-                Demo credentials
-              </p>
-              <dl className="mt-2 space-y-1 text-[13px]">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Email</dt>
-                  <dd className="font-semibold text-ink">director@tournamentos.demo</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Password</dt>
-                  <dd className="font-semibold text-ink">demo1234</dd>
-                </div>
-              </dl>
-            </div>
+            {/*
+              * No credentials panel. Printing a working email and password on the
+              * public sign-in page hands organizer access to anyone who loads it,
+              * and reads as unfinished software rather than a product.
+              */}
 
             <p className="mt-5 text-center text-[13px] text-muted">
               Don&apos;t have organizer access?{" "}

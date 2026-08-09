@@ -44,9 +44,10 @@ describe("migrateEventState", () => {
     expect(alphaBattle?.fee).toBe(1250);
   });
 
-  it("brings back an event the cached copy never had", () => {
+  /** The finished 8 August event must not come back with the refresh. */
+  it("does not restore an event that is no longer active", () => {
     const next = migrateEventState(stale(), 1);
-    expect(next.events.map((e) => e.slug)).toContain("game-on-8-august");
+    expect(next.events.map((e) => e.slug)).toEqual(["alphabattle-23-august"]);
   });
 
   /**

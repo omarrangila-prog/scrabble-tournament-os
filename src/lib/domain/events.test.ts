@@ -68,7 +68,7 @@ describe("fee calculation", () => {
 });
 
 describe("registration availability", () => {
-  // GAME ON! has no capacity set, so these use an explicitly capped event.
+  // AlphaBattle has no capacity set, so these use an explicitly capped event.
   const open = {
     ...EVENT,
     state: "registration-open" as const,
@@ -94,8 +94,8 @@ describe("registration availability", () => {
   /**
    * Capacity 0 means "no limit set yet", not "full". Before this was handled,
    * 0 >= 0 held and an uncapped event reported itself full to its very first
-   * entrant — GAME ON! has no capacity on the poster, so every registration
-   * would have read as waitlisted.
+   * entrant — AlphaBattle has no capacity set, so every registration would
+   * have read as waitlisted.
    */
   it("treats an unset capacity as no limit rather than a full event", () => {
     const uncapped = { ...open, capacity: 0 };
@@ -367,8 +367,8 @@ describe("seeded event data", () => {
    * receiving account would collect fees with nowhere to send them, which is
    * exactly why both were held as drafts until the accounts were confirmed.
    */
-  it("seeds two events, and any open one can actually take payment", () => {
-    expect(seed.events).toHaveLength(2);
+  it("seeds one active event, and an open one can actually take payment", () => {
+    expect(seed.events).toHaveLength(1);
 
     const open = seed.events.filter((e) => e.state === "registration-open");
     // Without this the loop below passes vacuously if nothing is open.
@@ -383,28 +383,10 @@ describe("seeded event data", () => {
     }
   });
 
-  /** Two genuinely separate events, not one with variants. */
-  it("keeps the two events distinct in identity, venue and pricing", () => {
-    const [gameOn, alphaBattle] = seed.events;
 
-    expect(gameOn.name).toBe("GAME ON!");
-    expect(alphaBattle.name).toBe("Blufy's AlphaBattle");
-
-    expect(gameOn.slug).not.toBe(alphaBattle.slug);
-    expect(gameOn.venueName).not.toBe(alphaBattle.venueName);
-    expect(gameOn.startDate).toBe("2026-08-08");
-    expect(alphaBattle.startDate).toBe("2026-08-23");
-    expect(gameOn.fee).toBe(1200);
-    expect(alphaBattle.fee).toBe(1250);
-  });
-
-  it("gives each event its own registration form", () => {
-    expect(seed.forms).toHaveLength(2);
-    expect(new Set(seed.forms.map((f) => f.eventId)).size).toBe(2);
-  });
 
   it("carries the single AlphaBattle rate the organizer set", () => {
-    const alphaBattle = seed.events[1];
+    const alphaBattle = seed.events[0];
     const amounts = Object.fromEntries(
       (alphaBattle.rates ?? []).map((r) => [r.id, r.amount]),
     );
@@ -412,29 +394,6 @@ describe("seeded event data", () => {
   });
 
   /** Money goes to a real account or the step says details are coming. */
-  /**
-   * Both events collect into the same accounts, confirmed by the organizer.
-   * The point of this test is not that the fields are populated but that they
-   * are populated *identically* — a divergence would mean one event's money
-   * goes somewhere nobody checked, which is exactly the failure that leaving
-   * GAME ON! blank was originally guarding against.
-   */
-  it("collects both events into the same confirmed accounts", () => {
-    const [gameOn, alphaBattle] = seed.events;
-
-    expect(alphaBattle.bankDetails).toContain("Habib Metropolitan");
-    expect(alphaBattle.bankDetails).toContain("PK66MPBL0170027140140261");
-    expect(alphaBattle.walletDetails).toContain("0333 6665761");
-
-    expect(gameOn.bankDetails).toBe(alphaBattle.bankDetails);
-    expect(gameOn.walletDetails).toBe(alphaBattle.walletDetails);
-    expect(gameOn.paymentMethods).toEqual(alphaBattle.paymentMethods);
-
-    for (const ev of [gameOn, alphaBattle]) {
-      expect(ev.paymentMethods.length).toBeGreaterThan(0);
-      expect(ev.bankDetails.trim()).not.toBe("");
-    }
-  });
 
   /**
    * Holds for every event, not just today's two. A third event added later that
@@ -555,50 +514,8 @@ describe("seeded event data", () => {
     expect(seed.registrations).toEqual([]);
   });
 
-  it("carries only what the poster confirms", () => {
-    const event = seed.events[0];
-    expect(event.name).toBe("GAME ON!");
-    expect(event.subtitle).toBe("An Evening of Board Games & Speed Scrabble");
-    expect(event.fee).toBe(1200);
-    expect(event.currency).toBe("PKR");
-    expect(event.memberDiscountPercent).toBe(10);
-    expect(event.venueName).toBe("Alliance Française de Karachi");
-    expect(event.startDate).toBe("2026-08-08");
-    expect(event.timeDisplay).toBe("5:00 PM onwards");
-  });
 
-  it("names the three collaborators without renaming the event after one", () => {
-    const event = seed.events[0];
-    expect(event.name).toBe("GAME ON!");
-    expect(event.collaborators).toEqual([
-      "Boardgame Baithak",
-      "Blufy's AlphaBattle",
-      "Alliance Française",
-    ]);
-  });
 
-  /** Anything the poster does not state must be listed, not guessed. */
-  /**
-   * Payment details are deliberately absent from this list. They are not on the
-   * poster, but they are not invented either — the organizer confirmed both
-   * events collect into the same accounts, and that is covered by its own test
-   * above. Everything asserted here is still genuinely unstated.
-   */
-  it("invents nothing the poster leaves out", () => {
-    const event = seed.events[0];
-    expect(event.prizes).toEqual([]);
-    expect(event.rounds).toBe(0);
-    expect(event.capacity).toBe(0);
-    expect(event.unconfirmed?.length).toBeGreaterThan(0);
-  });
-
-  it("offers all three participation tracks", () => {
-    expect(seed.events[0].participationTracks).toEqual([
-      "board_games",
-      "speed_scrabble",
-      "both",
-    ]);
-  });
 });
 
 
