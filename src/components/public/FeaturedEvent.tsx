@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight, CalendarDays, Clock, MapPin, Ticket } from "lucide-react";
 import { badgesFor } from "@/components/public/EventCard";
 import { Tile } from "@/components/public/Tile";
@@ -48,7 +47,7 @@ export function FeaturedEvent({
   const status = registrationStatusOf(event, registrationCount);
   const badges = badgesFor(event, registrationCount);
 
-  const facts = [
+  const facts: { icon: React.ReactNode; label: string; emphasis?: boolean }[] = [
     {
       icon: <CalendarDays className="size-4" />,
       label: valid
@@ -60,14 +59,13 @@ export function FeaturedEvent({
     {
       icon: <Ticket className="size-4" />,
       label: `From ${event.currency} ${fromPrice.toLocaleString("en-PK")}`,
+      // The number people look for, so it carries the accent colour.
+      emphasis: true,
     },
   ];
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+    <article
       className="relative overflow-hidden rounded-[32px]"
       style={{
         background: `linear-gradient(152deg, ${FOREST} 0%, #26492E 58%, #1E3A25 100%)`,
@@ -126,7 +124,14 @@ export function FeaturedEvent({
                 <span className="shrink-0" style={{ color: GOLD }} aria-hidden>
                   {f.icon}
                 </span>
-                <dd className="min-w-0 text-[14px] font-medium text-white/90 sm:text-[15px]">
+                <dd
+                  className={
+                    f.emphasis
+                      ? "min-w-0 text-[15px] font-bold sm:text-[16px]"
+                      : "min-w-0 text-[14px] font-medium text-white/90 sm:text-[15px]"
+                  }
+                  style={f.emphasis ? { color: "#F0D89B" } : undefined}
+                >
                   {f.label}
                 </dd>
               </div>
@@ -191,6 +196,6 @@ export function FeaturedEvent({
           </div>
         ) : null}
       </div>
-    </motion.article>
+    </article>
   );
 }

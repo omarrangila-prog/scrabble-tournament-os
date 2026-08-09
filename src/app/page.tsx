@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight, Camera, Mail } from "lucide-react";
 import { EventCard } from "@/components/public/EventCard";
 import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
@@ -62,7 +61,7 @@ export default function HomePage() {
           id="events"
           eyebrow="What's on"
           title="Upcoming experiences"
-          sub="Your next great evening starts here."
+          sub=""
         >
           {upcoming.length ? (
             <div className="space-y-6">
@@ -74,8 +73,8 @@ export default function HomePage() {
               */}
               {upcoming.length > 1 ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {upcoming.slice(1).map((e, i) => (
-                    <EventCardFor key={e.id} event={e} index={i} />
+                  {upcoming.slice(1).map((e) => (
+                    <EventCardFor key={e.id} event={e} />
                   ))}
                 </div>
               ) : null}
@@ -98,8 +97,8 @@ export default function HomePage() {
             sub="Where we have played before."
           >
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {past.map((e, i) => (
-                <EventCardFor key={e.id} event={e} index={i} />
+              {past.map((e) => (
+                <EventCardFor key={e.id} event={e} />
               ))}
             </div>
           </Section>
@@ -122,17 +121,12 @@ export default function HomePage() {
  * it would overstate the cost, and quoting a coupon price everyone cannot get
  * would understate it.
  */
-function EventCardFor({ event, index }: { event: PublicEvent; index: number }) {
+function EventCardFor({ event }: { event: PublicEvent }) {
   const store = useEventStore();
   const count = selectRegistrations(store, event.id).length;
 
   return (
-    <EventCard
-      event={event}
-      registrationCount={count}
-      fromPrice={lowestPrice(event)}
-      index={index}
-    />
+    <EventCard event={event} registrationCount={count} fromPrice={lowestPrice(event)} />
   );
 }
 
@@ -174,7 +168,7 @@ function Header({ hasPast }: { hasPast: boolean }) {
   const nav = navFor(hasPast);
   return (
     <header className="relative">
-      <div className="mx-auto flex w-full max-w-[1120px] items-center gap-4 px-5 py-6 sm:px-8">
+      <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-center gap-x-4 gap-y-3 px-5 py-5 sm:px-8 sm:py-6">
         <Link
           href="/"
           className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
@@ -183,12 +177,15 @@ function Header({ hasPast }: { hasPast: boolean }) {
           Blufy&rsquo;s AlphaBattle
         </Link>
 
-        <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Sections">
+        <nav
+          className="order-3 -mx-1 flex w-full items-center gap-1 overflow-x-auto md:order-none md:ml-auto md:w-auto md:overflow-visible"
+          aria-label="Sections"
+        >
           {nav.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-colors hover:bg-white/70"
+              className="shrink-0 rounded-full px-3 py-2 text-[13px] font-semibold transition-colors hover:bg-white/70 sm:px-3.5 sm:text-[13.5px]"
               style={{ color: `${BROWN}CC` }}
             >
               {item.label}
@@ -198,7 +195,7 @@ function Header({ hasPast }: { hasPast: boolean }) {
 
         <a
           href="#events"
-          className="ml-auto inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.03] md:ml-2"
+          className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.03] md:ml-2"
           style={{ background: FOREST }}
         >
           Explore events
@@ -210,37 +207,25 @@ function Header({ hasPast }: { hasPast: boolean }) {
 
 function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) {
   return (
-    <section className="pt-6 text-center sm:pt-10">
+    <section className="pt-6 sm:pt-12">
       {/*
         Tiles as accent, not wallpaper. They give the hero something to look at
         that belongs to the subject, rather than a stock photograph of strangers.
       */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex justify-center gap-1.5"
-        aria-hidden
-      >
+      <div className="flex gap-1.5" aria-hidden>
         {["B", "L", "U", "F", "Y"].map((l, i) => (
           <Tile key={l} letter={l} size={40} rotate={i % 2 ? 3 : -3} />
         ))}
-      </motion.div>
+      </div>
 
-      <motion.p
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
+      <p
         className="mt-6 text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.26em]"
         style={{ color: `${BROWN}99` }}
       >
         Karachi&rsquo;s social game experiences
-      </motion.p>
+      </p>
 
-      <motion.h1
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+      <h1
         className="mt-5 text-[46px] font-extrabold leading-[0.9] tracking-[-0.035em] sm:mt-5 sm:text-[74px] lg:text-[88px]"
         style={{ color: BROWN }}
       >
@@ -249,24 +234,21 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         Meet.
         <br />
         <span style={{ color: FOREST }}>Compete.</span>
-      </motion.h1>
+      </h1>
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.28 }}
-        className="mx-auto mt-5 max-w-[50ch] text-[15.5px] leading-[1.65] sm:text-[17.5px]"
+      <p
+        className="mt-5 max-w-[46ch] text-[16px] leading-[1.6] sm:text-[19px]"
         style={{ color: `${BROWN}C9` }}
       >
         Discover Scrabble tournaments, board-game nights and social experiences
         designed to bring great people together.
-      </motion.p>
+      </p>
 
       {/*
         Not animated. A faded or delayed primary action is a button somebody
         cannot use, and if the animation stalls the page has no way in at all.
       */}
-      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <div className="mt-9 flex flex-col gap-3 sm:flex-row">
         {hasEvents ? (
           <a
             href="#events"
@@ -319,9 +301,11 @@ function Section({
       >
         {title}
       </h2>
-      <p className="mt-2 text-[14.5px] sm:text-[16px]" style={{ color: `${BROWN}A6` }}>
-        {sub}
-      </p>
+      {sub ? (
+        <p className="mt-2 text-[14.5px] sm:text-[16px]" style={{ color: `${BROWN}A6` }}>
+          {sub}
+        </p>
+      ) : null}
 
       <div className="mt-8">{children}</div>
     </section>
@@ -450,26 +434,27 @@ function Collaborations() {
 function About() {
   return (
     <section id="about" className="scroll-mt-8 pt-16 sm:pt-24">
-      <div className="mx-auto max-w-[62ch] text-center">
+      <div className="max-w-[62ch]">
         <p
-          className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
+          className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
           style={{ color: GOLD }}
         >
           About
         </p>
         <h2
-          className="mt-2.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-[34px]"
+          className="mt-2.5 text-[26px] font-extrabold leading-[1.12] tracking-[-0.02em] sm:text-[36px]"
           style={{ color: BROWN }}
         >
-          Friendly, well-run games evenings in Karachi
+          Everyone plays someone their own level
         </h2>
         <p
-          className="mt-4 text-[15px] leading-[1.7] sm:text-[16px]"
+          className="mt-4 text-[16px] leading-[1.7] sm:text-[17px]"
           style={{ color: `${BROWN}C9` }}
         >
-          We run Scrabble competitions and social game nights where newcomers and
-          regulars play in their own categories, so every game is a fair one. No
-          app, no account — you register from a link and check in on your phone.
+          Entrants pick a category — beginner, intermediate or advanced — and are
+          paired within it, so a first event is a real game rather than a
+          formality. Registration takes a few minutes from a link, and you check
+          in on your own phone at the door.
         </p>
       </div>
     </section>

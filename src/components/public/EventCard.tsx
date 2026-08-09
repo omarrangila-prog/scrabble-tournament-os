@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight, MapPin } from "lucide-react";
 import { PublicEvent, registrationStatusOf } from "@/lib/domain/events";
 import { cn } from "@/lib/utils";
@@ -76,13 +75,11 @@ export function EventCard({
   event,
   registrationCount,
   fromPrice,
-  index = 0,
 }: {
   event: PublicEvent;
   registrationCount: number;
   /** Lowest price anyone can actually pay, so "from" is honest. */
   fromPrice: number;
-  index?: number;
 }) {
   const day = new Date(event.startDate);
   const valid = !Number.isNaN(day.getTime());
@@ -91,11 +88,7 @@ export function EventCard({
   const completed = event.state === "completed" || event.state === "archived";
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.45, delay: 0.06 * index, ease: [0.22, 1, 0.36, 1] }}
+    <article
       className="group flex flex-col overflow-hidden rounded-[26px] border bg-white/80 transition-shadow duration-200 hover:shadow-[0_18px_46px_rgba(62,47,35,0.13)]"
       style={{ borderColor: `${BROWN}1F` }}
     >
@@ -174,7 +167,7 @@ export function EventCard({
         </p>
 
         {!completed ? (
-          <p className="mt-3 text-[15px] font-extrabold" style={{ color: BROWN }}>
+          <p className="mt-3 text-[15px] font-extrabold" style={{ color: "#8A6A1F" }}>
             <span className="text-[12px] font-semibold" style={{ color: `${BROWN}99` }}>
               From{" "}
             </span>
@@ -213,6 +206,6 @@ export function EventCard({
           </Link>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }
