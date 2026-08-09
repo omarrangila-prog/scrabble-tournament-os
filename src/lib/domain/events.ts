@@ -234,6 +234,29 @@ export interface PublicEvent {
    */
   priceRules?: PriceRules;
 
+  /* ---- Public presentation --------------------------------------------- */
+
+  /**
+   * Imagery, when the organizer has supplied it.
+   *
+   * Optional on purpose: a card falls back to the poster's woven texture rather
+   * than a stock photograph, because an invented image of an event nobody shot
+   * misrepresents what people are booking.
+   */
+  cardImage?: string;
+  bannerImage?: string;
+  /** Used for link previews when the event URL is shared. */
+  socialImage?: string;
+
+  /** What the fee covers, listed on the event page. */
+  includedBenefits?: string[];
+  complimentaryFood?: boolean;
+  highTeaIncluded?: boolean;
+
+  /** Overrides the generated page title and description when set. */
+  seoTitle?: string;
+  seoDescription?: string;
+
   /** Shown under the event name, e.g. "An Evening of Board Games & Speed Scrabble". */
   subtitle?: string;
 

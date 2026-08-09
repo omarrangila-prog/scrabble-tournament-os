@@ -178,6 +178,18 @@ const ALPHABATTLE: PublicEvent = {
   breakMinutes: 0,
   divisions: ["beginner", "recreational", "advanced"],
 
+  /*
+   * What the fee covers, so it can be badged on the card rather than buried in
+   * the description. Somebody comparing events should see it without reading.
+   */
+  highTeaIncluded: true,
+  includedBenefits: [
+    "Five timed games of twenty minutes",
+    "Guess-the-song rounds",
+    "Lunch and tea",
+    "Prizes in every category",
+  ],
+
   prizes: [
     { place: "Winner, each category", award: "PKR 5,000" },
     { place: "Runner-up, each category", award: "PKR 2,000" },

@@ -166,7 +166,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const logOut = () => {
     signOut();
-    router.push("/");
+    // The homepage is the public event site; organizers sign in privately.
+    router.push("/organizer");
   };
 
   /**

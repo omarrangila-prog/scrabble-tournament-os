@@ -2,442 +2,442 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  CalendarCheck,
-  CheckCircle2,
-  CloudUpload,
-  Globe,
-  LayoutGrid,
-  Lock,
-  Moon,
-  ShieldCheck,
-  Sparkles,
-  Sun,
-} from "lucide-react";
-import { Badge, Button, Field, Input, Select } from "@/components/ui";
-import { useStore } from "@/lib/store/useStore";
-import { useGuidedDemo } from "@/lib/store/guidedDemo";
-import { ROLE_SUMMARY } from "@/lib/store/permissions";
-import { useTheme } from "@/lib/design/theme";
-import { Role } from "@/lib/domain/types";
-import { cn } from "@/lib/utils";
+import { ArrowRight, Camera, Mail } from "lucide-react";
+import { EventCard } from "@/components/public/EventCard";
+import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
+import { resolvePrice } from "@/lib/domain/pricing";
+import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
 
-const ROLE_OPTIONS: { role: Role; label: string }[] = [
-  { role: "director", label: "Tournament Director" },
-  { role: "scorekeeper", label: "Scorekeeper" },
-  { role: "checkin", label: "Check-in Officer" },
-  { role: "arbiter", label: "Arbiter" },
-  { role: "display", label: "Public Display Operator" },
+const CREAM = "#F5F0E4";
+const FOREST = "#2F5D3A";
+const GOLD = "#C89B3C";
+const BROWN = "#3E2F23";
+
+const NAV = [
+  { href: "#events", label: "Events" },
+  { href: "#past", label: "Past Events" },
+  { href: "#community", label: "Community" },
+  { href: "#about", label: "About" },
 ];
 
-const ROLE_EMAIL: Record<Role, string> = {
-  director: "director@tournamentos.demo",
-  scorekeeper: "scorekeeper@tournamentos.demo",
-  checkin: "checkin@tournamentos.demo",
-  arbiter: "arbiter@tournamentos.demo",
-  display: "display@tournamentos.demo",
-  volunteer: "volunteer@tournamentos.demo",
-};
-
-/** Floating capability cards that frame the hero artwork. */
-/** Demo-safe capability claims — no fabricated player or country counts. */
-const CAPABILITIES = [
-  "Multi-Division Support",
-  "Real-Time Standings",
-  "Secure Result Verification",
-  "Offline Tournament Control",
-  "Public Live Broadcast",
-];
-
-export default function LandingPage() {
-  const router = useRouter();
-  const signIn = useStore((s) => s.signIn);
-  const startDemo = useGuidedDemo((s) => s.start);
-  const { theme, toggle } = useTheme();
-
-  const [role, setRole] = React.useState<Role>("director");
-  const [email, setEmail] = React.useState(ROLE_EMAIL.director);
-  const [remember, setRemember] = React.useState(true);
-  const [busy, setBusy] = React.useState<"signin" | "demo" | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const changeRole = (next: Role) => {
-    setRole(next);
-    setEmail(ROLE_EMAIL[next]);
-  };
-
-  const enter = (mode: "signin" | "demo") => {
-    if (!email.trim()) {
-      setError("Enter your email address.");
-      return;
-    }
-    setError(null);
-    setBusy(mode);
-    signIn(role);
-    if (mode === "demo") startDemo();
-    window.setTimeout(() => router.push(mode === "demo" ? "/app" : "/app/tournaments"), 380);
-  };
+/**
+ * The public homepage.
+ *
+ * An event-discovery page, not software. Somebody arriving from Instagram has one
+ * question — what is on and can I come — so upcoming events sit directly under
+ * the hero and everything else is subordinate to them.
+ *
+ * Deliberately absent: any organizer link. Sign-in lives at /organizer and is
+ * given out privately; advertising it here would put an administration door on a
+ * page meant for guests.
+ *
+ * Every figure and date is read from the event records. Nothing is invented to
+ * make the page look busier than the events warrant.
+ */
+export default function HomePage() {
+  const store = useEventStore();
+  const { upcoming, past } = splitEventsForPublic(store.events);
 
   return (
-    <div className="min-h-dvh">
-      {/* ---------------------------------------------------------------- */}
-      {/* Top navigation                                                    */}
-      {/* ---------------------------------------------------------------- */}
-      <header className="sticky top-0 z-40 border-b border-line bg-[rgb(var(--c-surface))] backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-[1680px] items-center gap-4 px-5 sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white shadow-[0_8px_22px_rgba(115,87,246,0.34)]">
-              <LayoutGrid className="size-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-ink">
-                Bluffy Alphabattle
-              </p>
-              <p className="hidden text-[11.5px] text-muted sm:block">
-                Official Tournament Platform
-              </p>
-            </div>
-          </div>
+    <div className="min-h-dvh overflow-x-hidden" style={{ background: CREAM }}>
+      <Texture />
+      <Header />
 
-          <nav className="ml-8 hidden items-center gap-1 lg:flex" aria-label="Product">
-            {["Platform", "Features", "Tournament Experience", "Support"].map((item) => (
-              <a
-                key={item}
-                href="#platform"
-                className="rounded-[10px] px-3 py-2 text-[13.5px] font-semibold text-muted transition-colors hover:bg-[rgb(var(--c-surface-soft))] hover:text-ink"
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
+      <main className="relative mx-auto w-full max-w-[1120px] px-5 pb-20 sm:px-8">
+        <Hero hasEvents={upcoming.length > 0} hasPast={past.length > 0} />
 
-          <div className="ml-auto flex items-center gap-2">
-            <Select
-              aria-label="Language"
-              defaultValue="en"
-              className="hidden h-10 w-[104px] sm:block"
-            >
-              <option value="en">English</option>
-              <option value="ur">اردو</option>
-            </Select>
-
-            <button
-              onClick={toggle}
-              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-              className="grid size-10 place-items-center rounded-control border border-line bg-[rgb(var(--c-surface))] text-muted transition-colors hover:text-ink"
-            >
-              {theme === "light" ? <Moon className="size-4.5" /> : <Sun className="size-4.5" />}
-            </button>
-
-            <Button variant="primary" size="sm" onClick={() => enter("demo")}>
-              Request Demo
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Hero                                                              */}
-      {/* ---------------------------------------------------------------- */}
-      <main
-        id="platform"
-        className="mx-auto grid max-w-[1680px] grid-cols-1 gap-10 px-5 py-10 sm:px-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12 lg:py-16"
-      >
-        {/* LEFT — story and artwork */}
-        <section className="min-w-0">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Badge tone="primary" dot pulse>
-              Built for national championships
-            </Badge>
-
-            <h1 className="mt-4 text-[38px] font-extrabold leading-[1.04] tracking-[-0.035em] text-ink sm:text-[52px] lg:text-[62px]">
-              Run every round
-              <br />
-              with <span className="text-champion">confidence</span>.
-            </h1>
-
-            <p className="mt-5 max-w-xl text-[16px] leading-relaxed text-muted sm:text-[17px]">
-              Registration, seating, pairings, scoring and live results—beautifully connected.
-              From the first check-in to the final champion, every player, board and decision
-              stays organized.
-            </p>
-
-          </motion.div>
-
-          {/*
-            Product previews rather than decoration. Each panel is a real screen
-            from the app, so what a visitor sees is what they get.
-          */}
-          <div className="relative mt-10 lg:mt-12">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PreviewPanel
-                title="Event workspace"
-                caption="Everything for one tournament in one place, with the next action named."
-                className="sm:col-span-2"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 border-b border-line pb-2">
-                    {["Overview", "Registrations", "Payments", "Live Event"].map((t, i) => (
-                      <span
-                        key={t}
-                        className={cn(
-                          "rounded-control px-2 py-1 text-[10.5px] font-semibold",
-                          i === 0 ? "bg-primary-050 text-primary" : "text-muted",
-                        )}
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[12.5px] font-bold text-ink">Registration is open.</p>
-                  <p className="text-[11.5px] text-muted">Share the link so people can register.</p>
-                  <div className="flex gap-1.5 pt-1">
-                    <span className="rounded-control bg-primary px-2.5 py-1 text-[10.5px] font-semibold text-white">
-                      Share registration
-                    </span>
-                    <span className="rounded-control border border-line px-2.5 py-1 text-[10.5px] font-semibold text-muted">
-                      View registrations
-                    </span>
-                  </div>
-                </div>
-              </PreviewPanel>
-
-              <PreviewPanel
-                title="Receipt review"
-                caption="A receipt is a claim. Only a verified payment counts."
-              >
-                <div className="space-y-1.5">
-                  {/*
-                   * Illustrative only. Real names beside "Duplicate transaction"
-                   * would read as an accusation against an actual participant.
-                   */}
-                  {[
-                    ["Participant A", "Receipt under review", "warning"],
-                    ["Participant B", "Duplicate transaction", "critical"],
-                    ["Participant C", "Payment verified", "success"],
-                  ].map(([name, status, tone]) => (
-                    <div key={name} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[11.5px] text-ink">{name}</span>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          tone === "success"
-                            ? "bg-success-050 text-[#12855c]"
-                            : tone === "critical"
-                              ? "bg-critical-050 text-critical"
-                              : "bg-warning-050 text-[#a76d16]",
-                        )}
-                      >
-                        {status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </PreviewPanel>
-
-              <PreviewPanel
-                title="Live standings"
-                caption="Derived from verified results, never entered by hand."
-              >
-                <div className="space-y-1.5">
-                  {[
-                    ["1", "First place", "8", "+1,204"],
-                    ["2", "Second place", "7", "+842"],
-                    ["3", "Third place", "7", "+610"],
-                  ].map(([rank, name, wins, spread]) => (
-                    <div key={rank} className="flex items-center gap-2 text-[11.5px]">
-                      <span className="num w-4 font-bold text-muted">{rank}</span>
-                      <span className="min-w-0 flex-1 truncate text-ink">{name}</span>
-                      <span className="num font-semibold text-success">{wins}</span>
-                      <span className="num w-[52px] text-right text-muted">{spread}</span>
-                    </div>
-                  ))}
-                </div>
-              </PreviewPanel>
-            </div>
-
-            {/* Capability band — demo-safe claims, no fabricated statistics. */}
-            <div className="glass mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-feature p-4 sm:grid-cols-3 lg:grid-cols-5">
-              {CAPABILITIES.map((c) => (
-                <div key={c} className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 shrink-0 text-success" />
-                  <span className="text-[12.5px] font-semibold leading-tight text-ink">{c}</span>
-                </div>
+        <Section
+          id="events"
+          eyebrow="What's on"
+          title="Upcoming experiences"
+          sub="Your next great evening starts here."
+        >
+          {upcoming.length ? (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {upcoming.map((e, i) => (
+                <EventCardFor key={e.id} event={e} index={i} />
               ))}
             </div>
-          </div>
-        </section>
+          ) : (
+            <Empty
+              title="No events announced yet"
+              body="The next experience will appear here as soon as registration opens."
+            />
+          )}
+        </Section>
 
-        {/* RIGHT — login panel */}
-        <section className="min-w-0">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="glass-raised sticky top-[96px] rounded-panel p-6 sm:p-8"
+        <Community />
+
+        {past.length ? (
+          <Section
+            id="past"
+            eyebrow="Archive"
+            title="Past experiences"
+            sub="Where we have played before."
           >
-            <h2 className="text-center text-[26px] font-extrabold tracking-[-0.025em] text-ink">
-              Welcome Back
-            </h2>
-            <p className="mt-1 text-center text-[14px] text-muted">
-              Sign in to manage your Scrabble tournament.
-            </p>
-
-            <div className="mt-6 space-y-4">
-              <Field label="Email address" required error={error ?? undefined}>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="username"
-                  invalid={!!error}
-                />
-              </Field>
-
-              <Field label="Role">
-                <Select value={role} onChange={(e) => changeRole(e.target.value as Role)}>
-                  {ROLE_OPTIONS.map((o) => (
-                    <option key={o.role} value={o.role}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <p className="rounded-control bg-primary-050 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-primary-600">
-                {ROLE_SUMMARY[role]}
-              </p>
-
-              <div className="flex items-center justify-between gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="size-4 rounded-[5px] accent-[#7357F6]"
-                  />
-                  Remember me
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-2.5">
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full"
-                loading={busy === "signin"}
-                onClick={() => enter("signin")}
-              >
-                Sign In
-                <ArrowRight className="size-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                className="w-full"
-                loading={busy === "demo"}
-                onClick={() => enter("demo")}
-                icon={<Sparkles className="size-4" />}
-              >
-                Enter Guided Demo
-              </Button>
-            </div>
-
-            {/*
-              * No credentials panel. Printing a working email and password on the
-              * public sign-in page hands organizer access to anyone who loads it,
-              * and reads as unfinished software rather than a product.
-              */}
-
-            <p className="mt-5 text-center text-[13px] text-muted">
-              Don&apos;t have organizer access?{" "}
-              <span className="font-semibold text-ink">Contact your Tournament Director</span>
-            </p>
-
-            {/* Security strip */}
-            <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-4">
-              {[
-                { icon: ShieldCheck, label: "Role-Based Access" },
-                { icon: CloudUpload, label: "Secure Cloud Backup" },
-                { icon: Lock, label: "Encrypted Data" },
-              ].map((s) => (
-                <div key={s.label} className="flex flex-col items-center gap-1.5 text-center">
-                  <s.icon className="size-4 text-success" />
-                  <span className="text-[10.5px] font-semibold leading-tight text-muted">
-                    {s.label}
-                  </span>
-                </div>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {past.map((e, i) => (
+                <EventCardFor key={e.id} event={e} index={i} />
               ))}
             </div>
+          </Section>
+        ) : null}
 
-            <p className="mt-4 text-center text-[12px] text-faint">
-              <Link href="/live" className="underline underline-offset-2 hover:text-muted">
-                View the public championship site
-              </Link>
-            </p>
-          </motion.div>
-        </section>
+        <About />
       </main>
 
-      <footer className="border-t border-line px-5 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-[1680px] flex-col items-center gap-2 text-center">
-          <p className="text-[12.5px] text-muted">
-            Bluffy Alphabattle · Championship management for federations, clubs and schools
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-[12px] text-faint">
-            <span className="inline-flex items-center gap-1.5">
-              <Globe className="size-3.5" />
-              Public live results
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarCheck className="size-3.5" />
-              Multi-day events
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="size-3.5" />
-              Full audit trail
-            </span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
+  );
+}
+
+/**
+ * A card wired to its event's real numbers.
+ *
+ * "From" is the cheapest price anybody can actually pay, resolved through the
+ * pricing rules rather than assumed — quoting a headline fee when a code beats
+ * it would overstate the cost, and quoting a coupon price everyone cannot get
+ * would understate it.
+ */
+function EventCardFor({ event, index }: { event: PublicEvent; index: number }) {
+  const store = useEventStore();
+  const count = selectRegistrations(store, event.id).length;
+
+  const fromPrice = React.useMemo(() => {
+    if (!event.priceRules) return event.fee;
+    const now = new Date().toISOString();
+    const candidates = [
+      resolvePrice(event.priceRules, { isMember: false, at: now }).final,
+      resolvePrice(event.priceRules, { isMember: true, at: now }).final,
+      ...event.priceRules.coupons.map(
+        (c) => resolvePrice(event.priceRules!, { isMember: false, code: c.code, at: now }).final,
+      ),
+    ];
+    return Math.min(...candidates);
+  }, [event]);
+
+  return (
+    <EventCard event={event} registrationCount={count} fromPrice={fromPrice} index={index} />
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-/**
- * A framed glimpse of a real screen.
- *
- * Deliberately built from the same tokens as the app rather than a screenshot,
- * so it cannot drift out of date the way an exported image would.
- */
-function PreviewPanel({
+/** The poster's weave, plus a wash behind the hero. */
+function Texture() {
+  return (
+    <>
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.32]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(45deg, ${BROWN}0A 0 1px, transparent 1px 24px),
+                            repeating-linear-gradient(-45deg, ${BROWN}0A 0 1px, transparent 1px 24px)`,
+        }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[620px]"
+        style={{
+          background: `radial-gradient(72% 100% at 50% -12%, ${FOREST}1F, transparent 66%)`,
+        }}
+        aria-hidden
+      />
+    </>
+  );
+}
+
+function Header() {
+  return (
+    <header className="relative">
+      <div className="mx-auto flex w-full max-w-[1120px] items-center gap-4 px-5 py-6 sm:px-8">
+        <Link
+          href="/"
+          className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
+          style={{ color: BROWN }}
+        >
+          Blufy&rsquo;s Alphabattle
+        </Link>
+
+        <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Sections">
+          {NAV.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="rounded-full px-3.5 py-2 text-[13.5px] font-semibold transition-colors hover:bg-white/70"
+              style={{ color: `${BROWN}CC` }}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <a
+          href="#events"
+          className="ml-auto inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.03] md:ml-2"
+          style={{ background: FOREST }}
+        >
+          Explore events
+        </a>
+      </div>
+    </header>
+  );
+}
+
+function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) {
+  return (
+    <section className="pt-8 text-center sm:pt-16">
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.26em]"
+        style={{ color: `${BROWN}99` }}
+      >
+        Karachi&rsquo;s social game experiences
+      </motion.p>
+
+      <motion.h1
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        className="mt-5 text-[46px] font-extrabold leading-[0.9] tracking-[-0.035em] sm:mt-6 sm:text-[86px] lg:text-[104px]"
+        style={{ color: BROWN }}
+      >
+        Play.
+        <br />
+        Meet.
+        <br />
+        <span style={{ color: FOREST }}>Compete.</span>
+      </motion.h1>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.28 }}
+        className="mx-auto mt-6 max-w-[50ch] text-[15.5px] leading-[1.65] sm:text-[17.5px]"
+        style={{ color: `${BROWN}C9` }}
+      >
+        Discover Scrabble tournaments, board-game nights and social experiences
+        designed to bring great people together.
+      </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+      >
+        {hasEvents ? (
+          <a
+            href="#events"
+            className="inline-flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:gap-3.5 sm:w-auto"
+            style={{ background: FOREST, boxShadow: `0 10px 30px ${FOREST}40` }}
+          >
+            Explore upcoming events
+            <ArrowRight className="size-4" aria-hidden />
+          </a>
+        ) : null}
+
+        {hasPast ? (
+          <a
+            href="#past"
+            className="inline-flex w-full items-center justify-center rounded-full border px-7 py-3.5 text-[15px] font-bold transition-colors hover:bg-white/70 sm:w-auto"
+            style={{ borderColor: `${BROWN}26`, color: BROWN }}
+          >
+            See past events
+          </a>
+        ) : null}
+      </motion.div>
+    </section>
+  );
+}
+
+function Section({
+  id,
+  eyebrow,
   title,
-  caption,
-  className,
+  sub,
   children,
 }: {
+  id: string;
+  eyebrow: string;
   title: string;
-  caption: string;
-  className?: string;
+  sub: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("glass-raised rounded-feature p-4", className)}>
-      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{title}</p>
-      <div className="mt-2.5 rounded-control bg-[rgb(var(--c-surface-strong))] p-3">
-        {children}
-      </div>
-      <p className="mt-2 text-[11.5px] leading-relaxed text-faint">{caption}</p>
+    <section id={id} className="scroll-mt-8 pt-20 sm:pt-28">
+      <p
+        className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
+        style={{ color: GOLD }}
+      >
+        {eyebrow}
+      </p>
+      <h2
+        className="mt-2.5 text-[30px] font-extrabold leading-[1.04] tracking-[-0.025em] sm:text-[44px]"
+        style={{ color: BROWN }}
+      >
+        {title}
+      </h2>
+      <p className="mt-2 text-[14.5px] sm:text-[16px]" style={{ color: `${BROWN}A6` }}>
+        {sub}
+      </p>
+
+      <div className="mt-8">{children}</div>
+    </section>
+  );
+}
+
+function Empty({ title, body }: { title: string; body: string }) {
+  return (
+    <div
+      className="rounded-[26px] border bg-white/70 px-6 py-14 text-center"
+      style={{ borderColor: `${BROWN}1F` }}
+    >
+      <p className="text-[19px] font-extrabold" style={{ color: BROWN }}>
+        {title}
+      </p>
+      <p className="mx-auto mt-2 max-w-[40ch] text-[14px]" style={{ color: `${BROWN}A6` }}>
+        {body}
+      </p>
     </div>
+  );
+}
+
+/** One restrained section on why the events exist. No statistics. */
+function Community() {
+  const pillars = [
+    { title: "Play", body: "Challenge yourself across five timed games." },
+    { title: "Connect", body: "Meet people who enjoy the same things you do." },
+    { title: "Return", body: "Come back for the next experience." },
+  ];
+
+  return (
+    <section id="community" className="scroll-mt-8 pt-20 sm:pt-28">
+      <div
+        className="rounded-[30px] px-6 py-12 text-center sm:px-12 sm:py-16"
+        style={{ background: `${FOREST}0F` }}
+      >
+        <h2
+          className="text-[28px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[40px]"
+          style={{ color: BROWN }}
+        >
+          More than a game.
+        </h2>
+        <p
+          className="mx-auto mt-4 max-w-[52ch] text-[15px] leading-[1.65] sm:text-[16.5px]"
+          style={{ color: `${BROWN}C9` }}
+        >
+          Blufy&rsquo;s Alphabattle brings people together through words,
+          competition, conversation and memorable social experiences.
+        </p>
+
+        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+          {pillars.map((p) => (
+            <div key={p.title}>
+              <p
+                className="text-[12px] font-bold uppercase tracking-[0.18em]"
+                style={{ color: GOLD }}
+              >
+                {p.title}
+              </p>
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: `${BROWN}B3` }}>
+                {p.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function About() {
+  return (
+    <section id="about" className="scroll-mt-8 pt-20 sm:pt-28">
+      <div className="mx-auto max-w-[62ch] text-center">
+        <p
+          className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
+          style={{ color: GOLD }}
+        >
+          About
+        </p>
+        <h2
+          className="mt-2.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-[34px]"
+          style={{ color: BROWN }}
+        >
+          Friendly, well-run games evenings in Karachi
+        </h2>
+        <p
+          className="mt-4 text-[15px] leading-[1.7] sm:text-[16px]"
+          style={{ color: `${BROWN}C9` }}
+        >
+          We run Scrabble competitions and social game nights where newcomers and
+          regulars play in their own categories, so every game is a fair one. No
+          app, no account — you register from a link and check in on your phone.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The footer.
+ *
+ * No organizer link. That route is private, and putting it here would turn a
+ * guest page into a door into administration.
+ */
+function Footer() {
+  return (
+    <footer
+      className="relative mt-4 border-t"
+      style={{ borderColor: `${BROWN}1F`, background: `${BROWN}06` }}
+    >
+      <div className="mx-auto w-full max-w-[1120px] px-5 py-12 sm:px-8">
+        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p
+              className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
+              style={{ color: BROWN }}
+            >
+              Blufy&rsquo;s Alphabattle
+            </p>
+            <p className="mt-1.5 text-[13px]" style={{ color: `${BROWN}99` }}>
+              Karachi, Pakistan
+            </p>
+          </div>
+
+          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
+            {NAV.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="text-[13.5px] font-semibold transition-opacity hover:opacity-70"
+                style={{ color: `${BROWN}CC` }}
+              >
+                {item.label}
+              </a>
+            ))}
+            <a
+              href="https://instagram.com"
+              className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
+              style={{ color: `${BROWN}CC` }}
+            >
+              <Camera className="size-3.5" aria-hidden />
+              Instagram
+            </a>
+            <a
+              href="mailto:info@blufysalphabattle.com"
+              className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
+              style={{ color: `${BROWN}CC` }}
+            >
+              <Mail className="size-3.5" aria-hidden />
+              Contact
+            </a>
+          </nav>
+        </div>
+      </div>
+    </footer>
   );
 }
