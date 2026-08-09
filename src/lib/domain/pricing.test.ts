@@ -6,6 +6,9 @@ import {
   Rate,
   RateContext,
   rateAvailability,
+  PriceContext,
+  PriceRules,
+  resolvePrice,
 } from "./pricing";
 
 /** The rates the August event actually offers. */
@@ -171,5 +174,140 @@ describe("cheaperRateHint", () => {
     const hint = cheaperRateHint(priceRegistration(RATES, context), context);
     // Already on the family rate at 850, and member is dearer, so nothing to add.
     expect(hint).toBeNull();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Priority pricing — the 23 August rules                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Exactly as the organizer stated them. */
+const AUGUST_23: PriceRules = {
+  regular: 1250,
+  regularLabel: "Regular registration",
+  member: { price: 950, label: "PSA Member" },
+  coupons: [
+    {
+      code: "EARLYBIRD",
+      label: "Early Bird",
+      price: 800,
+      availableUntil: "2026-08-07T23:59:59+05:00",
+    },
+    { code: "HHS", label: "HHS Promotional Rate", price: 1000 },
+  ],
+  currency: "PKR",
+};
+
+const ctx2 = (over: Partial<PriceContext> = {}): PriceContext => ({
+  isMember: false,
+  at: "2026-08-07T12:00:00+05:00",
+  ...over,
+});
+
+describe("resolvePrice", () => {
+  it("charges the regular fee with no membership and no code", () => {
+    const r = resolvePrice(AUGUST_23, ctx2());
+    expect(r.final).toBe(1250);
+    expect(r.appliedKind).toBe("regular");
+    expect(r.saving).toBe(0);
+  });
+
+  it("charges 950 to a PSA member", () => {
+    const r = resolvePrice(AUGUST_23, ctx2({ isMember: true }));
+    expect(r.final).toBe(950);
+    expect(r.appliedLabel).toBe("PSA Member");
+    expect(r.saving).toBe(300);
+  });
+
+  it("charges 800 with the Early Bird code", () => {
+    const r = resolvePrice(AUGUST_23, ctx2({ code: "EARLYBIRD" }));
+    expect(r.final).toBe(800);
+    expect(r.appliedLabel).toBe("Early Bird");
+    expect(r.saving).toBe(450);
+  });
+
+  it("charges 1000 with the HHS code", () => {
+    const r = resolvePrice(AUGUST_23, ctx2({ code: "HHS" }));
+    expect(r.final).toBe(1000);
+    expect(r.appliedLabel).toBe("HHS Promotional Rate");
+  });
+
+  it("accepts a code in any case, with stray spaces", () => {
+    expect(resolvePrice(AUGUST_23, ctx2({ code: "  hhs " })).final).toBe(1000);
+  });
+
+  /**
+   * The rule that protects the takings. Three reductions on a PKR 1,250 entry
+   * could take it near nothing, and the organizer would find out while counting
+   * the money.
+   */
+  describe("never stacks", () => {
+    it("gives a PSA member with the Early Bird code one price, not both", () => {
+      const r = resolvePrice(AUGUST_23, ctx2({ isMember: true, code: "EARLYBIRD" }));
+      expect(r.final).toBe(800);
+      // Not 800 - 300, and not 950 - 450.
+      expect(r.final).not.toBeLessThan(800);
+    });
+
+    it("gives a PSA member with HHS the coupon price, by the stated priority", () => {
+      const r = resolvePrice(AUGUST_23, ctx2({ isMember: true, code: "HHS" }));
+      expect(r.final).toBe(1000);
+      expect(r.appliedKind).toBe("coupon");
+    });
+
+    it("never charges less than the cheapest single offer", () => {
+      const cheapest = 800;
+      for (const isMember of [true, false]) {
+        for (const code of [undefined, "EARLYBIRD", "HHS", "nonsense"]) {
+          const r = resolvePrice(AUGUST_23, ctx2({ isMember, code }));
+          expect(r.final).toBeGreaterThanOrEqual(cheapest);
+          expect(r.final).toBeLessThanOrEqual(1250);
+        }
+      }
+    });
+  });
+
+  describe("coupon expiry", () => {
+    it("accepts Early Bird in the last minute of its day", () => {
+      const r = resolvePrice(AUGUST_23, ctx2({ code: "EARLYBIRD", at: "2026-08-07T23:59:00+05:00" }));
+      expect(r.final).toBe(800);
+    });
+
+    /** An expired code must not quietly become the regular fee with no reason. */
+    it("refuses Early Bird the next day and says it has closed", () => {
+      const r = resolvePrice(AUGUST_23, ctx2({ code: "EARLYBIRD", at: "2026-08-08T00:01:00+05:00" }));
+      expect(r.final).toBe(1250);
+      expect(r.coupon.status).toBe("expired");
+    });
+
+    it("keeps HHS available with no closing date", () => {
+      const r = resolvePrice(AUGUST_23, ctx2({ code: "HHS", at: "2026-08-22T10:00:00+05:00" }));
+      expect(r.final).toBe(1000);
+    });
+
+    /** Sending someone hunting for a typo that is not there wastes their time. */
+    it("distinguishes an expired code from an unrecognised one", () => {
+      const expired = resolvePrice(AUGUST_23, ctx2({ code: "EARLYBIRD", at: "2026-08-20T10:00:00+05:00" }));
+      const unknown = resolvePrice(AUGUST_23, ctx2({ code: "WRONG" }));
+      expect(expired.coupon.status).toBe("expired");
+      expect(unknown.coupon.status).toBe("unknown");
+    });
+
+    it("falls back to membership when the code is refused", () => {
+      const r = resolvePrice(AUGUST_23, ctx2({ isMember: true, code: "WRONG" }));
+      expect(r.final).toBe(950);
+      expect(r.coupon.status).toBe("unknown");
+    });
+
+    it("treats an empty code as no code rather than a bad one", () => {
+      expect(resolvePrice(AUGUST_23, ctx2({ code: "   " })).coupon.status).toBe("none");
+    });
+  });
+
+  it("reports the regular price alongside the final one, for the breakdown", () => {
+    const r = resolvePrice(AUGUST_23, ctx2({ isMember: true }));
+    expect(r.regular).toBe(1250);
+    expect(r.final).toBe(950);
+    expect(r.currency).toBe("PKR");
   });
 });

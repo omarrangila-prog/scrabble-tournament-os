@@ -14,7 +14,7 @@ import {
   STATE_DESTINATION,
 } from "./events";
 import { buildEventSeed, PAYMENT_ACCOUNTS } from "./eventSeed";
-import { priceRegistration } from "./pricing";
+import { resolvePrice } from "./pricing";
 
 const seed = buildEventSeed();
 const EVENT = seed.events[0];
@@ -395,7 +395,7 @@ describe("seeded event data", () => {
     expect(gameOn.startDate).toBe("2026-08-08");
     expect(alphaBattle.startDate).toBe("2026-08-23");
     expect(gameOn.fee).toBe(1200);
-    expect(alphaBattle.fee).toBe(800);
+    expect(alphaBattle.fee).toBe(1250);
   });
 
   it("gives each event its own registration form", () => {
@@ -408,7 +408,7 @@ describe("seeded event data", () => {
     const amounts = Object.fromEntries(
       (alphaBattle.rates ?? []).map((r) => [r.id, r.amount]),
     );
-    expect(amounts).toEqual({ standard: 800 });
+    expect(amounts).toEqual({ standard: 1250 });
   });
 
   /** Money goes to a real account or the step says details are coming. */
@@ -475,40 +475,54 @@ describe("seeded event data", () => {
   });
 
   /**
-   * The early bird is given by the EARLYBIRD code, not by the calendar.
+   * The four prices the organizer set, and the order they apply in.
    *
-   * With both a date-based rate and a code, everyone paid 450 until 10 August
-   * whether they knew the code or not — the code changed nothing. The entry fee
-   * is now 800 for everyone and the code is the only route to 450.
+   * Regular is PKR 1,250 — the figure on the organizer's own registration form,
+   * alongside PSA 950 and Early Bird 800. GAME ON! charges 1,200; that is a
+   * different event, not a competing figure for this one.
    */
-  describe("AlphaBattle pricing", () => {
+  describe("AlphaBattle priority pricing", () => {
     const alphaBattle = seed.events.find((e) => e.slug === "alphabattle-23-august")!;
-    const rates = alphaBattle.rates!;
+    const rules = alphaBattle.priceRules!;
+    const at = (code?: string, isMember = false) =>
+      resolvePrice(rules, { isMember, code, at: "2026-08-09T12:00:00+05:00" });
 
-    it("charges 800 whatever the date", () => {
-      for (const at of [
-        "2026-08-01T10:00:00+05:00",
-        "2026-08-10T23:59:00+05:00",
-        "2026-08-23T09:00:00+05:00",
-      ]) {
-        expect(priceRegistration(rates, { isMember: false, groupSize: 1, at }).perPerson).toBe(800);
-      }
+    it("prices the four cases as stated", () => {
+      expect(at().final).toBe(1250);
+      expect(at(undefined, true).final).toBe(950);
+      expect(at("EARLYBIRD").final).toBe(800);
+      expect(at("HHS").final).toBe(1000);
     });
 
-    /** The code, not a rate, is what reduces it — so it must actually exist. */
-    it("brings the fee to 450 with the early-bird code", () => {
-      const code = seed.discounts.find((d) => d.code === "EARLYBIRD")!;
-      expect(code.eventId).toBe(alphaBattle.id);
-      expect(computeFee(alphaBattle.fee, alphaBattle.currency, code).amountDue).toBe(450);
+    it("names PSA as the membership body", () => {
+      expect(rules.member?.label).toBe("PSA Member");
     });
 
-    it("offers no date-based rate that would make the code pointless", () => {
-      expect(rates.some((r) => r.availableUntil)).toBe(false);
+    /** The headline fee and the regular price must agree. */
+    it("keeps the event fee and the regular price in step", () => {
+      expect(alphaBattle.fee).toBe(rules.regular);
     });
 
-    /** Group size is no longer asked, so no rate may depend on it. */
+    /**
+     * Stacking is the failure that costs money. Three reductions on a 1,250
+     * entry could take it near nothing, discovered only while counting takings.
+     */
+    it("never combines a coupon with membership", () => {
+      expect(at("EARLYBIRD", true).final).toBe(800);
+      expect(at("HHS", true).final).toBe(1000);
+    });
+
+    it("closes Early Bird after its day but keeps HHS open", () => {
+      const later = (code: string) =>
+        resolvePrice(rules, { isMember: false, code, at: "2026-08-20T10:00:00+05:00" });
+      expect(later("EARLYBIRD").coupon.status).toBe("expired");
+      expect(later("EARLYBIRD").final).toBe(1250);
+      expect(later("HHS").final).toBe(1000);
+    });
+
+    /** Group size is not asked, so no rate may depend on it. */
     it("has no rate requiring a group", () => {
-      expect(rates.some((r) => (r.minGroupSize ?? 0) > 1)).toBe(false);
+      expect((alphaBattle.rates ?? []).some((r) => (r.minGroupSize ?? 0) > 1)).toBe(false);
     });
   });
 

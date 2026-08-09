@@ -46,6 +46,7 @@ import {
   cheaperRateHint,
   describeRate,
   priceRegistration as priceByRate,
+  resolvePrice,
 } from "@/lib/domain/pricing";
 import { CATEGORY_LABEL, PlayerCategory } from "@/lib/domain/identity";
 import { cn, formatDate } from "@/lib/utils";
@@ -119,6 +120,8 @@ export function GameOnForm({
   });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [codeInput, setCodeInput] = React.useState("");
+  /** The code the participant pressed Apply on, distinct from what they are typing. */
+  const [appliedCode, setAppliedCode] = React.useState("");
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
 
@@ -218,10 +221,25 @@ export function GameOnForm({
    * that earns them nothing. An event with no member rate shows no question.
    */
   const memberRate = event.rates?.find((r) => r.id === "member") ?? null;
-  const memberBody = memberRate?.label.replace(/ member$/i, "") ?? "";
-  const memberQuestion = memberRate
+  const memberBody =
+    event.priceRules?.member?.label.replace(/ member$/i, "") ??
+    memberRate?.label.replace(/ member$/i, "") ??
+    "";
+  const memberQuestion = memberBody
     ? `Are you ${/^[aeiou]/i.test(memberBody) ? "an" : "a"} ${memberBody} member?`
     : "";
+
+  /*
+   * Priority pricing, where the event defines it: one price, chosen by coupon,
+   * then membership, then the regular fee. Never two reductions at once.
+   */
+  const priced = event.priceRules
+    ? resolvePrice(event.priceRules, {
+        isMember: reg.membershipStatus !== "not-claimed",
+        code: appliedCode,
+        at: new Date().toISOString(),
+      })
+    : null;
 
   const rateResult = event.rates?.length
     ? priceByRate(event.rates, {
@@ -242,7 +260,9 @@ export function GameOnForm({
   const codeAlreadyApplied = rateResult?.applied.id === "early-bird" && Boolean(campaign);
   const effectiveCampaign = codeAlreadyApplied ? undefined : campaign;
 
-  const quote = rateResult
+  const quote = priced
+    ? quoteFee("not-claimed", undefined, priced.final, priced.currency)
+    : rateResult
     ? quoteFee(
         // The rate already reflects membership, so the older discount must not
         // be applied on top of it.
@@ -770,7 +790,7 @@ export function GameOnForm({
           {/* ---- Step 3: Membership and payment ---------------------------- */}
           {STEPS[step].id === "payment" ? (
             <>
-              {memberRate ? (
+              {memberQuestion ? (
                 <Field label={memberQuestion}>
                   <div className="grid grid-cols-2 gap-2">
                     {[
@@ -805,7 +825,7 @@ export function GameOnForm({
                 * list before the payment is verified.
                 */}
 
-              {onCampaignCode ? (
+              {onCampaignCode || event.priceRules ? (
                 <Field label="Promotion code" hint="Optional.">
                   <div className="flex gap-2">
                     <Input
@@ -814,7 +834,13 @@ export function GameOnForm({
                       className="num uppercase"
                       placeholder="Optional"
                     />
-                    <Button variant="secondary" onClick={() => onCampaignCode(codeInput)}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setAppliedCode(codeInput);
+                        onCampaignCode?.(codeInput);
+                      }}
+                    >
                       Apply
                     </Button>
                   </div>
@@ -828,7 +854,70 @@ export function GameOnForm({
                 </p>
               ) : null}
 
-              {rateResult ? (
+              {/*
+                * The calculation, shown rather than just the total. A single
+                * "Amount due" leaves someone unable to check whether their
+                * membership or code was actually taken into account.
+                */}
+              {priced ? (
+                <div className="rounded-feature bg-[#2F5D3A]/8 p-4">
+                  <p
+                    className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
+                    style={{ color: "#2F5D3A" }}
+                  >
+                    Registration fee
+                  </p>
+
+                  <dl className="mt-2.5 space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-[12.5px] text-muted">Regular price</dt>
+                      <dd
+                        className={cn(
+                          "num text-[12.5px] font-semibold",
+                          priced.saving > 0 ? "text-muted line-through" : "text-ink",
+                        )}
+                      >
+                        {money(priced.regular)}
+                      </dd>
+                    </div>
+
+                    {priced.saving > 0 ? (
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-[12.5px] text-muted">
+                          {priced.appliedKind === "coupon" ? "Promotion applied" : "Discount applied"}
+                        </dt>
+                        <dd
+                          className="text-right text-[12.5px] font-semibold"
+                          style={{ color: "#2F5D3A" }}
+                        >
+                          {priced.appliedLabel}
+                        </dd>
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-baseline justify-between gap-3 border-t border-[#2F5D3A]/20 pt-2">
+                      <dt className="text-[13.5px] font-bold text-ink">Final amount</dt>
+                      <dd className="num text-[17px] font-extrabold" style={{ color: "#2F5D3A" }}>
+                        {money(priced.final)}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {/* Why a code was refused, rather than a silent regular fee. */}
+                  {priced.coupon.status === "unknown" || priced.coupon.status === "expired" ? (
+                    <p className="mt-2.5 text-[11.5px] leading-relaxed text-critical">
+                      {priced.coupon.message}
+                    </p>
+                  ) : null}
+
+                  {priced.appliedKind === "member" ? (
+                    <p className="mt-2.5 text-[11.5px] leading-relaxed text-muted">
+                      Confirmed once we have checked your membership. The regular fee applies if it
+                      cannot be verified.
+                    </p>
+                  ) : null}
+                </div>
+              ) : rateResult ? (
                 <div className="rounded-feature bg-[#2F5D3A]/8 p-4">
                   <p className="flex items-start gap-2 text-[13px] font-semibold" style={{ color: "#2F5D3A" }}>
                     <Sparkles className="mt-0.5 size-3.5 shrink-0" />

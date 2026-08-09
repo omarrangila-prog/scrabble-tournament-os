@@ -41,7 +41,7 @@ describe("migrateEventState", () => {
     const alphaBattle = next.events.find((e) => e.slug === "alphabattle-23-august");
 
     expect(alphaBattle?.state).toBe("registration-open");
-    expect(alphaBattle?.fee).toBe(800);
+    expect(alphaBattle?.fee).toBe(1250);
   });
 
   it("brings back an event the cached copy never had", () => {

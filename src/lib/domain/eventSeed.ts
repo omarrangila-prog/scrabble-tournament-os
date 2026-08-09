@@ -203,7 +203,7 @@ const ALPHABATTLE: PublicEvent = {
   registrationOpensAt: T("2026-07-01"),
   registrationClosesAt: T("2026-08-23", "11:45"),
 
-  fee: 800,
+  fee: 1250,
   currency: "PKR",
 
   /*
@@ -218,7 +218,39 @@ const ALPHABATTLE: PublicEvent = {
    * the engine would never have applied either and the questions behind them
    * would have changed nothing.
    */
-  rates: [{ id: "standard", label: "Standard entry", amount: 800, basis: "Everyone" }],
+  rates: [{ id: "standard", label: "Regular registration", amount: 1250, basis: "Everyone" }],
+
+  /*
+   * The prices the organizer set, in the order they apply.
+   *
+   * Regular is PKR 1,250 — the figure on the organizer's own registration form,
+   * alongside PSA 950 and Early Bird 800. GAME ON! charges 1,200; that is a
+   * different event and not a competing figure for this one.
+   *
+   * Early Bird is a coupon rather than a date-driven rate. Given automatically
+   * by date it reduced the price for everyone whether they had the code or not,
+   * which left the code with nothing to do.
+   */
+  priceRules: {
+    regular: 1250,
+    regularLabel: "Regular registration",
+    member: { price: 950, label: "PSA Member" },
+    coupons: [
+      {
+        code: "EARLYBIRD",
+        label: "Early Bird",
+        price: 800,
+        /*
+         * Today only, as instructed — the 9th, taken from the system clock
+         * rather than from a date written in conversation. Extend this to
+         * reopen the offer; the code is refused the moment it passes.
+         */
+        availableUntil: "2026-08-09T23:59:59+05:00",
+      },
+      { code: "HHS", label: "HHS Promotional Rate", price: 1000 },
+    ],
+    currency: "PKR",
+  },
 
   // Shared across every event — see PAYMENT_ACCOUNTS.
   paymentMethods: [...PAYMENT_ACCOUNTS.methods],

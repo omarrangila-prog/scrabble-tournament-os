@@ -222,7 +222,7 @@ function freshState(): EventState_ {
 }
 
 /** Bump when an event's own details change and existing visitors must see it. */
-export const EVENT_STATE_VERSION = 2;
+export const EVENT_STATE_VERSION = 3;
 
 /**
  * Brings a persisted store up to date.

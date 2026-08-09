@@ -9,7 +9,7 @@
 
 import { PaymentMethod, PlayerCategory } from "./identity";
 import { ParticipationTrack } from "../firebase/schema";
-import { Rate } from "./pricing";
+import { PriceRules, Rate } from "./pricing";
 
 /* -------------------------------------------------------------------------- */
 /* Event lifecycle                                                             */
@@ -226,6 +226,13 @@ export interface PublicEvent {
   divisions: PlayerCategory[];
 
   prizes: { place: string; award: string }[];
+
+  /**
+   * Priority pricing: one price, chosen by coupon, then membership, then the
+   * regular fee. Preferred over `rates` where present, because the organizer
+   * states these as prices with an order rather than as tiers to compare.
+   */
+  priceRules?: PriceRules;
 
   /** Shown under the event name, e.g. "An Evening of Board Games & Speed Scrabble". */
   subtitle?: string;

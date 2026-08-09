@@ -154,3 +154,126 @@ export function cheaperRateHint(
 
   return null;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Priority pricing                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A coupon that sets a price rather than taking an amount off.
+ *
+ * The organizer states these as prices — "HHS → PKR 1,000" — so they are stored
+ * that way. Expressing them as a discount amount instead would mean recomputing
+ * the offer every time the regular fee moved, and one stale subtraction would
+ * quietly charge the wrong figure.
+ */
+export interface PriceCoupon {
+  code: string;
+  label: string;
+  price: number;
+  /** Inclusive: a coupon available "until today" works all of that day. */
+  availableUntil?: string;
+}
+
+export interface PriceRules {
+  regular: number;
+  regularLabel: string;
+  /** The member price, and the body it belongs to. */
+  member?: { price: number; label: string };
+  coupons: PriceCoupon[];
+  currency: string;
+}
+
+export interface PriceContext {
+  isMember: boolean;
+  /** Whatever the participant typed, if anything. */
+  code?: string;
+  at: string;
+}
+
+export type CouponState =
+  | { status: "none" }
+  | { status: "accepted"; coupon: PriceCoupon }
+  | { status: "unknown"; message: string }
+  | { status: "expired"; message: string };
+
+export interface ResolvedPrice {
+  regular: number;
+  final: number;
+  /** What earned the price, for the line the participant reads. */
+  appliedLabel: string;
+  appliedKind: "regular" | "coupon" | "member";
+  saving: number;
+  coupon: CouponState;
+  currency: string;
+}
+
+/**
+ * Resolves one price from the rules the organizer set.
+ *
+ * Exactly one reduction applies. The order is coupon, then membership, then the
+ * regular fee — so somebody cannot combine a coupon with PSA membership and pay
+ * less than either offer alone. Stacking is the failure that matters here:
+ * three reductions on a PKR 1,250 entry could take it near nothing, and the
+ * organizer would only find out while counting the takings.
+ *
+ * A coupon that is not recognised, or has expired, does not silently fall back
+ * to the regular fee — the refusal is returned so the form can say which it was.
+ * Someone hunting for a typo in a code that merely expired wastes their time.
+ */
+export function resolvePrice(rules: PriceRules, context: PriceContext): ResolvedPrice {
+  const typed = (context.code ?? "").trim().toUpperCase();
+  const now = new Date(context.at).getTime();
+
+  let coupon: CouponState = { status: "none" };
+
+  if (typed) {
+    const match = rules.coupons.find((c) => c.code.toUpperCase() === typed);
+
+    if (!match) {
+      coupon = { status: "unknown", message: "That code is not recognised." };
+    } else if (match.availableUntil) {
+      const ends = new Date(match.availableUntil).getTime();
+      coupon =
+        !Number.isNaN(ends) && !Number.isNaN(now) && now > ends
+          ? { status: "expired", message: `${match.label} has closed.` }
+          : { status: "accepted", coupon: match };
+    } else {
+      coupon = { status: "accepted", coupon: match };
+    }
+  }
+
+  const base = {
+    regular: rules.regular,
+    coupon,
+    currency: rules.currency,
+  };
+
+  if (coupon.status === "accepted") {
+    return {
+      ...base,
+      final: coupon.coupon.price,
+      appliedLabel: coupon.coupon.label,
+      appliedKind: "coupon",
+      saving: Math.max(0, rules.regular - coupon.coupon.price),
+    };
+  }
+
+  if (context.isMember && rules.member) {
+    return {
+      ...base,
+      final: rules.member.price,
+      appliedLabel: rules.member.label,
+      appliedKind: "member",
+      saving: Math.max(0, rules.regular - rules.member.price),
+    };
+  }
+
+  return {
+    ...base,
+    final: rules.regular,
+    appliedLabel: rules.regularLabel,
+    appliedKind: "regular",
+    saving: 0,
+  };
+}
