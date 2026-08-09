@@ -53,7 +53,7 @@ export async function generateMetadata({
     openGraph: {
       type: "website",
       url,
-      title: `${title} | Blufy's Alphabattle`,
+      title: `${title} | Blufy's AlphaBattle`,
       description,
       ...(event.socialImage ? { images: [{ url: event.socialImage }] } : {}),
     },

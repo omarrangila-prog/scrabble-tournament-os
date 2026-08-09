@@ -202,7 +202,7 @@ export function GuidedDemoSummary() {
           )}
         </ul>
         <p className="mt-5 text-[15px] font-medium text-ink">
-          Bluffy Alphabattle is ready to run your next championship.
+          Blufy&rsquo;s AlphaBattle is ready to run your next championship.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button

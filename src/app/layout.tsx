@@ -26,18 +26,18 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Blufy's Alphabattle | Scrabble & Social Events in Karachi",
-    template: "%s | Blufy's Alphabattle",
+    default: "Blufy's AlphaBattle | Scrabble & Social Events in Karachi",
+    template: "%s | Blufy's AlphaBattle",
   },
   description:
     "Discover Scrabble tournaments, board-game nights and social experiences in Karachi. Register in minutes — no app and no account needed.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: "Blufy's Alphabattle",
+    siteName: "Blufy's AlphaBattle",
     locale: "en_PK",
     url: SITE_URL,
-    title: "Blufy's Alphabattle | Scrabble & Social Events in Karachi",
+    title: "Blufy's AlphaBattle | Scrabble & Social Events in Karachi",
     description:
       "Scrabble tournaments, board-game nights and social experiences in Karachi.",
   },

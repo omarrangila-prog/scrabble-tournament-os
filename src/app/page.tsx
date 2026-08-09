@@ -6,7 +6,9 @@ import { motion } from "framer-motion";
 import { ArrowRight, Camera, Mail } from "lucide-react";
 import { EventCard } from "@/components/public/EventCard";
 import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
-import { resolvePrice } from "@/lib/domain/pricing";
+import { FeaturedEvent } from "@/components/public/FeaturedEvent";
+import { Tile } from "@/components/public/Tile";
+import { lowestPrice } from "@/lib/seo";
 import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
 
 const CREAM = "#F5F0E4";
@@ -14,12 +16,21 @@ const FOREST = "#2F5D3A";
 const GOLD = "#C89B3C";
 const BROWN = "#3E2F23";
 
-const NAV = [
-  { href: "#events", label: "Events" },
-  { href: "#past", label: "Past Events" },
-  { href: "#community", label: "Community" },
-  { href: "#about", label: "About" },
-];
+/**
+ * Navigation, built from what the page actually contains.
+ *
+ * "Past Events" only appears once there are past events. A link to a section
+ * that is not on the page scrolls nowhere, and a nav item that does nothing is
+ * worse than one absence nobody notices.
+ */
+function navFor(hasPast: boolean) {
+  return [
+    { href: "#events", label: "Events" },
+    ...(hasPast ? [{ href: "#past", label: "Past Events" }] : []),
+    { href: "#community", label: "Community" },
+    { href: "#about", label: "About" },
+  ];
+}
 
 /**
  * The public homepage.
@@ -42,7 +53,7 @@ export default function HomePage() {
   return (
     <div className="min-h-dvh overflow-x-hidden" style={{ background: CREAM }}>
       <Texture />
-      <Header />
+      <Header hasPast={past.length > 0} />
 
       <main className="relative mx-auto w-full max-w-[1120px] px-5 pb-20 sm:px-8">
         <Hero hasEvents={upcoming.length > 0} hasPast={past.length > 0} />
@@ -54,10 +65,20 @@ export default function HomePage() {
           sub="Your next great evening starts here."
         >
           {upcoming.length ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {upcoming.map((e, i) => (
-                <EventCardFor key={e.id} event={e} index={i} />
-              ))}
+            <div className="space-y-6">
+              <FeaturedFor event={upcoming[0]} />
+
+              {/*
+                A grid of one leaves two empty cells and reads as unfinished, so
+                the rest only appears when there is a rest.
+              */}
+              {upcoming.length > 1 ? (
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {upcoming.slice(1).map((e, i) => (
+                    <EventCardFor key={e.id} event={e} index={i} />
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             <Empty
@@ -84,10 +105,11 @@ export default function HomePage() {
           </Section>
         ) : null}
 
+        <Collaborations />
         <About />
       </main>
 
-      <Footer />
+      <Footer hasPast={past.length > 0} />
     </div>
   );
 }
@@ -104,21 +126,22 @@ function EventCardFor({ event, index }: { event: PublicEvent; index: number }) {
   const store = useEventStore();
   const count = selectRegistrations(store, event.id).length;
 
-  const fromPrice = React.useMemo(() => {
-    if (!event.priceRules) return event.fee;
-    const now = new Date().toISOString();
-    const candidates = [
-      resolvePrice(event.priceRules, { isMember: false, at: now }).final,
-      resolvePrice(event.priceRules, { isMember: true, at: now }).final,
-      ...event.priceRules.coupons.map(
-        (c) => resolvePrice(event.priceRules!, { isMember: false, code: c.code, at: now }).final,
-      ),
-    ];
-    return Math.min(...candidates);
-  }, [event]);
-
   return (
-    <EventCard event={event} registrationCount={count} fromPrice={fromPrice} index={index} />
+    <EventCard
+      event={event}
+      registrationCount={count}
+      fromPrice={lowestPrice(event)}
+      index={index}
+    />
+  );
+}
+
+/** The soonest event, given the full width. */
+function FeaturedFor({ event }: { event: PublicEvent }) {
+  const store = useEventStore();
+  const count = selectRegistrations(store, event.id).length;
+  return (
+    <FeaturedEvent event={event} registrationCount={count} fromPrice={lowestPrice(event)} />
   );
 }
 
@@ -147,7 +170,8 @@ function Texture() {
   );
 }
 
-function Header() {
+function Header({ hasPast }: { hasPast: boolean }) {
+  const nav = navFor(hasPast);
   return (
     <header className="relative">
       <div className="mx-auto flex w-full max-w-[1120px] items-center gap-4 px-5 py-6 sm:px-8">
@@ -156,11 +180,11 @@ function Header() {
           className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
           style={{ color: BROWN }}
         >
-          Blufy&rsquo;s Alphabattle
+          Blufy&rsquo;s AlphaBattle
         </Link>
 
         <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Sections">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <a
               key={item.href}
               href={item.href}
@@ -186,12 +210,28 @@ function Header() {
 
 function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) {
   return (
-    <section className="pt-8 text-center sm:pt-16">
+    <section className="pt-6 text-center sm:pt-10">
+      {/*
+        Tiles as accent, not wallpaper. They give the hero something to look at
+        that belongs to the subject, rather than a stock photograph of strangers.
+      */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="flex justify-center gap-1.5"
+        aria-hidden
+      >
+        {["B", "L", "U", "F", "Y"].map((l, i) => (
+          <Tile key={l} letter={l} size={40} rotate={i % 2 ? 3 : -3} />
+        ))}
+      </motion.div>
+
       <motion.p
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.26em]"
+        transition={{ duration: 0.4, delay: 0.15 }}
+        className="mt-6 text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.26em]"
         style={{ color: `${BROWN}99` }}
       >
         Karachi&rsquo;s social game experiences
@@ -201,7 +241,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        className="mt-5 text-[46px] font-extrabold leading-[0.9] tracking-[-0.035em] sm:mt-6 sm:text-[86px] lg:text-[104px]"
+        className="mt-5 text-[46px] font-extrabold leading-[0.9] tracking-[-0.035em] sm:mt-5 sm:text-[74px] lg:text-[88px]"
         style={{ color: BROWN }}
       >
         Play.
@@ -215,19 +255,18 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.28 }}
-        className="mx-auto mt-6 max-w-[50ch] text-[15.5px] leading-[1.65] sm:text-[17.5px]"
+        className="mx-auto mt-5 max-w-[50ch] text-[15.5px] leading-[1.65] sm:text-[17.5px]"
         style={{ color: `${BROWN}C9` }}
       >
         Discover Scrabble tournaments, board-game nights and social experiences
         designed to bring great people together.
       </motion.p>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-        className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-      >
+      {/*
+        Not animated. A faded or delayed primary action is a button somebody
+        cannot use, and if the animation stalls the page has no way in at all.
+      */}
+      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
         {hasEvents ? (
           <a
             href="#events"
@@ -248,7 +287,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
             See past events
           </a>
         ) : null}
-      </motion.div>
+      </div>
     </section>
   );
 }
@@ -267,7 +306,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-8 pt-20 sm:pt-28">
+    <section id={id} className="scroll-mt-8 pt-16 sm:pt-24">
       <p
         className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
         style={{ color: GOLD }}
@@ -314,10 +353,10 @@ function Community() {
   ];
 
   return (
-    <section id="community" className="scroll-mt-8 pt-20 sm:pt-28">
+    <section id="community" className="scroll-mt-8 pt-16 sm:pt-24">
       <div
         className="rounded-[30px] px-6 py-12 text-center sm:px-12 sm:py-16"
-        style={{ background: `${FOREST}0F` }}
+        style={{ background: `${GOLD}18` }}
       >
         <h2
           className="text-[28px] font-extrabold leading-[1.05] tracking-[-0.025em] sm:text-[40px]"
@@ -329,7 +368,7 @@ function Community() {
           className="mx-auto mt-4 max-w-[52ch] text-[15px] leading-[1.65] sm:text-[16.5px]"
           style={{ color: `${BROWN}C9` }}
         >
-          Blufy&rsquo;s Alphabattle brings people together through words,
+          Blufy&rsquo;s AlphaBattle brings people together through words,
           competition, conversation and memorable social experiences.
         </p>
 
@@ -353,9 +392,64 @@ function Community() {
   );
 }
 
+/**
+ * Who we have worked with.
+ *
+ * Named in text rather than as logos. Publishing a logo nobody supplied
+ * misrepresents an endorsement, and a grey wall of marks nobody recognises adds
+ * nothing — the relationship is the credible part.
+ *
+ * The labels are deliberately specific. Calling a venue a "sponsor" claims money
+ * changed hands in a direction it may not have.
+ */
+const COLLABORATORS = [
+  { name: "Chai Chatt, Habitt City", relationship: "Venue partner" },
+  { name: "Alliance Française de Karachi", relationship: "Hosted at" },
+  { name: "Boardgame Baithak", relationship: "In collaboration with" },
+];
+
+function Collaborations() {
+  return (
+    <section className="scroll-mt-8 pt-16 sm:pt-24">
+      <p
+        className="text-center text-[10.5px] font-bold uppercase tracking-[0.18em]"
+        style={{ color: GOLD }}
+      >
+        Events &amp; collaborations
+      </p>
+      <h2
+        className="mt-2.5 text-center text-[24px] font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-[32px]"
+        style={{ color: BROWN }}
+      >
+        We&rsquo;ve brought people together with
+      </h2>
+
+      <ul className="mx-auto mt-8 grid max-w-[900px] gap-4 sm:grid-cols-3">
+        {COLLABORATORS.map((c) => (
+          <li
+            key={c.name}
+            className="rounded-2xl border bg-white/60 px-5 py-6 text-center"
+            style={{ borderColor: `${BROWN}14` }}
+          >
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.16em]"
+              style={{ color: `${BROWN}80` }}
+            >
+              {c.relationship}
+            </p>
+            <p className="mt-2 text-[15px] font-bold leading-snug" style={{ color: BROWN }}>
+              {c.name}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function About() {
   return (
-    <section id="about" className="scroll-mt-8 pt-20 sm:pt-28">
+    <section id="about" className="scroll-mt-8 pt-16 sm:pt-24">
       <div className="mx-auto max-w-[62ch] text-center">
         <p
           className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
@@ -388,7 +482,8 @@ function About() {
  * No organizer link. That route is private, and putting it here would turn a
  * guest page into a door into administration.
  */
-function Footer() {
+function Footer({ hasPast }: { hasPast: boolean }) {
+  const nav = navFor(hasPast);
   return (
     <footer
       className="relative mt-4 border-t"
@@ -401,7 +496,7 @@ function Footer() {
               className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
               style={{ color: BROWN }}
             >
-              Blufy&rsquo;s Alphabattle
+              Blufy&rsquo;s AlphaBattle
             </p>
             <p className="mt-1.5 text-[13px]" style={{ color: `${BROWN}99` }}>
               Karachi, Pakistan
@@ -409,7 +504,7 @@ function Footer() {
           </div>
 
           <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <a
                 key={item.href}
                 href={item.href}

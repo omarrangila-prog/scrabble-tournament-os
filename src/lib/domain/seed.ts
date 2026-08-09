@@ -39,7 +39,7 @@ export function rng(seed: number) {
 export const DEMO_DATE = "2026-07-31";
 export const ORGANIZATION: Organization = {
   id: "org-federation",
-  name: "Bluffy Alphabattle",
+  name: "Blufy's AlphaBattle",
   country: "Pakistan",
   contactEmail: "info@tournamentos.demo",
 };
@@ -87,7 +87,7 @@ export const USERS: User[] = [
 export const TOURNAMENT: Tournament = {
   id: "t-pnsc-2026",
   name: "Blufy's AlphaBattle 2026",
-  organizer: "Bluffy Alphabattle",
+  organizer: "Blufy's AlphaBattle",
   organizationId: "org-federation",
   venueId: "venue-unset",
   city: "Karachi",

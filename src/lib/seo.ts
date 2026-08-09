@@ -99,7 +99,7 @@ export function organizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Blufy's Alphabattle",
+    name: "Blufy's AlphaBattle",
     url: SITE_URL,
     address: {
       "@type": "PostalAddress",

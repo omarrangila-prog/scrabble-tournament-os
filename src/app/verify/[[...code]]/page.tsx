@@ -81,7 +81,7 @@ export default function VerifyPage() {
       <div className="mx-auto w-full max-w-[560px]">
         <div className="text-center">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">
-            Bluffy Alphabattle
+            Blufy&rsquo;s AlphaBattle
           </p>
           <h1 className="mt-1.5 text-[26px] font-extrabold tracking-[-0.02em] text-ink">
             Verify a certificate

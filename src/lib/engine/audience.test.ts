@@ -26,7 +26,7 @@ const contact = (over: Partial<Contact> = {}): Contact => ({
 
 const draft = (over: Partial<MessageDraft> = {}): MessageDraft => ({
   subject: "New tournament announced",
-  body: "Bluffy Alphabattle registration is open. Reply STOP to unsubscribe.",
+  body: "Blufy's AlphaBattle registration is open. Reply STOP to unsubscribe.",
   kind: "promotional",
   channel: "email",
   ...over,

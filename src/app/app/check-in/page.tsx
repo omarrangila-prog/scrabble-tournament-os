@@ -548,7 +548,7 @@ function PlayerCardDrawer({ player, onClose }: { player: Player | null; onClose:
       <div className="overflow-hidden rounded-card border border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-strong))]">
         <div className="board-motif relative bg-primary/95 px-5 py-4 text-white">
           <p className="text-[11px] uppercase tracking-[0.08em] opacity-85">
-            Bluffy Alphabattle Championship 2026
+            Blufy&rsquo;s AlphaBattle Championship 2026
           </p>
           <p className="mt-1 text-[19px] font-semibold tracking-[-0.02em]">{player.fullName}</p>
           <p className="text-[12.5px] opacity-90">{player.playerId}</p>

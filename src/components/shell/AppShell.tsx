@@ -248,7 +248,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="grid size-10 place-items-center rounded-control bg-gradient-to-br from-primary to-secondary text-white">
                   <LayoutGrid className="size-5" />
                 </span>
-                <p className="text-[14.5px] font-extrabold text-ink">Bluffy Alphabattle</p>
+                <p className="text-[14.5px] font-extrabold text-ink">Blufy&rsquo;s AlphaBattle</p>
               </div>
               <button
                 onClick={() => setMobileNav(false)}

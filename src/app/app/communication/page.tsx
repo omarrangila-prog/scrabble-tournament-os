@@ -238,7 +238,7 @@ export default function CommunicationPage() {
                     <Bell className="size-4" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-[12.5px] font-semibold text-ink">Bluffy Alphabattle</p>
+                    <p className="truncate text-[12.5px] font-semibold text-ink">Blufy&rsquo;s AlphaBattle</p>
                     <p className="text-[11px] text-muted">now</p>
                   </div>
                 </div>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ThemeProvider } from "@/lib/design/theme";
 
 export const metadata: Metadata = {
-  title: "Live Display — Bluffy Alphabattle Championship 2026",
+  title: "Live Display — Blufy's AlphaBattle Championship 2026",
   description: "Venue display: pairings, standings and announcements.",
 };
 

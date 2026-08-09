@@ -230,7 +230,7 @@ export default function TournamentDiscoveryPage() {
 
       <footer className="border-t border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-soft))] px-4 py-6 text-center sm:px-6">
         <p className="text-[12.5px] text-muted">
-          Bluffy Alphabattle · Bluffy Alphabattle
+          Blufy&rsquo;s AlphaBattle
         </p>
       </footer>
     </div>

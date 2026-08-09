@@ -83,7 +83,7 @@ const ALPHABATTLE: PublicEvent = {
     "Whether you are a newcomer, a casual player or a strategy pro, join us for a fun, friendly word battle with good vibes. Five timed games of twenty minutes decide the top two in each category, with four songs to guess from twenty-second clips along the way.",
   bannerCaption: "A fast-paced Scrabble showdown",
 
-  organizer: "Bluffy Alphabattle",
+  organizer: "Blufy's AlphaBattle",
   collaborators: [],
 
   venueName: "Chai Chatt, Habitt City",

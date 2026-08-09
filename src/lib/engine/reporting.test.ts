@@ -21,8 +21,8 @@ const expenses = expenseTotals([
 ]);
 
 const input = (over: Partial<ReportInput> = {}): ReportInput => ({
-  eventName: "Bluffy Alphabattle",
-  organizer: "Bluffy Alphabattle",
+  eventName: "Blufy's AlphaBattle",
+  organizer: "Blufy's AlphaBattle",
   startDate: "20 August 2026",
   venue: "Clifton Hall",
   city: "Karachi",
@@ -283,7 +283,7 @@ describe("GAME ON! track reporting", () => {
 describe("buildDocument", () => {
   it("carries the identity a printed report needs", () => {
     const doc = buildDocument(input());
-    expect(doc.eventName).toBe("Bluffy Alphabattle");
+    expect(doc.eventName).toBe("Blufy's AlphaBattle");
     expect(doc.subtitle).toContain("Clifton Hall");
     expect(doc.generatedBy).toBe("Sir Hani");
     expect(doc.generatedAt).toBe("2026-08-21T10:00:00.000Z");

@@ -404,7 +404,7 @@ interface WizardState {
 
 const INITIAL: WizardState = {
   name: "",
-  organizer: "Bluffy Alphabattle",
+  organizer: "Blufy's AlphaBattle",
   venue: "",
   city: "Karachi",
   startDate: "2026-09-12",

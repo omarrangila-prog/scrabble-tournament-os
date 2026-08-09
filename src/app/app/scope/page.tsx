@@ -261,7 +261,7 @@ export default function ScopePage() {
 
             <a
               href={`https://wa.me/${CONTACT.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                "Hello, we reviewed the Bluffy Alphabattle demonstration and would like to discuss the implementation scope.",
+                "Hello, we reviewed the Blufy's AlphaBattle demonstration and would like to discuss the implementation scope.",
               )}`}
               target="_blank"
               rel="noreferrer"
@@ -273,9 +273,9 @@ export default function ScopePage() {
 
             <a
               href={`mailto:${CONTACT.email}?subject=${encodeURIComponent(
-                "Bluffy Alphabattle — implementation scope",
+                "Blufy's AlphaBattle — implementation scope",
               )}&body=${encodeURIComponent(
-                "Hello,\n\nWe reviewed the Bluffy Alphabattle demonstration and would like to discuss next steps.\n\n",
+                "Hello,\n\nWe reviewed the Blufy's AlphaBattle demonstration and would like to discuss next steps.\n\n",
               )}`}
             >
               <Button variant="secondary" size="lg" icon={<Mail className="size-4" />}>
@@ -324,7 +324,7 @@ export default function ScopePage() {
             </Button>
             <a
               href={`mailto:${CONTACT.email}?subject=${encodeURIComponent(
-                "Bluffy Alphabattle — customization request",
+                "Blufy's AlphaBattle — customization request",
               )}`}
             >
               <Button variant="primary">Send by email</Button>

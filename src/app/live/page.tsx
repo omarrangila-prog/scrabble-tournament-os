@@ -516,7 +516,7 @@ export default function PublicSitePage() {
       <footer className="border-t border-[rgb(var(--glass-border))] bg-[rgb(var(--c-surface-soft))] px-4 py-6 sm:px-6">
         <div className="mx-auto flex max-w-[1400px] flex-col items-center gap-2 text-center">
           <p className="text-[12.5px] text-muted">
-            {tournament.organizer} · Powered by Bluffy Alphabattle
+            {tournament.organizer} · Powered by Blufy&rsquo;s AlphaBattle
           </p>
           <Link href="/organizer" className="text-[12px] text-primary underline underline-offset-2">
             Organizer sign in

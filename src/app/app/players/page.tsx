@@ -499,7 +499,7 @@ function BulkImportModal({ open, onClose }: { open: boolean; onClose: () => void
       {step === 1 ? (
         <div className="space-y-2.5">
           <p className="text-[13px] text-muted">
-            Match each column in your file to a Bluffy Alphabattle field. Detected matches are pre-selected.
+            Match each column in your file to a Blufy&rsquo;s AlphaBattle field. Detected matches are pre-selected.
           </p>
           {[
             ["Full Name", "fullName"], ["City", "city"], ["Club/School", "club"],

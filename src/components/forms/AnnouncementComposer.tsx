@@ -189,7 +189,7 @@ export function AnnouncementComposer() {
               <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Bluffy Alphabattle — registration is open"
+                placeholder="e.g. Blufy's AlphaBattle — registration is open"
               />
             </Field>
           ) : null}
@@ -204,7 +204,7 @@ export function AnnouncementComposer() {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={
-                "New tournament announced.\n\nBluffy Alphabattle\nRegistration is now open.\nDate: 20 August 2026\nVenue: Clifton, Karachi\nEntry: PKR 2,000\n\nReply STOP to unsubscribe."
+                "New tournament announced.\n\nBlufy's AlphaBattle\nRegistration is now open.\nDate: 20 August 2026\nVenue: Clifton, Karachi\nEntry: PKR 2,000\n\nReply STOP to unsubscribe."
               }
             />
           </Field>

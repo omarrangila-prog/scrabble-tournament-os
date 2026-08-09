@@ -14,7 +14,7 @@ const ORG = "org-psa";
 const OTHER_ORG = "org-other";
 
 const events = [
-  { id: "ev-bluffy", organizationId: ORG, name: "Bluffy Alphabattle" },
+  { id: "ev-bluffy", organizationId: ORG, name: "Blufy's AlphaBattle" },
   { id: "ev-champs", organizationId: ORG, name: "Pakistan Championship" },
   { id: "ev-foreign", organizationId: OTHER_ORG, name: "Another Org Event" },
 ];
@@ -47,7 +47,7 @@ describe("scoped", () => {
     ]);
   });
 
-  /** The reported bug: Bluffy Alphabattle showing Championship registrations. */
+  /** The reported bug: Blufy's AlphaBattle showing Championship registrations. */
   it("never leaks another event's records into the active one", () => {
     const rows = scoped(registrations, scope("ev-bluffy"));
     expect(rows).toHaveLength(1);
@@ -76,7 +76,7 @@ describe("scopedToOrg", () => {
 
 describe("activeEvent", () => {
   it("resolves the selected event", () => {
-    expect(activeEvent(events, scope("ev-bluffy"))?.name).toBe("Bluffy Alphabattle");
+    expect(activeEvent(events, scope("ev-bluffy"))?.name).toBe("Blufy's AlphaBattle");
   });
 
   it("does not resolve an event belonging to another organization", () => {

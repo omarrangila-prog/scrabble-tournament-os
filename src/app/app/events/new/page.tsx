@@ -76,7 +76,7 @@ export default function NewEventPage() {
       shortDescription: form.shortDescription.trim() || `${form.rounds} rounds in ${form.city}.`,
       description: form.shortDescription.trim(),
       bannerCaption: form.name.trim(),
-      organizer: "Bluffy Alphabattle",
+      organizer: "Blufy's AlphaBattle",
       venueName: form.venueName.trim(),
       address: form.address.trim(),
       city: form.city.trim(),
@@ -169,7 +169,7 @@ export default function NewEventPage() {
                   autoFocus
                   value={form.name}
                   onChange={(e) => set("name", e.target.value)}
-                  placeholder="e.g. Bluffy Alphabattle"
+                  placeholder="e.g. Blufy's AlphaBattle"
                 />
               </Field>
               <Field label="Short description" hint="Shown on the public event page.">
