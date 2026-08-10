@@ -124,12 +124,22 @@ export default function OrganizerRegistrationsPage() {
           </p>
 
           <div className="mt-5 space-y-3.5 text-left">
-            <Field label="Email">
+            {/*
+              * Text rather than email, and labelled for both.
+              *
+              * The account is identified by an address because Supabase Auth requires
+              * one, but the director signs in as "admin". An `type="email"` field
+              * argues with that — it offers the wrong keyboard on a phone and invites
+              * the browser to complain about a value that is correct here.
+              */}
+            <Field label="Email or username">
               <Input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
               />
             </Field>
             <Field label="Password" error={error ?? undefined}>

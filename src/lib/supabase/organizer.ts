@@ -51,6 +51,26 @@ export function answer(reg: OrganizerRegistration, key: string): string | undefi
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
+/**
+ * The domain a bare username belongs to.
+ *
+ * Supabase Auth identifies accounts by email address and rejects anything that is
+ * not one, so "admin" cannot be an account. The director wanted to type a username
+ * rather than an address, so a value with no "@" is completed to one here — "admin"
+ * signs in as admin@blufys.pk.
+ *
+ * The mapping lives in one place because it has to match the address the account was
+ * actually created with. Two copies of it is a login that works on one screen.
+ */
+const USERNAME_DOMAIN = "blufys.pk";
+
+/** Completes a bare username to the address its account uses. */
+export function asEmail(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed === "" || trimmed.includes("@")) return trimmed;
+  return `${trimmed}@${USERNAME_DOMAIN}`;
+}
+
 export type SignInOutcome =
   | { ok: true; email: string }
   | { ok: false; message: string };
@@ -86,7 +106,7 @@ export async function signIn(email: string, password: string): Promise<SignInOut
     };
   }
 
-  const trimmed = email.trim().toLowerCase();
+  const trimmed = asEmail(email);
 
   const attempt = await db.auth.signInWithPassword({ email: trimmed, password });
   if (!attempt.error) return { ok: true, email: trimmed };
