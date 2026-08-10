@@ -12,7 +12,6 @@ import {
   Calendar,
   ChevronRight,
   ClipboardList,
-  FileText,
   Gauge,
   Grid3x3,
   Info,
@@ -60,7 +59,6 @@ import { computeStandings } from "@/lib/engine/standings";
 import {
   achievements as buildAchievements,
   careerStats,
-  documents as buildDocuments,
   flagOf,
   isVerified,
   PLAYER_COUNTRY,
@@ -104,7 +102,6 @@ const SECTIONS = [
   { id: "achievements", label: "Achievements", icon: Award },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "insights", label: "Insights", icon: Sparkles },
-  { id: "documents", label: "Documents", icon: FileText },
   { id: "contact", label: "Contact", icon: Phone },
   { id: "admin", label: "Settings", icon: Settings2 },
 ];
@@ -167,7 +164,6 @@ export default function PlayerProfilePage() {
     () => (player && stats ? buildAchievements(player, stats) : []),
     [player, stats],
   );
-  const docs = buildDocuments();
   const insights = React.useMemo(
     () => (player && stats ? playerInsights(player, stats, heatmap, progression) : []),
     [player, stats, heatmap, progression],
@@ -1051,33 +1047,13 @@ export default function PlayerProfilePage() {
                 </div>
               ) : null}
 
-              {/* ---------------- DOCUMENTS ---------------- */}
-              {tab === "documents" ? (
-                <Card>
-                  <CardHeader title="Documents" subtitle={`${docs.length} files on record`} icon={<FileText className="size-4.5" />} />
-                  <div className="space-y-2 px-5 pb-5">
-                    {docs.map((d) => (
-                      <div key={d.id} className="flex flex-wrap items-center gap-3 rounded-control bg-[rgb(var(--c-surface))] px-3.5 py-3">
-                        <span className="grid size-9 shrink-0 place-items-center rounded-control bg-primary-050 text-primary">
-                          <FileText className="size-4.5" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13.5px] font-medium text-ink">{d.name}</p>
-                          <p className="text-[11.5px] text-muted">
-                            {formatDateTime(d.uploadedAt)} · {d.sizeKb} KB · <span className="capitalize">{d.kind}</span>
-                          </p>
-                        </div>
-                        <Badge tone={d.verified ? "success" : "warning"} dot>
-                          {d.verified ? "Verified" : "Pending review"}
-                        </Badge>
-                        <Button size="sm" variant="ghost" onClick={() => store.toast({ title: "Document opened", description: `${d.name} was opened for review.`, tone: "info" })}>
-                          View
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              ) : null}
+              {/*
+                * The Documents tab is gone. `documents()` returns nothing, because no
+                * document is stored anywhere — it listed an identity document and a rating
+                * certificate that did not exist, and once those were removed the card could
+                * only say "0 files on record" above an empty list, with a View button that
+                * raised "Document opened" and opened nothing.
+                */}
 
               {/* ---------------- CONTACT ---------------- */}
               {tab === "contact" ? (

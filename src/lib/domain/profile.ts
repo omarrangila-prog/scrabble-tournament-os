@@ -248,22 +248,6 @@ export function achievements(player: Player, stats: CareerStats): Achievement[] 
   return out;
 }
 
-/**
- * Documents held for a player.
- *
- * Empty, because nothing is held. This used to list an identity document, a rating
- * certificate and a parental consent form, each with an upload date, a file size
- * and a verified tick — none of which existed. Against demo data that was set
- * dressing; on a page showing a real person's name it is a records system claiming
- * to hold papers it has never seen, which is the sort of thing somebody relies on.
- *
- * The registration form does not collect documents. When it collects one — a
- * payment receipt is the likely first — it can be listed here from the row that
- * actually stores it.
- */
-export function documents(): ProfileDocument[] {
-  return [];
-}
 
 /** Per-round result grid used by the profile heatmap. */
 export function resultHeatmap(

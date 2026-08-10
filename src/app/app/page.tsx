@@ -16,7 +16,6 @@ import {
   Grid3x3,
   ListOrdered,
   MapPin,
-  Play,
   Radio,
   Settings2,
   Timer,
@@ -342,20 +341,11 @@ export default function CommandCentrePage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                icon={<Play className="size-3.5" />}
-                onClick={() =>
-                  store.toast({
-                    title: "Round clock running",
-                    description: `Round ${round} is in progress across ${liveGames} boards.`,
-                    tone: "info",
-                  })
-                }
-              >
-                Round clock
-              </Button>
+{/*
+                * A "start the clock" button that only announced the clock was running.
+                * The timer lives in Live Event and is the one that participants see, so
+                * this offered a second, imaginary one.
+                */}
               <Button
                 size="sm"
                 variant="secondary"
