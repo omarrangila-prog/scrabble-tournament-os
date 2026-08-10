@@ -11,6 +11,7 @@ import {
   Monitor,
   Printer,
   TrendingUp,
+  Trophy,
 } from "lucide-react";
 import {
   Avatar,
@@ -30,7 +31,8 @@ import { useStore } from "@/lib/store/useStore";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { RosterGate } from "@/components/organizer/RosterGate";
-import { computeStandings } from "@/lib/engine/standings";
+import { computeStandings, performanceRecordsFor } from "@/lib/engine/standings";
+import { categoryLeaders, leaderLabel } from "@/lib/engine/categoryLeaders";
 import { cn, downloadFile, signed, toCsv } from "@/lib/utils";
 import { Player } from "@/lib/domain/types";
 import { PlayerDrawer } from "@/components/players/PlayerDrawer";
@@ -69,6 +71,23 @@ export default function StandingsPage() {
   }
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<Player | null>(null);
+
+  /*
+   * Who leads each category on the figures that decide the prizes.
+   *
+   * Per category, because that is the unit this event awards in — a single "highest spread
+   * of the day" tells a beginner only that an advanced player scored more. Built from the
+   * same performance records the certificates are written from, so the two cannot
+   * disagree about who holds what.
+   */
+  const leaders = React.useMemo(
+    () =>
+      categoryLeaders(
+        performanceRecordsFor(players, pairings, tournament, divisions.map((d) => d.id)),
+        divisions.map((d) => d.id),
+      ),
+    [players, pairings, tournament, divisions],
+  );
 
   const rows = React.useMemo(
     () =>
@@ -190,6 +209,71 @@ export default function StandingsPage() {
           </Select>
         </div>
       </div>
+
+      {/*
+        * Category leaders. Shown only once something has been played — before that every
+        * figure would be a dash, which reads as broken rather than as "not started".
+        */}
+      {leaders.length > 0 ? (
+        <Card className="mb-3">
+          <CardHeader
+            title="Category leaders"
+            subtitle="Best margin, highest single game and most wins, within each category"
+            icon={<Trophy className="size-4.5" />}
+          />
+          <div className="px-3 pb-4">
+            <TableWrap>
+              <thead>
+                <tr>
+                  <Th>Category</Th>
+                  <Th className="w-16">Played</Th>
+                  <Th>Best margin</Th>
+                  <Th>Highest game</Th>
+                  <Th>Most wins</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaders.map((row) => (
+                  <tr key={row.category}>
+                    <Td className="font-semibold capitalize">{row.category}</Td>
+                    <Td className="num">{row.played}</Td>
+                    <Td>
+                      <span className="block truncate text-[13px] text-ink">
+                        {leaderLabel(row.bestSpread)}
+                      </span>
+                      {row.bestSpread.length ? (
+                        <span className="num block text-[11.5px] text-muted">
+                          +{row.bestSpread[0]!.value}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td>
+                      <span className="block truncate text-[13px] text-ink">
+                        {leaderLabel(row.highestGame)}
+                      </span>
+                      {row.highestGame.length ? (
+                        <span className="num block text-[11.5px] text-muted">
+                          {row.highestGame[0]!.value}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td>
+                      <span className="block truncate text-[13px] text-ink">
+                        {leaderLabel(row.mostWins)}
+                      </span>
+                      {row.mostWins.length ? (
+                        <span className="num block text-[11.5px] text-muted">
+                          {row.mostWins[0]!.value} won
+                        </span>
+                      ) : null}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableWrap>
+          </div>
+        </Card>
+      ) : null}
 
       <Card data-tour="standings-table">
         <CardHeader

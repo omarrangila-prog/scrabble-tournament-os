@@ -42,7 +42,18 @@ function plural(n: number, one: string, many: string): string {
  */
 function candidatesFor(record: PerformanceRecord, field: PerformanceRecord[]): Candidate[] {
   const out: Candidate[] = [];
-  const others = field.filter((r) => r.playerId !== record.playerId);
+
+  /*
+   * Only this player's own category.
+   *
+   * Every superlative below is worded "in the <category> category", and comparing against
+   * the whole event made those claims false: a beginner was told their score was the
+   * highest in the beginner category after being measured against the recreational
+   * players. Categories are the unit these prizes are awarded in, so they are the unit
+   * the wording has to be checked against.
+   */
+  const category = field.filter((r) => r.division === record.division);
+  const others = category.filter((r) => r.playerId !== record.playerId);
 
   /* ---- Unbeaten, which speaks for itself ------------------------------- */
   if (record.gamesPlayed > 1 && record.losses === 0 && record.draws === 0) {
@@ -74,7 +85,7 @@ function candidatesFor(record: PerformanceRecord, field: PerformanceRecord[]): C
         text: `whose ${record.highestGame} was among the highest single games in the ${record.division} category`,
         evidence: `Joint highest game in the category: ${record.highestGame}`,
       });
-    } else if (higher < Math.max(1, Math.ceil(field.length / 3))) {
+    } else if (higher < Math.max(1, Math.ceil(category.length / 3))) {
       out.push({
         weight: 60,
         text: `who put together a ${record.highestGame} along the way`,

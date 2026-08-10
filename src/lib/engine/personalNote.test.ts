@@ -150,3 +150,60 @@ describe("evidence", () => {
     expect(note!.evidence).toContain("431");
   });
 });
+
+describe("superlatives stay inside a category", () => {
+  const beginner = (over: Partial<PerformanceRecord>) =>
+    player({ division: "beginner", ...over });
+  const advanced = (over: Partial<PerformanceRecord>) =>
+    player({ division: "advanced", ...over });
+
+  it("does not measure a beginner against the advanced field", () => {
+    /*
+     * The wording says "in the beginner category", so the comparison has to be the
+     * beginner category. Measured across the whole event, a beginner's 300 was called the
+     * highest in their category because the advanced players were counted as theirs.
+     */
+    const field = [
+      advanced({ playerId: "adv", rank: 1, highestGame: 520, spread: 400 }),
+      beginner({ playerId: "beg", rank: 1, highestGame: 300, spread: 40 }),
+    ];
+
+    const note = personalNotes(field).get("beg")!;
+    expect(note.text).toContain("beginner category");
+    // True within the beginner category, where they are the only player.
+    expect(note.text).toContain("highest single game");
+  });
+
+  it("gives each category its own highest game", () => {
+    const field = [
+      beginner({ playerId: "b1", rank: 1, highestGame: 310 }),
+      beginner({ playerId: "b2", rank: 2, highestGame: 240 }),
+      advanced({ playerId: "a1", rank: 1, highestGame: 505 }),
+      advanced({ playerId: "a2", rank: 2, highestGame: 470 }),
+    ];
+    const notes = personalNotes(field);
+
+    for (const id of ["b1", "a1"]) {
+      expect(notes.get(id)!.text).toContain("highest single game");
+    }
+    for (const id of ["b2", "a2"]) {
+      expect(notes.get(id)!.text).not.toContain("highest single game");
+    }
+  });
+
+  it("gives each category its own best margin", () => {
+    const field = [
+      beginner({ playerId: "b1", rank: 1, spread: 120, highestGame: 0 }),
+      beginner({ playerId: "b2", rank: 2, spread: 30, highestGame: 0 }),
+      advanced({ playerId: "a1", rank: 1, spread: 900, highestGame: 0 }),
+      advanced({ playerId: "a2", rank: 2, spread: 400, highestGame: 0 }),
+    ];
+    const notes = personalNotes(field);
+    const holders = field
+      .filter((p) => notes.get(p.playerId)!.text.includes("points margin"))
+      .map((p) => p.playerId);
+
+    // One per category, not one for the whole event.
+    expect(holders.sort()).toEqual(["a1", "b1"]);
+  });
+});
