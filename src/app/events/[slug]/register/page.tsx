@@ -156,7 +156,16 @@ export default function RegisterPage() {
       // shows what they were actually quoted.
       amountDue: reg.bundleTotal ?? quote.payable,
       discountCode: campaign?.code,
-      discountAmount: quote.totalOff,
+      /*
+       * The reduction the participant was actually shown.
+       *
+       * This used `quote.totalOff`, computed here from the older percentage path,
+       * while the amount came from the form's priority pricing. The two disagreed:
+       * one registration was stored owing PKR 1,000 with PKR 125 off a PKR 1,250
+       * fee — three figures that cannot all be true. The money charged was right;
+       * the record of why was not.
+       */
+      discountAmount: reg.quotedDiscountAmount ?? quote.totalOff,
       currency: event.currency,
     });
 

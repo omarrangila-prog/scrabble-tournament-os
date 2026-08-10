@@ -5,6 +5,7 @@ import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import {
   ArrowLeft,
+  LayoutGrid,
   Check,
   Download,
   RefreshCw,
@@ -231,6 +232,23 @@ export default function OrganizerRegistrationsPage() {
             <ArrowLeft className="size-3.5" />
             Public site
           </Link>
+          {/*
+            * The way to the rest of the app.
+            *
+            * Signing in landed here with two links — the public site and sign out —
+            * and no route to Players, Live Event, Score Entry, Standings, Payments or
+            * Awards. The director was stranded on one page and had to know the /app
+            * URL to reach the tournament they had just signed in to run.
+            */}
+          <Link
+            href="/app"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold"
+            style={{ background: FOREST, color: "white" }}
+          >
+            <LayoutGrid className="size-3.5" />
+            Open dashboard
+          </Link>
+
           <span className="ml-auto text-[12.5px]" style={{ color: `${BROWN}99` }}>
             {signedInAs}
           </span>

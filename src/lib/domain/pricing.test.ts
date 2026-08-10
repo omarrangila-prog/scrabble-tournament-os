@@ -311,3 +311,48 @@ describe("resolvePrice", () => {
     expect(r.currency).toBe("PKR");
   });
 });
+
+/**
+ * The figures a registration is stored with.
+ *
+ * A record has three numbers — fee, reduction, amount owed — and they have to add
+ * up. One real registration was stored owing PKR 1,000 with PKR 125 off a PKR 1,250
+ * fee, because the amount came from this resolver and the reduction came from an
+ * older percentage calculation elsewhere. The money charged was right; the record of
+ * why was not, and a reconciliation would never have balanced.
+ */
+describe("the stored figures reconcile", () => {
+  const rules: PriceRules = {
+    regular: 1250,
+    regularLabel: "Regular registration",
+    member: { price: 950, label: "PSA Member" },
+    coupons: [{ code: "HHS", label: "HHS Promotional Rate", price: 1000 }],
+    currency: "PKR",
+  };
+
+  it("balances for the HHS code", () => {
+    const priced = resolvePrice(rules, { code: "HHS", isMember: false, at: "2026-08-15T10:00:00+05:00" });
+
+    expect(priced.final).toBe(1000);
+    expect(priced.regular).toBe(1250);
+    // The number that was wrong: 1250 − 1000 = 250, not 125.
+    expect(priced.saving).toBe(250);
+    expect(priced.regular - priced.saving).toBe(priced.final);
+  });
+
+  it("balances for the member rate", () => {
+    const priced = resolvePrice(rules, { isMember: true, at: "2026-08-15T10:00:00+05:00" });
+
+    expect(priced.final).toBe(950);
+    expect(priced.saving).toBe(300);
+    expect(priced.regular - priced.saving).toBe(priced.final);
+  });
+
+  it("records no reduction at the regular price", () => {
+    const priced = resolvePrice(rules, { isMember: false, at: "2026-08-15T10:00:00+05:00" });
+
+    expect(priced.final).toBe(1250);
+    expect(priced.saving).toBe(0);
+    expect(priced.regular - priced.saving).toBe(priced.final);
+  });
+});

@@ -363,6 +363,17 @@ export function GameOnForm({
         0,
         quote.payable + addedEvents.reduce((s, e) => s + e.fee, 0) - bundle.bundleOff,
       ),
+      /*
+       * The figures exactly as this screen showed them.
+       *
+       * `priced` is the priority pricing the participant read — coupon, then
+       * membership, then regular. Sending it up means the stored record and the
+       * quote agree; recomputing it after submission produced a different answer
+       * and a record whose numbers did not add up.
+       */
+      quotedBaseFee: priced ? priced.regular : event.fee,
+      // `saving` is computed by the same resolver, so it cannot disagree with `final`.
+      quotedDiscountAmount: priced ? priced.saving : quote.totalOff,
     });
   };
 

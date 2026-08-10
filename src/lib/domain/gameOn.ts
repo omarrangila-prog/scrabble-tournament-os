@@ -149,6 +149,19 @@ export interface GameOnRegistration {
   selectedEventIds?: string[];
   /** Combined amount owed across those events, after the bundle discount. */
   bundleTotal?: number;
+  /**
+   * The fee before any reduction, and how much came off, as the participant was
+   * shown them.
+   *
+   * Carried up from the form rather than recomputed after submission. The form
+   * prices through `resolvePrice` — coupon, then membership, then regular — and a
+   * second calculation on the other side reached a different answer: one
+   * registration was stored as PKR 1,000 owed with PKR 125 off a PKR 1,250 fee,
+   * three numbers that cannot all be true. The amount charged was right and the
+   * bookkeeping was not.
+   */
+  quotedBaseFee?: number;
+  quotedDiscountAmount?: number;
 
   /* Board-game answers, asked only of that track. */
   playedModernBoardGames?: boolean;
