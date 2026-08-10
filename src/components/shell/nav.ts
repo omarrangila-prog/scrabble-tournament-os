@@ -38,14 +38,10 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Command Centre", icon: Gauge },
   /*
-   * Points at the database-backed list, not `/app/registrations`.
-   *
-   * That page reads browser storage, so it showed zero and told the organizer
-   * "registrations submitted through the public site appear here for review" —
-   * which they do not. Sending someone to an empty page that promises the thing
-   * they are looking for is worse than not linking it at all.
+   * The database-backed list, now inside the dashboard shell rather than on its own
+   * page. One set of navigation, so no screen is a dead end.
    */
-  { href: "/organizer/registrations", label: "Registrations", icon: IdCard },
+  { href: "/app/registrations", label: "Registrations", icon: IdCard },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
   { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
