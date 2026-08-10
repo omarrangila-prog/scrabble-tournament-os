@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -39,7 +40,6 @@ import { useRoster } from "@/lib/supabase/useRoster";
 import { cn, formatTime, signed, timeAgo } from "@/lib/utils";
 import { LetterTile } from "@/components/art/ScrabbleArt";
 
-const EVENT_ID = "evt-alphabattle-23-august";
 
 export default function CommandCentrePage() {
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function CommandCentrePage() {
    * registered, because it was counting an array in browser storage that nothing
    * fills any more.
    */
-  const roster = useRoster(EVENT_ID);
+  const roster = useRoster(ACTIVE_EVENT_ID);
   const players = roster.players;
 
   const round = tournament.currentRound;
@@ -617,7 +617,7 @@ function AttentionCentre() {
   const router = useRouter();
   const store = useStore();
   const { pairings, tournament, disputes, venue } = store;
-  const players = useRoster(EVENT_ID).players;
+  const players = useRoster(ACTIVE_EVENT_ID).players;
   const round = tournament.currentRound;
 
   const pending = pairings.filter(

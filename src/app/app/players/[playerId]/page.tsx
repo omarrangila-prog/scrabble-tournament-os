@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -84,7 +85,6 @@ import { DigitalPlayerCard } from "@/components/identity/DigitalPlayerCard";
 import { CATEGORY_LABEL } from "@/lib/domain/identity";
 import { cn, downloadFile, formatDate, formatDateTime, signed, toCsv } from "@/lib/utils";
 
-const EVENT_ID = "evt-alphabattle-23-august";
 
 const TOOLTIP = {
   borderRadius: 12,
@@ -123,7 +123,7 @@ export default function PlayerProfilePage() {
    * Reading it from browser storage meant every profile reached from a real
    * registration answered "player not found".
    */
-  const roster = useRoster(EVENT_ID);
+  const roster = useRoster(ACTIVE_EVENT_ID);
   const players = roster.players;
 
   const [tab, setTab] = React.useState("overview");

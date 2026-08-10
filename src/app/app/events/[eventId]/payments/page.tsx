@@ -24,12 +24,16 @@ import {
   Stat,
   Textarea,
 } from "@/components/ui";
-import {
-  GuestPaymentStatus,
-  selectScopedRegistrations,
-  useEventStore,
-} from "@/lib/store/useEventStore";
+import { useEventStore } from "@/lib/store/useEventStore";
 import { useStore } from "@/lib/store/useStore";
+import { RosterGate } from "@/components/organizer/RosterGate";
+import {
+  answer,
+  decidePayment,
+  field,
+  type PaymentDecision,
+} from "@/lib/supabase/organizer";
+import { useRoster } from "@/lib/supabase/useRoster";
 import { activeEvent } from "@/lib/domain/scope";
 import {
   Flag,
@@ -80,35 +84,49 @@ export default function PaymentsPage() {
     eventId: params.eventId,
   });
 
-  if (!event) return null;
+  /*
+   * Registrations come from the database. This screen read browser storage, so it
+   * showed an empty queue and zero received however much money had come in — the
+   * receipts are attached to rows in Postgres.
+   *
+   * Called before the `event` guard below: a hook must run on every render, and the
+   * event id is only used to scope the read.
+   */
+  const roster = useRoster(params.eventId);
+  const registrations = roster.registrations;
 
-  const registrations = selectScopedRegistrations(store);
+  if (!event) return null;
 
   /*
    * Map registrations into the shape the review engine expects. Only fields
    * genuinely captured at upload are populated — an absent field flags as
    * unreadable rather than being invented here.
    */
-  const submissions: ReceiptSubmission[] = registrations.map((r) => ({
-    registrationId: r.id,
-    eventId: r.eventId,
-    participantName: r.fullName,
-    amountDue: r.amountDue,
-    currency: r.currency,
-    fileName: r.receiptFileName,
-    status: r.paymentStatus as PaymentStatus,
-    submittedAt: r.submittedAt,
-    extract: r.receiptFileName
-      ? {
-          transactionId: r.paymentReference,
-          // The file name stands in for a content hash in the demo. A real
-          // upload would hash the bytes, which is what catches a re-encoded
-          // screenshot that a name comparison would miss.
-          imageHash: r.receiptFileName,
-          method: r.paymentMethod,
-        }
-      : undefined,
-  }));
+  const submissions: ReceiptSubmission[] = registrations.map((r) => {
+    const receipt = field(r, "receiptFileName");
+    return {
+      registrationId: r.id,
+      eventId: event.id,
+      participantName: r.fullName,
+      amountDue: r.amountDue,
+      currency: r.currency,
+      fileName: receipt,
+      status: r.paymentStatus as PaymentStatus,
+      submittedAt: r.submittedAt,
+      extract: receipt
+        ? {
+            transactionId: field(r, "paymentReference"),
+            /*
+             * The file name stands in for a content hash. Hashing the bytes is what
+             * would catch a re-encoded screenshot that a name comparison misses, and
+             * needs the upload to be stored rather than just named.
+             */
+            imageHash: receipt,
+            method: field(r, "paymentMethod"),
+          }
+        : undefined,
+    };
+  });
 
   const totals = paymentTotals(submissions);
   const queue = reviewQueue(submissions, {
@@ -117,25 +135,28 @@ export default function PaymentsPage() {
   });
 
   /*
-   * Membership claims, and the subset still to be checked. A claim shows the
-   * participant the reduced fee but must not count as confirmed revenue until
-   * someone has looked at the number.
+   * A claimed discount is not a verified one. The claim is shown so somebody checks
+   * the number, but it counts as revenue only once the payment is verified.
    */
-  const membershipClaims = registrations.filter((r) => r.answers?.membershipNumber);
-  const membershipUnverified = membershipClaims.filter((r) => r.status !== "approved");
+  const discountClaims = registrations.filter((r) => answer(r, "membershipNumber"));
 
   const settled = submissions.filter(
     (s) => s.status === "verified" || s.status === "rejected" || s.status === "complimentary",
   );
 
-  const decide = (
+  const decide = async (
     entry: QueueEntry,
     action: "verify" | "reject",
     note: string,
     override: boolean,
   ) => {
-    const reviewer = app.currentUser?.name ?? "Sir Hani";
+    const reviewer = app.currentUser?.name ?? roster.signedInAs ?? "Director";
 
+    /*
+     * The engine decides whether the decision is allowed — an override without a
+     * reason, a blocker not acknowledged — before anything is written. Its refusal
+     * is the useful message, so it is shown rather than replaced.
+     */
     const result =
       action === "verify"
         ? decideVerification(entry.assessment, reviewer, note, { override })
@@ -150,13 +171,23 @@ export default function PaymentsPage() {
       return;
     }
 
-    store.verifyPayment(
-      entry.submission.registrationId,
-      result.decision.status as GuestPaymentStatus,
-      reviewer,
-      result.decision.note,
-    );
+    const written = await decidePayment({
+      recordId: entry.submission.registrationId,
+      status: result.decision.status as PaymentDecision,
+      by: reviewer,
+      note: result.decision.note,
+    });
 
+    if (!written.ok) {
+      app.toast({
+        title: "Not saved",
+        description: written.message ?? "The decision was not recorded.",
+        tone: "critical",
+      });
+      return;
+    }
+
+    roster.reload();
     app.toast({
       title: result.decision.status === "verified" ? "Payment verified" : "Receipt rejected",
       description: `${entry.submission.participantName} — recorded against ${reviewer}.`,
@@ -171,6 +202,13 @@ export default function PaymentsPage() {
         title="Payments"
         subtitle="A receipt is a claim. Only a verified payment counts as money received."
       />
+
+      {/*
+        * Everything below reads registrations, so an empty queue means one of two
+        * very different things: nothing to review, or nothing readable. "No receipts
+        * waiting" on the morning money is due would be read as the first.
+        */}
+      <RosterGate access={roster.access} loaded={roster.loaded}>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
@@ -212,97 +250,49 @@ export default function PaymentsPage() {
         </p>
       </div>
 
-      {/* Membership verification -------------------------------------------- */}
-      {membershipClaims.length ? (
+      {/* Discount claims --------------------------------------------------- */}
+      {discountClaims.length ? (
         <Card className="mt-4">
           <CardHeader
-            title="Alliance Française memberships"
-            subtitle={`${membershipUnverified.length} of ${membershipClaims.length} still to check`}
+            title="Discount claims"
+            subtitle={`${discountClaims.length} participant${discountClaims.length === 1 ? "" : "s"} claimed a reduced fee`}
           />
           <div className="space-y-2 px-4 pb-4">
-            {membershipClaims.slice(0, 20).map((r) => {
-              const verified = r.status === "approved";
-              return (
-                <div
-                  key={r.id}
-                  className={cn(
-                    "flex flex-wrap items-center gap-3 rounded-feature border p-3.5",
-                    verified
-                      ? "border-success bg-success-050/40"
-                      : "border-line bg-[rgb(var(--c-surface-soft))]",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13.5px] font-semibold text-ink">
-                      {r.fullName}
-                    </span>
-                    <span className="num block truncate text-[11.5px] text-muted">
-                      Membership {r.answers.membershipNumber}
-                    </span>
+            {discountClaims.slice(0, 20).map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center gap-3 rounded-feature border border-line bg-[rgb(var(--c-surface-soft))] p-3.5"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-semibold text-ink">
+                    {r.fullName}
                   </span>
-
-                  <span className="num shrink-0 text-[12.5px] text-muted">
-                    {money(r.amountDue, event.currency)}
+                  <span className="num block truncate text-[11.5px] text-muted">
+                    Membership {answer(r, "membershipNumber")}
                   </span>
+                </span>
 
-                  <Badge tone={verified ? "success" : "warning"}>
-                    {verified ? "Verified" : "To check"}
-                  </Badge>
+                <span className="num shrink-0 text-[12.5px] text-muted">
+                  {money(r.amountDue, event.currency)}
+                </span>
 
-                  {!verified ? (
-                    <div className="flex shrink-0 gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          store.reviewRegistration(
-                            r.id,
-                            "approved",
-                            app.currentUser?.name ?? "Sir Hani",
-                            `Alliance Française membership ${r.answers.membershipNumber} verified.`,
-                          );
-                          app.toast({
-                            title: "Membership verified",
-                            description: `${r.fullName} — discount confirmed.`,
-                            tone: "success",
-                          });
-                        }}
-                      >
-                        Verify
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          const reason = window.prompt(
-                            `Reject the membership claim for ${r.fullName}?\n\nThe full fee applies. Give a reason — the participant is shown it.`,
-                          );
-                          if (!reason?.trim()) return;
-                          store.reviewRegistration(
-                            r.id,
-                            "under-review",
-                            app.currentUser?.name ?? "Sir Hani",
-                            `Membership not verified: ${reason.trim()}`,
-                          );
-                          app.toast({
-                            title: "Membership claim rejected",
-                            description: `${r.fullName} — full fee now applies.`,
-                            tone: "info",
-                          });
-                        }}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                <Badge tone={r.paymentStatus === "verified" ? "success" : "warning"}>
+                  {r.paymentStatus === "verified" ? "Settled" : "To check"}
+                </Badge>
+              </div>
+            ))}
           </div>
 
           <p className="px-5 pb-5 text-[11.5px] leading-relaxed text-faint">
-            A claimed membership is not a verified one. Until each number is checked, the
-            discount is shown to the participant but not counted as settled revenue.
+            {/*
+              * Read-only on purpose. There used to be Verify and Reject buttons here
+              * that wrote a separate "membership approved" state to browser storage,
+              * which meant a membership could read as verified while the money had
+              * never been checked. Verifying the payment below is the decision that
+              * settles both, and it is the one recorded against a named reviewer.
+              */}
+            Check the number against the membership list, then verify the payment below. The
+            reduced fee is not counted as received until that decision is made.
           </p>
         </Card>
       ) : null}
@@ -396,6 +386,8 @@ export default function PaymentsPage() {
           </div>
         </Card>
       ) : null}
+
+      </RosterGate>
 
       <ReviewModal entry={reviewing} onClose={() => setReviewing(null)} onDecide={decide} />
     </div>

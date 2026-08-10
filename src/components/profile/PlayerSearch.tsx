@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -34,7 +35,6 @@ interface Hit {
  * Premium player lookup. Type a name, player ID, club or city and the matching
  * players appear with their identity and live record, ready to open.
  */
-const EVENT_ID = "evt-alphabattle-23-august";
 
 export function PlayerSearch({
   onSelect,
@@ -49,7 +49,7 @@ export function PlayerSearch({
   const store = useStore();
   const { pairings, tournament, divisions } = store;
   // The roster is in the database; browser storage has no players in it.
-  const players = useRoster(EVENT_ID).players;
+  const players = useRoster(ACTIVE_EVENT_ID).players;
 
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);

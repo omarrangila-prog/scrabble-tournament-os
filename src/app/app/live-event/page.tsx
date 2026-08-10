@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -41,7 +42,11 @@ import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useStore } from "@/lib/store/useStore";
 import { staffCheckIn, staffUndoCheckIn } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useGames } from "@/lib/supabase/useGames";
+import { clearRound, publishRound } from "@/lib/supabase/games";
 import { RosterGate } from "@/components/organizer/RosterGate";
+import { generateRound } from "@/lib/engine/pairing";
+import { validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Player } from "@/lib/domain/types";
 import {
@@ -53,7 +58,6 @@ import {
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { cn, formatTime } from "@/lib/utils";
 
-const EVENT_ID = "evt-alphabattle-23-august";
 
 /** The states a director moves through on the day, in order. */
 const DAY_FLOW: EventState[] = [
@@ -86,7 +90,14 @@ export default function LiveEventPage() {
    * from browser storage, which is empty, so the arrival list had no rows and
    * "publish pairings" could never find two players to pair.
    */
-  const roster = useRoster(EVENT_ID);
+  const roster = useRoster(ACTIVE_EVENT_ID);
+
+  /*
+   * Games come from the database too, so the round number, the board count and the
+   * results all agree with what the score table and the participant board list see.
+   */
+  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+  const [publishing, setPublishing] = React.useState(false);
 
   const origin = React.useSyncExternalStore(
     () => () => {},
@@ -111,7 +122,12 @@ export default function LiveEventPage() {
     );
   }
 
-  const round = live.currentRound(event.id);
+  /*
+   * The round is whichever one has boards, rather than a counter kept in this
+   * browser. A counter can disagree with the games that exist — and did, showing
+   * "round 1 of 5" while nothing was paired at all.
+   */
+  const round = Math.max(1, games.round);
   const timer = live.timerFor(event.id, round);
   const phase = timer ? phaseOf(timer) : "not-started";
   const remaining = timer ? remainingMs(timer) : event.roundMinutes * 60_000;
@@ -125,6 +141,7 @@ export default function LiveEventPage() {
   const checkedIn = attending.filter((p) => p.checkIn === "checked-in").length;
   const progress = live.progressFor(event.id, round);
   const advance = canAdvanceRound(progress);
+  const boards = games.progress;
 
   const liveUrl = origin ? `${origin}/live/${event.slug}` : `/live/${event.slug}`;
 
@@ -141,21 +158,104 @@ export default function LiveEventPage() {
     });
   };
 
-  const publishPairings = () => {
-    const ids = attending
-      .filter((p) => p.checkIn === "checked-in")
-      .map((p) => p.id);
-    if (ids.length < 2) {
+  /**
+   * Pairs the next round and publishes it to the database.
+   *
+   * Uses the real Swiss engine — the one with repeat-opponent avoidance and
+   * backtracking — over the players who have actually arrived, and over the games
+   * already in the database so it knows who has played whom. The old path used a
+   * top-half/bottom-half fold that ignored history entirely, which forces rematches
+   * on the last boards.
+   *
+   * Publishing writes the whole round at once, so participants never see a
+   * half-paired round.
+   */
+  const publishPairings = async () => {
+    const present = attending.filter((p) => p.checkIn === "checked-in");
+
+    if (present.length < 2) {
       app.toast({
         title: "Not enough players checked in",
-        description: "At least two checked-in players are needed to pair a round.",
+        description: "At least two arrivals are needed to pair a round.",
         tone: "warning",
       });
       return;
     }
-    live.generatePairings(event.id, round, ids);
-    live.ensureTimer(event.id, round, event.roundMinutes);
+
+    const nextRound = games.round + 1;
+
+    const generated = generateRound({
+      players: present,
+      pairings: games.pairings,
+      tournament: app.tournament,
+      round: nextRound,
+    });
+
+    const plan: BoardPlan[] = generated.pairings.map((pairing) => ({
+      board: pairing.board,
+      division: pairing.division,
+      playerA: pairing.playerAId,
+      playerB: pairing.playerBId,
+    }));
+
+    /*
+     * Checked before sending. The database enforces the same rules, but a
+     * constraint violation arrives as a Postgres error in front of a director
+     * holding a room full of people.
+     */
+    const check = validateBoardPlan(plan);
+    if (!check.ok) {
+      app.toast({
+        title: "These pairings are not valid",
+        description: check.problems[0] ?? "Please try again.",
+        tone: "critical",
+      });
+      return;
+    }
+
+    setPublishing(true);
+    const result = await publishRound(event.id, nextRound, plan);
+    setPublishing(false);
+
+    if (!result.ok) {
+      app.toast({ title: "Round not published", description: result.message, tone: "critical" });
+      return;
+    }
+
+    games.reload();
+    live.ensureTimer(event.id, nextRound, event.roundMinutes);
     setState("round-published");
+
+    app.toast({
+      title: `Round ${nextRound} published`,
+      description:
+        generated.unpaired.length > 0
+          ? `${result.boards} boards. ${generated.unpaired.length} player(s) have a bye.`
+          : `${result.boards} boards are now visible to participants.`,
+      tone: "success",
+    });
+  };
+
+  /** Removes the current round, results included. Asks first. */
+  const dropRound = async () => {
+    const confirmed = window.confirm(
+      `Clear round ${round}?\n\n` +
+        `This deletes ${boards.totalBoards} board(s) and any scores already entered. ` +
+        `It cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    const ok = await clearRound(event.id, round);
+    if (!ok) {
+      app.toast({ title: "Could not clear the round", description: "Please try again.", tone: "critical" });
+      return;
+    }
+    games.reload();
+    app.toast({
+      title: `Round ${round} cleared`,
+      description: "The boards and any scores have been removed.",
+      tone: "info",
+    });
   };
 
   return (
@@ -189,9 +289,9 @@ export default function LiveEventPage() {
       {/* Metrics --------------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <Stat label="Checked in" value={checkedIn} sub={`of ${attending.length} registered`} icon={<UserCheck className="size-5" />} tone="success" />
-        <Stat label="Boards" value={progress.totalBoards} sub={`round ${round}`} icon={<Grid3x3 className="size-5" />} tone="primary" />
-        <Stat label="Verified" value={progress.verified} sub={`${progress.percentComplete}% complete`} icon={<CheckCircle2 className="size-5" />} tone="success" />
-        <Stat label="Awaiting" value={progress.awaitingConfirmation} sub="opponent confirmation" icon={<Timer className="size-5" />} tone={progress.awaitingConfirmation ? "warning" : "success"} />
+        <Stat label="Boards" value={boards.totalBoards} sub={boards.totalBoards ? `round ${round}` : "not paired yet"} icon={<Grid3x3 className="size-5" />} tone={boards.totalBoards ? "primary" : "neutral"} />
+        <Stat label="Recorded" value={boards.verified} sub={`${boards.percentComplete}% of round ${round}`} icon={<CheckCircle2 className="size-5" />} tone={boards.verified ? "success" : "neutral"} />
+        <Stat label="Outstanding" value={boards.outstanding} sub={boards.outstanding ? "scores not in" : "all boards in"} icon={<Timer className="size-5" />} tone={boards.outstanding ? "warning" : "success"} />
         <Stat label="Conflicts" value={progress.conflicts} sub={progress.conflicts ? "need a ruling" : "none"} icon={<AlertTriangle className="size-5" />} tone={progress.conflicts ? "critical" : "success"} />
       </div>
 
@@ -322,8 +422,14 @@ export default function LiveEventPage() {
                 </Button>
               ) : null}
               {event.state === "check-in-closed" ? (
-                <Button variant="primary" className="w-full" icon={<Grid3x3 className="size-4" />} onClick={publishPairings}>
-                  Publish round {round} pairings
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  icon={<Grid3x3 className="size-4" />}
+                  onClick={publishPairings}
+                  disabled={publishing || roster.access !== "ok"}
+                >
+                  {publishing ? "Publishing…" : `Pair and publish round ${games.round + 1}`}
                 </Button>
               ) : null}
               {event.state === "result-entry" ? (
@@ -359,13 +465,19 @@ export default function LiveEventPage() {
 
             <div>
               <div className="mb-1.5 flex items-baseline justify-between">
-                <span className="text-[12.5px] font-semibold text-muted">Results verified</span>
+                <span className="text-[12.5px] font-semibold text-muted">Scores recorded</span>
                 <span className="num text-[13px] font-bold text-ink">
-                  {progress.verified}/{progress.totalBoards}
+                  {boards.verified}/{boards.totalBoards}
                 </span>
               </div>
-              <Progress value={progress.percentComplete} tone="success" label="Results verified" />
+              <Progress value={boards.percentComplete} tone="success" label="Scores recorded" />
             </div>
+
+            {boards.totalBoards > 0 ? (
+              <Button variant="ghost" className="w-full" onClick={dropRound}>
+                Clear round {round}
+              </Button>
+            ) : null}
           </div>
         </Card>
 

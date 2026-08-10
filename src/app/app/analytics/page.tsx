@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import {
   Bar,
   BarChart,
@@ -17,6 +18,9 @@ import { BarChart3, Clock, TrendingUp, Zap } from "lucide-react";
 import { Badge, Card, CardHeader, PageHeader, Progress, Stat } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
+import { useGames } from "@/lib/supabase/useGames";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { RosterGate } from "@/components/organizer/RosterGate";
 import { cn } from "@/lib/utils";
 
 const TOOLTIP = {
@@ -33,9 +37,20 @@ const DIVISION_COLOR: Record<string, string> = {
   "beginner": "#F5A94A",
 };
 
+
 export default function AnalyticsPage() {
   const store = useStore();
-  const { players, pairings, tournament, divisions, audit } = store;
+  const { tournament, divisions, audit } = store;
+
+  /*
+   * Players and games come from the database. Every figure on this page is derived
+   * from them, so reading an empty browser store meant every chart showed zero
+   * however much had actually happened.
+   */
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const players = roster.players;
+  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const pairings = games.pairings;
 
   const verified = pairings.filter((p) => p.status === "verified" && p.scoreA !== undefined);
 
@@ -136,7 +151,13 @@ export default function AnalyticsPage() {
 
   /* Rank movement -------------------------------------------------------- */
   const movement = React.useMemo(() => {
-    const table = computeStandings(players, pairings, tournament, { division: "masters" });
+    /*
+     * Over the divisions this event has. This asked for "masters", which the user
+     * removed, so the movement chart was always empty.
+     */
+    const table = divisions.flatMap((d) =>
+      computeStandings(players, pairings, tournament, { division: d.id }),
+    );
     return table
       .map((r) => ({
         name: players.find((p) => p.id === r.playerId)?.fullName.split(" ")[0] ?? "",
@@ -145,10 +166,11 @@ export default function AnalyticsPage() {
       .filter((r) => r.change !== 0)
       .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
       .slice(0, 8);
-  }, [players, pairings, tournament]);
+  }, [players, pairings, tournament, divisions]);
 
   /* Forecast ------------------------------------------------------------- */
-  const remainingRounds = tournament.totalRounds - tournament.currentRound + 1;
+  // Counted from the rounds actually played, not a stored counter.
+  const remainingRounds = Math.max(0, tournament.totalRounds - games.round);
   const minutesPerRound = tournament.gameMinutes + tournament.breakMinutes;
   const forecastMinutes = remainingRounds * minutesPerRound;
   const forecastHours = Math.floor(forecastMinutes / 60);
@@ -157,9 +179,17 @@ export default function AnalyticsPage() {
     <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title="Analytics"
-        badge={<Badge tone="primary">Round {tournament.currentRound}</Badge>}
+        badge={
+          games.round > 0 ? (
+            <Badge tone="primary">Round {games.round}</Badge>
+          ) : (
+            <Badge tone="neutral">Not started</Badge>
+          )
+        }
         subtitle="Operational reporting: what is slowing the tournament down, where corrections happen, and how the field is performing."
       />
+
+      <RosterGate access={roster.access} loaded={roster.loaded && games.loaded}>
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <Stat label="Games completed" value={verified.length} icon={<BarChart3 className="size-4.5" />} tone="success" />
@@ -390,6 +420,7 @@ export default function AnalyticsPage() {
           </div>
         </Card>
       </div>
+    </RosterGate>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileDown,
@@ -36,7 +37,6 @@ import { addWalkIn } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { downloadFile, formatTime, toCsv } from "@/lib/utils";
 
-const EVENT_ID = "evt-alphabattle-23-august";
 
 export default function PlayersPage() {
   return (
@@ -60,7 +60,7 @@ function PlayersView() {
   const store = useStore();
   const { divisions } = store;
 
-  const roster = useRoster(EVENT_ID);
+  const roster = useRoster(ACTIVE_EVENT_ID);
   const { players, counts } = roster;
 
   const [query, setQuery] = React.useState("");
@@ -381,7 +381,7 @@ function WalkInModal({
 
     setBusy(true);
     const outcome = await addWalkIn({
-      eventId: EVENT_ID,
+      eventId: ACTIVE_EVENT_ID,
       fullName: form.fullName.trim(),
       mobile: form.mobile.trim(),
       playingLevel: form.level,

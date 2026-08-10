@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -26,18 +27,46 @@ import {
   Th,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { useGames } from "@/lib/supabase/useGames";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { RosterGate } from "@/components/organizer/RosterGate";
 import { computeStandings } from "@/lib/engine/standings";
 import { cn, downloadFile, signed, toCsv } from "@/lib/utils";
 import { Player } from "@/lib/domain/types";
 import { PlayerDrawer } from "@/components/players/PlayerDrawer";
 
+
 export default function StandingsPage() {
   const router = useRouter();
   const store = useStore();
-  const { players, pairings, tournament, divisions, recentlyMoved } = store;
+  const { tournament, divisions, recentlyMoved } = store;
 
-  const [division, setDivision] = React.useState<string>("masters");
-  const [round, setRound] = React.useState<string>(String(tournament.currentRound));
+  /*
+   * Players and games both come from the database. Standings themselves are not
+   * stored anywhere and never will be: they are computed from verified games, and a
+   * saved copy is a second version of the truth that drifts from the first.
+   */
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const players = roster.players;
+  const { pairings, round: latest, loaded: gamesLoaded } = useGames(ACTIVE_EVENT_ID, tournament.id);
+
+  /*
+   * Defaults to a division this event actually has. It was hardcoded to "masters",
+   * which the user removed — so the table opened empty even with a full field.
+   */
+  const [division, setDivision] = React.useState<string>(divisions[0]?.id ?? "recreational");
+  const [round, setRound] = React.useState<string>("0");
+
+  /*
+   * Follow the rounds that exist until the director picks one. Tracking the
+   * previous value rather than writing state from an effect keeps this a render-time
+   * decision, which the compiler requires.
+   */
+  const [seenLatest, setSeenLatest] = React.useState(0);
+  if (latest !== seenLatest) {
+    setSeenLatest(latest);
+    setRound(String(latest));
+  }
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<Player | null>(null);
 
@@ -57,7 +86,7 @@ export default function StandingsPage() {
     return (
       p?.fullName.toLowerCase().includes(q) ||
       p?.playerId.toLowerCase().includes(q) ||
-      p?.club.toLowerCase().includes(q)
+      p?.city.toLowerCase().includes(q)
     );
   });
 
@@ -92,7 +121,20 @@ export default function StandingsPage() {
     <div className="mx-auto max-w-[1600px]">
       <PageHeader
         title="Live Standings"
-        badge={<Badge tone="success" dot pulse>Updating live</Badge>}
+        badge={
+          /*
+           * Pulses only once results are actually arriving. A pulsing "Updating live"
+           * over a tournament that has not started is the fifth version of the same
+           * false claim found in this app.
+           */
+          latest > 0 ? (
+            <Badge tone="success" dot pulse>
+              Updating live
+            </Badge>
+          ) : (
+            <Badge tone="neutral">No results yet</Badge>
+          )
+        }
         subtitle="Standings recalculate automatically whenever a result is verified."
         actions={
           <>
@@ -113,6 +155,8 @@ export default function StandingsPage() {
         }
       />
 
+      <RosterGate access={roster.access} loaded={roster.loaded && gamesLoaded}>
+
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           value={query}
@@ -128,12 +172,21 @@ export default function StandingsPage() {
               </option>
             ))}
           </Select>
+          {/*
+            * Lists the rounds that have actually been played. It used to count off
+            * `tournament.currentRound`, a browser-storage counter that could disagree
+            * with the games in the database.
+            */}
           <Select value={round} onChange={(e) => setRound(e.target.value)} aria-label="Round">
-            {Array.from({ length: tournament.currentRound }, (_, i) => i + 1).map((r) => (
-              <option key={r} value={r}>
-                After round {r}
-              </option>
-            ))}
+            {latest === 0 ? (
+              <option value="0">No rounds played</option>
+            ) : (
+              Array.from({ length: latest }, (_, i) => i + 1).map((r) => (
+                <option key={r} value={r}>
+                  After round {r}
+                </option>
+              ))
+            )}
           </Select>
         </div>
       </div>
@@ -145,7 +198,12 @@ export default function StandingsPage() {
           icon={<TrendingUp className="size-4.5" />}
         />
         <div className="px-3 pb-4">
-          {filtered.length === 0 ? (
+          {latest === 0 ? (
+            <EmptyState
+              title="No rounds played yet"
+              description="Standings are computed from verified results. Publish a round and enter scores to see them."
+            />
+          ) : filtered.length === 0 ? (
             <EmptyState title="No players match this search" description="Try a different name or clear the filter." />
           ) : (
             <TableWrap className="max-h-[68vh]">
@@ -230,6 +288,8 @@ export default function StandingsPage() {
           )}
         </div>
       </Card>
+
+      </RosterGate>
 
       <PlayerDrawer player={selected} onClose={() => setSelected(null)} />
     </div>

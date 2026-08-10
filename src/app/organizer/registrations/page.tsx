@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -27,7 +28,6 @@ const FOREST = "#2F5D3A";
 const GOLD = "#C89B3C";
 const BROWN = "#3E2F23";
 
-const EVENT_ID = "evt-alphabattle-23-august";
 
 /**
  * The participant list, from the database.
@@ -80,7 +80,7 @@ export default function OrganizerRegistrationsPage() {
       }
 
       const allowed = await hasStaffAccess();
-      const list = allowed ? await listRegistrations(EVENT_ID) : [];
+      const list = allowed ? await listRegistrations(ACTIVE_EVENT_ID) : [];
       if (!live) return;
 
       setSignedInAs(who);
@@ -150,15 +150,12 @@ export default function OrganizerRegistrationsPage() {
             size="lg"
             className="mt-5 w-full border-0"
             style={{ background: FOREST, color: "white" }}
-            disabled={!email.trim() || password.length < 8 || busy}
+            disabled={!email.trim() || !password || busy}
             onClick={submit}
           >
             {busy ? "Signing in…" : "Sign in"}
           </Button>
 
-          <p className="mt-3 text-[11.5px] leading-relaxed" style={{ color: `${BROWN}80` }}>
-            First time? Signing in creates your account. Use at least 8 characters.
-          </p>
         </Panel>
       </Shell>
     );

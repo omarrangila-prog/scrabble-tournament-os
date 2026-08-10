@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import {
   Line,
   LineChart,
@@ -21,7 +22,6 @@ import { Player } from "@/lib/domain/types";
 /* Player detail drawer                                                        */
 /* -------------------------------------------------------------------------- */
 
-const EVENT_ID = "evt-alphabattle-23-august";
 
 export function PlayerDrawer({
   player,
@@ -33,7 +33,7 @@ export function PlayerDrawer({
   const store = useStore();
   const { pairings, tournament } = store;
   // Same roster the list came from, so names resolve here too.
-  const players = useRoster(EVENT_ID).players;
+  const players = useRoster(ACTIVE_EVENT_ID).players;
 
   if (!player) return null;
 

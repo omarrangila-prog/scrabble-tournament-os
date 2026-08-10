@@ -29,6 +29,26 @@ export interface OrganizerRegistration {
   checkedInAt: string | null;
   checkInMethod: string | null;
   submittedAt: string;
+  /*
+   * Everything the form recorded. The payment screen needs the receipt file, the
+   * transaction reference and the method; finance and analytics each want a
+   * different subset again. Carrying the document avoids a migration per field.
+   */
+  data: Record<string, unknown>;
+}
+
+/** Reads a string field out of the stored registration document. */
+export function field(reg: OrganizerRegistration, key: string): string | undefined {
+  const value = reg.data[key];
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
+/** Reads a string field out of the form answers. */
+export function answer(reg: OrganizerRegistration, key: string): string | undefined {
+  const answers = reg.data.answers;
+  if (!answers || typeof answers !== "object") return undefined;
+  const value = (answers as Record<string, unknown>)[key];
+  return typeof value === "string" && value !== "" ? value : undefined;
 }
 
 export type SignInOutcome =
@@ -36,11 +56,17 @@ export type SignInOutcome =
   | { ok: false; message: string };
 
 /**
- * Signs in, creating the account on first use.
+ * Signs in. It does not create accounts.
  *
- * The organizer has no account until they set one up, and a separate "register"
- * screen for a single person is a step with nothing behind it. A first sign-in
- * creates the account; the allowlist decides whether it carries any access.
+ * There is one director, and they hold the account. Signing in used to create an
+ * account on first use, which meant anyone who found this URL could register
+ * themselves — the allowlist stopped them seeing anything, but a stranger could
+ * still put a row in the auth table, and a sign-in form that quietly creates
+ * accounts is not a sign-in form.
+ *
+ * A new member of staff is added by putting their address in `staff_allowlist` and
+ * creating their user in Supabase. That is a deliberate act by the director rather
+ * than a side effect of typing a password.
  */
 export async function signIn(email: string, password: string): Promise<SignInOutcome> {
   const db = supabase();
@@ -56,50 +82,28 @@ export async function signIn(email: string, password: string): Promise<SignInOut
   /*
    * The account exists but Supabase is waiting on a confirmation email.
    *
-   * This failed silently before: sign-up succeeded, no session was issued, and
-   * the page simply stayed on the form with nothing to explain why. Saying so is
-   * the difference between a five-second fix and an evening of guessing.
+   * This failed silently once: no session was issued and the page simply stayed on
+   * the form with nothing to explain why. Saying so is the difference between a
+   * five-second fix and an evening of guessing.
    */
   if (problem.includes("email not confirmed")) {
     return {
       ok: false,
       message:
-        "Check your inbox and confirm the account, then sign in again. " +
-        "To skip confirmation, turn off “Confirm email” in Supabase under " +
-        "Authentication → Sign In / Providers → Email.",
+        "This account has not been confirmed yet. Confirm it from the email Supabase " +
+        "sent, or turn off “Confirm email” under Authentication → Sign In / Providers.",
     };
   }
 
   /*
-   * Only fall through to sign-up on bad credentials, which is what an unknown
-   * account returns. Any other error is a real failure and should surface.
+   * Wrong password and unknown address are deliberately the same message. Telling
+   * a stranger which addresses exist is telling them which one to attack.
    */
-  if (!problem.includes("invalid login credentials")) {
-    return { ok: false, message: "Could not sign in. Please try again." };
-  }
-
-  const created = await db.auth.signUp({ email: trimmed, password });
-  if (created.error) {
-    // A wrong password on an existing account lands here.
+  if (problem.includes("invalid login credentials")) {
     return { ok: false, message: "That email and password do not match." };
   }
 
-  /*
-   * Sign-up returns a session only when confirmation is off. Without one the
-   * account is created but unusable, so say that rather than reporting success
-   * and leaving the page unchanged.
-   */
-  if (!created.data.session) {
-    return {
-      ok: false,
-      message:
-        "Account created. Confirm it from the email we just sent, then sign in. " +
-        "To skip confirmation, turn off “Confirm email” in Supabase under " +
-        "Authentication → Sign In / Providers → Email.",
-    };
-  }
-
-  return { ok: true, email: trimmed };
+  return { ok: false, message: "Could not sign in. Please try again." };
 }
 
 export async function signOut(): Promise<void> {
@@ -158,6 +162,11 @@ export async function listRegistrations(eventId: string): Promise<OrganizerRegis
     checkedInAt: (r.out_checked_in_at as string | null) ?? null,
     checkInMethod: (r.out_check_in_method as string | null) ?? null,
     submittedAt: String(r.out_submitted_at ?? ""),
+    /*
+     * Absent until migration 0017 is applied, so this falls back to an empty
+     * document rather than crashing every screen that reads a field from it.
+     */
+    data: (r.out_data as Record<string, unknown> | null) ?? {},
   }));
 }
 
@@ -255,6 +264,41 @@ export async function addWalkIn(input: {
     id: String(row.out_id),
     checkInCode: String(row.out_check_in_code ?? ""),
   };
+}
+
+export type PaymentDecision = "verified" | "rejected" | "complimentary" | "refunded";
+
+/**
+ * Records a payment decision, with the reason and the person who made it.
+ *
+ * Separate from `verifyPayment` because a reviewer also needs to say no. Both the
+ * note and the reviewer are stored: a rejection nobody signed is an argument
+ * waiting to happen at the desk.
+ */
+export async function decidePayment(input: {
+  recordId: string;
+  status: PaymentDecision;
+  by: string;
+  note?: string;
+}): Promise<{ ok: boolean; message?: string }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_decide_payment", {
+    p_record_id: input.recordId,
+    p_status: input.status,
+    p_by: input.by,
+    p_note: input.note ?? "",
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("could not find the function")) {
+      return { ok: false, message: "Payment decisions need migration 0017 applied." };
+    }
+    return { ok: false, message: "Could not record that decision. Please try again." };
+  }
+
+  return { ok: data === true };
 }
 
 /** Marks a payment verified, recording who decided. */

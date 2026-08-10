@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -31,6 +32,8 @@ import {
 import { useEventStore } from "@/lib/store/useEventStore";
 import { useCertificateStore } from "@/lib/store/useCertificateStore";
 import { useStore } from "@/lib/store/useStore";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { useGames } from "@/lib/supabase/useGames";
 import { activeEvent } from "@/lib/domain/scope";
 import {
   canIssue,
@@ -59,11 +62,21 @@ const STATUS_TONE = {
  * certificate carries the figures behind its citation so a director can check
  * a claim instead of trusting it.
  */
+
 export default function AwardsPage() {
   const params = useParams<{ eventId: string }>();
   const store = useEventStore();
   const certs = useCertificateStore();
   const app = useStore();
+
+  /*
+   * Awards are earned in games, and the games are in the database. This page read
+   * `app.players` and `app.pairings` from browser storage, so the Certificate
+   * Studio could never find a performance to certify — which is the one thing it
+   * exists to do.
+   */
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
 
   const [tab, setTab] = React.useState("all");
   const [query, setQuery] = React.useState("");
@@ -105,8 +118,8 @@ export default function AwardsPage() {
 
   const records = linkedTournament
     ? performanceRecordsFor(
-        app.players,
-        app.pairings,
+        roster.players,
+        games.pairings,
         linkedTournament,
         app.divisions.map((d) => d.id),
       )

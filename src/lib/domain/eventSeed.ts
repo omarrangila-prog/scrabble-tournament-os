@@ -32,6 +32,14 @@ const T = (day: string, time = "10:00") => {
  * against a statement before money moves — one wrong digit in an IBAN is an
  * unrecoverable transfer.
  */
+/**
+ * The one event this system is currently running.
+ *
+ * Exported so no screen has to repeat the string. It was written out by hand in
+ * eleven files, which is eleven places to miss when the next event gets an id.
+ */
+export const ACTIVE_EVENT_ID = "evt-alphabattle-23-august";
+
 export const PAYMENT_ACCOUNTS = {
   methods: ["bank-transfer", "easypaisa"] as PaymentMethod[],
   bank:
@@ -70,7 +78,7 @@ export const ALPHABATTLE_PRICES = {
  * Details come from the organizer's registration form.
  */
 const ALPHABATTLE: PublicEvent = {
-  id: "evt-alphabattle-23-august",
+  id: ACTIVE_EVENT_ID,
   organizationId: "org-federation",
   slug: "alphabattle-23-august",
 

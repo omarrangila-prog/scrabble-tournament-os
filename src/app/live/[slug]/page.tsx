@@ -3,11 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   ArrowRight,
   CalendarDays,
-  CheckCircle2,
   Clock,
   MapPin,
   Trophy,
@@ -21,10 +19,9 @@ import {
   useEventStore,
 } from "@/lib/store/useEventStore";
 import { EVENT_STATE_LABEL, STATE_DESTINATION } from "@/lib/domain/events";
-import { CATEGORY_LABEL } from "@/lib/domain/identity";
-import { formatClock, phaseOf, remainingMs } from "@/lib/engine/roundTimer";
 import { useLiveStore } from "@/lib/store/useLiveStore";
-import { cn, formatDate } from "@/lib/utils";
+import { BoardList } from "@/components/public/BoardList";
+import { formatDate } from "@/lib/utils";
 
 /**
  * The phase-aware participant entry point.
@@ -66,7 +63,6 @@ export default function LiveEventPage() {
   }
 
   const destination = STATE_DESTINATION[event.state];
-  const timer = live.timerFor(event.id, live.currentRound(event.id));
 
   const identify = () => {
     const q = lookup.trim().toLowerCase();
@@ -155,33 +151,63 @@ export default function LiveEventPage() {
         </Card>
       ) : null}
 
-      {destination === "check-in" && identity ? (
-        <CheckInView
-          registration={identity}
-          alreadyIn={live.isCheckedIn(event.id, identity.id)}
-          onCheckIn={() => live.checkIn(event.id, identity.id)}
-        />
+      {/*
+        * Check-in is a database operation, and it lives on its own page where a
+        * participant can use their code or personal link. The version that used to
+        * be here wrote to this browser's storage, so the arrival was invisible to
+        * the desk and to the counter on the wall.
+        */}
+      {destination === "check-in" ? (
+        <Card className="mt-6">
+          <div className="p-6 text-center">
+            <UserCheck className="mx-auto size-8 text-primary" />
+            <p className="mt-3 text-[17px] font-bold text-ink">Check-in is open</p>
+            <p className="mt-1 text-[13.5px] text-muted">
+              Use the link we sent you, or enter your six-digit code.
+            </p>
+            <Link href={`/events/${event.slug}/check-in`}>
+              <Button variant="primary" size="lg" className="mt-4 w-full">
+                Check in
+              </Button>
+            </Link>
+          </div>
+        </Card>
       ) : null}
 
-      {destination === "pairing" && identity ? (
-        <PairingView
-          registration={identity}
-          round={live.currentRound(event.id)}
-          board={live.boardFor(event.id, identity.id)}
-          opponent={live.opponentFor(event.id, identity.id, registrations)}
-          remaining={timer ? remainingMs(timer) : null}
-          running={timer ? phaseOf(timer) === "running" : false}
-        />
+      {/*
+        * The board list, read from the database. This is the question a participant
+        * actually has between rounds, and it is answered without an account, a
+        * password or an app.
+        */}
+      {destination === "pairing" || destination === "submit-result" ? (
+        <Card className="mt-6">
+          <CardHeader
+            title="Find your board"
+            subtitle="Type your name. This list updates itself as results come in."
+          />
+          <div className="px-5 pb-5 text-ink">
+            <BoardList eventId={event.id} />
+          </div>
+        </Card>
       ) : null}
 
-      {destination === "submit-result" && identity ? (
-        <SubmitResultView
-          eventId={event.id}
-          registration={identity}
-          round={live.currentRound(event.id)}
-          board={live.boardFor(event.id, identity.id)}
-          opponent={live.opponentFor(event.id, identity.id, registrations)}
-        />
+      {/*
+        * Scores are entered by the desk, not here.
+        *
+        * There used to be a form on this page for participants to submit their own
+        * result. Two people typing the same game from opposite sides of a table
+        * produces two answers and no way to tell which is official, so the official
+        * score is the one a scorekeeper records.
+        */}
+      {destination === "submit-result" ? (
+        <Card className="mt-4">
+          <div className="px-5 py-4">
+            <p className="text-[13.5px] leading-relaxed text-muted">
+              Take your result slip to the scoring desk. Your score appears above once it has
+              been recorded.
+            </p>
+          </div>
+        </Card>
       ) : null}
 
       {destination === "standings" || destination === "results" ? (
@@ -256,287 +282,3 @@ function EventHeading({ event }: { event: { name: string; state: string; startDa
 
 /* -------------------------------------------------------------------------- */
 
-function CheckInView({
-  registration,
-  alreadyIn,
-  onCheckIn,
-}: {
-  registration: GuestRegistration;
-  alreadyIn: boolean;
-  onCheckIn: () => void;
-}) {
-  const [done, setDone] = React.useState(alreadyIn);
-  const paid =
-    registration.paymentStatus === "verified" || registration.paymentStatus === "complimentary";
-
-  if (done)
-    return (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="mt-6">
-          <div className="p-6 text-center">
-            <div className="mx-auto grid size-16 place-items-center rounded-full bg-gradient-to-br from-success to-cyan text-white shadow-[0_14px_36px_rgba(32,185,130,0.36)]">
-              <CheckCircle2 className="size-8" strokeWidth={2.5} />
-            </div>
-            <p className="mt-4 text-[22px] font-extrabold tracking-[-0.025em] text-ink">
-              You&apos;re checked in
-            </p>
-            <p className="mt-1 text-[15px] text-ink">{registration.fullName}</p>
-            <p className="text-[13px] capitalize text-muted">
-              {CATEGORY_LABEL[registration.confirmedDivision ?? registration.preferredDivision]}
-            </p>
-            <p className="mt-4 rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] text-muted">
-              Your round 1 pairing will appear here as soon as it is published.
-            </p>
-          </div>
-        </Card>
-      </motion.div>
-    );
-
-  return (
-    <Card className="mt-6">
-      <CardHeader title="Is this you?" icon={<UserCheck className="size-4.5" />} />
-      <div className="px-5 pb-5">
-        <div className="rounded-compact bg-[rgb(var(--c-surface-soft))] p-4">
-          <p className="text-[18px] font-bold text-ink">{registration.fullName}</p>
-          <p className="text-[13px] capitalize text-muted">
-            {CATEGORY_LABEL[registration.confirmedDivision ?? registration.preferredDivision]} division
-          </p>
-          <div className="mt-2">
-            <Badge tone={paid ? "success" : "warning"} dot>
-              {paid ? "Payment verified" : "Payment outstanding"}
-            </Badge>
-          </div>
-        </div>
-
-        {!paid ? (
-          <p className="mt-3 rounded-control bg-warning-050 px-3.5 py-2.5 text-[12.5px] text-[#a76d16]">
-            Please see the organizer desk to settle your entry fee before playing.
-          </p>
-        ) : null}
-
-        <Button
-          variant="primary"
-          size="xl"
-          className="mt-4 w-full"
-          onClick={() => {
-            onCheckIn();
-            setDone(true);
-          }}
-        >
-          Yes, check me in
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-
-function PairingView({
-  registration,
-  round,
-  board,
-  opponent,
-  remaining,
-  running,
-}: {
-  registration: GuestRegistration;
-  round: number;
-  board?: number;
-  opponent?: GuestRegistration;
-  remaining: number | null;
-  running: boolean;
-}) {
-  // Re-render each second while the round is live.
-  const [, tick] = React.useState(0);
-  React.useEffect(() => {
-    if (!running) return;
-    const id = window.setInterval(() => tick((n) => n + 1), 1000);
-    return () => window.clearInterval(id);
-  }, [running]);
-
-  if (!board)
-    return (
-      <Card className="mt-6">
-        <EmptyState
-          icon={<Clock className="size-5" />}
-          title="Pairings are being prepared"
-          description="Your board and opponent will appear here the moment the round is published."
-        />
-      </Card>
-    );
-
-  return (
-    <Card className="mt-6">
-      <div className="p-6 text-center">
-        <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-primary">
-          Round {round}
-        </p>
-
-        <p className="num mt-3 text-[76px] font-extrabold leading-none tracking-[-0.05em] text-ink">
-          {board}
-        </p>
-        <p className="text-[13px] font-semibold uppercase tracking-[0.1em] text-muted">Table</p>
-
-        <div className="mt-5 rounded-compact bg-[rgb(var(--c-surface-soft))] p-4">
-          <p className="text-[12.5px] text-muted">You are playing</p>
-          <p className="mt-0.5 text-[18px] font-bold text-ink">
-            {opponent?.fullName ?? "To be confirmed"}
-          </p>
-        </div>
-
-        {remaining !== null && running ? (
-          <div className="mt-4">
-            <p className="text-[12.5px] text-muted">Time remaining</p>
-            <p className="num text-[34px] font-extrabold tracking-[-0.03em] text-ink">
-              {formatClock(remaining)}
-            </p>
-          </div>
-        ) : null}
-
-        <p className="mt-5 text-[12.5px] text-muted">
-          {registration.fullName} · result submission opens when the round ends.
-        </p>
-      </div>
-    </Card>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-
-function SubmitResultView({
-  eventId,
-  registration,
-  round,
-  board,
-  opponent,
-}: {
-  eventId: string;
-  registration: GuestRegistration;
-  round: number;
-  board?: number;
-  opponent?: GuestRegistration;
-}) {
-  const live = useLiveStore();
-  const [mine, setMine] = React.useState("");
-  const [theirs, setTheirs] = React.useState("");
-  const [review, setReview] = React.useState(false);
-
-  const existing = board ? live.submissionFor(eventId, round, board, registration.id) : undefined;
-
-  if (existing)
-    return (
-      <Card className="mt-6">
-        <div className="p-6 text-center">
-          <CheckCircle2 className="mx-auto size-8 text-success" />
-          <p className="mt-3 text-[17px] font-bold text-ink">Result submitted</p>
-          <p className="num mt-2 text-[28px] font-extrabold text-ink">
-            {existing.myScore} – {existing.theirScore}
-          </p>
-          <p className="mt-2 text-[13px] text-muted">
-            {existing.confirmed
-              ? "Confirmed by your opponent and included in the standings."
-              : `Waiting for ${opponent?.fullName ?? "your opponent"} to confirm.`}
-          </p>
-        </div>
-      </Card>
-    );
-
-  if (!board)
-    return (
-      <Card className="mt-6">
-        <EmptyState title="No match to report" description="You were not paired in this round." />
-      </Card>
-    );
-
-  const a = Number(mine);
-  const b = Number(theirs);
-  const valid = mine !== "" && theirs !== "" && !Number.isNaN(a) && !Number.isNaN(b);
-
-  if (review && valid) {
-    const winner = a > b ? registration.fullName : b > a ? (opponent?.fullName ?? "Opponent") : "Tie";
-    return (
-      <Card className="mt-6">
-        <CardHeader title={`Round ${round} · Table ${board}`} subtitle="Check this is right before submitting." />
-        <div className="px-5 pb-5">
-          <div className="space-y-2">
-            <ScoreRow name={registration.fullName} score={a} winner={a > b} />
-            <ScoreRow name={opponent?.fullName ?? "Opponent"} score={b} winner={b > a} />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <Box label="Winner" value={winner} />
-            <Box label="Spread" value={`${a - b > 0 ? "+" : ""}${a - b}`} />
-          </div>
-          <div className="mt-4 flex gap-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setReview(false)}>
-              Edit scores
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={() => live.submitResult(eventId, round, board, registration.id, a, b)}
-            >
-              Confirm and submit
-            </Button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-6">
-      <CardHeader title={`Round ${round} · Table ${board}`} subtitle="Enter both final scores." />
-      <div className="space-y-3 px-5 pb-5">
-        <Field label={`${registration.fullName} — your score`} required>
-          <Input
-            value={mine}
-            onChange={(e) => setMine(e.target.value)}
-            inputMode="numeric"
-            className="num h-14 text-center text-[24px] font-bold"
-          />
-        </Field>
-        <Field label={`${opponent?.fullName ?? "Opponent"} — their score`} required>
-          <Input
-            value={theirs}
-            onChange={(e) => setTheirs(e.target.value)}
-            inputMode="numeric"
-            className="num h-14 text-center text-[24px] font-bold"
-          />
-        </Field>
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled={!valid}
-          onClick={() => setReview(true)}
-        >
-          Review result
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-function ScoreRow({ name, score, winner }: { name: string; score: number; winner: boolean }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between rounded-control px-3.5 py-3",
-        winner ? "bg-success-050" : "bg-[rgb(var(--c-surface-soft))]",
-      )}
-    >
-      <span className="min-w-0 truncate text-[14px] font-semibold text-ink">{name}</span>
-      <span className="num text-[22px] font-extrabold text-ink">{score}</span>
-    </div>
-  );
-}
-
-function Box({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-control bg-[rgb(var(--c-surface-soft))] px-3 py-2.5 text-center">
-      <p className="text-[11px] text-muted">{label}</p>
-      <p className="num mt-0.5 truncate text-[15px] font-bold text-ink">{value}</p>
-    </div>
-  );
-}
