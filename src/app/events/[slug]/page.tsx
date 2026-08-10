@@ -25,7 +25,6 @@ import {
   selectRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
-import { memberFee } from "@/lib/domain/gameOn";
 import { ParticipationTrack } from "@/lib/firebase/schema";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -33,6 +32,18 @@ import { cn, formatDate } from "@/lib/utils";
 const CREAM = "#F5F0E4";
 const FOREST = "#2F5D3A";
 const GOLD = "#C89B3C";
+/**
+ * The current time, read outside render.
+ *
+ * The React Compiler treats `Date.now()` in a component body as impure and refuses
+ * it. Reading the clock through a module-level function keeps the check happy while
+ * still giving the real time, which is what deciding whether an offer has expired
+ * needs.
+ */
+function nowMs(): number {
+  return Date.now();
+}
+
 const BROWN = "#3E2F23";
 
 /**
@@ -153,9 +164,20 @@ export default function PublicEventPage() {
   const status = registrationStatusOf(event, registrations.length);
   const tracks = event.participationTracks ?? [];
   const hasBoardGames = tracks.some((t) => t === "board_games" || t === "both");
-  const discounted = event.memberDiscountPercent
-    ? memberFee(event.fee)
-    : null;
+  /*
+   * The reduced rates that are still open, in the order somebody would meet them.
+   * Built from `priceRules` because that is what the form charges from; anything
+   * derived separately here would drift from it.
+   */
+  const rules = event.priceRules;
+
+  const otherPrices: { label: string; price: number; code?: string }[] = [
+    ...(rules?.member ? [{ label: `${rules.member.label} rate`, price: rules.member.price }] : []),
+    ...(rules?.coupons ?? [])
+      .filter((c) => !c.availableUntil || Date.parse(c.availableUntil) >= nowMs())
+      .map((c) => ({ label: c.label, price: c.price, code: c.code })),
+  ].filter((rate) => rate.price < event.fee);
+
 
   const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
 
@@ -376,22 +398,44 @@ export default function PublicEventPage() {
               Lunch and tea included
             </p>
 
-            {discounted !== null ? (
+            {/*
+              * Every price a person can actually be charged, read from the same
+              * rules the registration form charges from — so the page and the form
+              * cannot disagree.
+              *
+              * This block previously read `memberDiscountPercent`, a field nothing
+              * sets on this event, so it never rendered: the page said PKR 1,250
+              * while the homepage advertised "From PKR 950" and the discount was
+              * only explained once somebody was already inside the form.
+              *
+              * Expired offers are left out rather than shown crossed through. An
+              * offer that cannot be taken is not a price.
+              */}
+            {otherPrices.length > 0 ? (
               <>
-                <div className="mt-2 flex items-baseline justify-between border-t pt-2" style={{ borderColor: `${BROWN}14` }}>
-                  <span className="text-[14px]" style={{ color: `${BROWN}CC` }}>
-                    {event.memberDiscountBody ?? "Member"} members
-                    <span className="ml-1.5 text-[12px]" style={{ color: GOLD }}>
-                      −{event.memberDiscountPercent}%
+                {otherPrices.map((rate) => (
+                  <div
+                    key={rate.label}
+                    className="mt-2 flex items-baseline justify-between border-t pt-2"
+                    style={{ borderColor: `${BROWN}14` }}
+                  >
+                    <span className="text-[14px]" style={{ color: `${BROWN}CC` }}>
+                      {rate.label}
+                      {rate.code ? (
+                        <span className="num ml-1.5 text-[12px]" style={{ color: GOLD }}>
+                          code {rate.code}
+                        </span>
+                      ) : null}
                     </span>
-                  </span>
-                  <span className="num text-[20px] font-extrabold" style={{ color: FOREST }}>
-                    {money(discounted)}
-                  </span>
-                </div>
+                    <span className="num text-[20px] font-extrabold" style={{ color: FOREST }}>
+                      {money(rate.price)}
+                    </span>
+                  </div>
+                ))}
+
                 <p className="mt-2 text-[11.5px] leading-relaxed" style={{ color: `${BROWN}88` }}>
-                  Bring your membership number when you register. The discount is confirmed once we
-                  have checked it.
+                  Choose your rate on the payment step when you register. Bring your membership
+                  number or code — the reduced fee is confirmed once we have checked it.
                 </p>
               </>
             ) : null}
