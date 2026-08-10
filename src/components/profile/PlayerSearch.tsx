@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Avatar, Badge } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { useRoster } from "@/lib/supabase/useRoster";
 import { computeStandings } from "@/lib/engine/standings";
 import { flagOf, isVerified, onlineStatus, PLAYER_COUNTRY } from "@/lib/domain/profile";
 import { Player } from "@/lib/domain/types";
@@ -33,6 +34,8 @@ interface Hit {
  * Premium player lookup. Type a name, player ID, club or city and the matching
  * players appear with their identity and live record, ready to open.
  */
+const EVENT_ID = "evt-alphabattle-23-august";
+
 export function PlayerSearch({
   onSelect,
   autoFocus = false,
@@ -44,7 +47,9 @@ export function PlayerSearch({
 }) {
   const router = useRouter();
   const store = useStore();
-  const { players, pairings, tournament, divisions } = store;
+  const { pairings, tournament, divisions } = store;
+  // The roster is in the database; browser storage has no players in it.
+  const players = useRoster(EVENT_ID).players;
 
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);

@@ -12,6 +12,7 @@ import {
 import { Avatar, Badge, Button, Drawer } from "@/components/ui";
 import Link from "next/link";
 import { useStore } from "@/lib/store/useStore";
+import { useRoster } from "@/lib/supabase/useRoster";
 import { computeStandings } from "@/lib/engine/standings";
 import { signed } from "@/lib/utils";
 import { Player } from "@/lib/domain/types";
@@ -19,6 +20,8 @@ import { Player } from "@/lib/domain/types";
 /* -------------------------------------------------------------------------- */
 /* Player detail drawer                                                        */
 /* -------------------------------------------------------------------------- */
+
+const EVENT_ID = "evt-alphabattle-23-august";
 
 export function PlayerDrawer({
   player,
@@ -28,7 +31,9 @@ export function PlayerDrawer({
   onClose: () => void;
 }) {
   const store = useStore();
-  const { players, pairings, tournament } = store;
+  const { pairings, tournament } = store;
+  // Same roster the list came from, so names resolve here too.
+  const players = useRoster(EVENT_ID).players;
 
   if (!player) return null;
 

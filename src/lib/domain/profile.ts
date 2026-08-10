@@ -74,7 +74,6 @@ export function careerStats(
   player: Player,
   pairings: Pairing[],
 ): CareerStats {
-  const r = rng(player.id.split("-").reduce((a, c) => a + c.charCodeAt(0), 0) * 7919);
 
   const games = pairings.filter(
     (p) =>
@@ -119,23 +118,37 @@ export function careerStats(
     } else break;
   }
 
-  // Career figures beyond this event come from the player's prior history.
+  /*
+   * Only games that were actually played are counted.
+   *
+   * This used to pad the totals: career games invented from the number of prior
+   * events, a highest game of "430 plus a bit" for anyone who had not played one,
+   * titles handed out to whoever happened to be seeded in the top three, and a
+   * peak rating set above the current one. Harmless against demo data, and a
+   * fabrication the moment a real name is attached to the page — the profile would
+   * have told a first-time entrant they were a national champion.
+   *
+   * Prior events are counted, because `tournamentHistory` is recorded rather than
+   * guessed. What happened inside them is not invented.
+   */
   const priorEvents = player.tournamentHistory.length;
-  const careerGames = games.length + priorEvents * Math.floor(6 + r() * 6);
-  const careerWins = wins + Math.round(priorEvents * (3 + r() * 3));
+  const titles = player.tournamentHistory.filter((h) =>
+    /^(1st|winner|champion)/i.test(h.place.trim()),
+  ).length;
 
   return {
     eventsPlayed: priorEvents + 1,
-    gamesPlayed: careerGames,
-    wins: careerWins,
-    losses: Math.max(0, careerGames - careerWins - draws),
+    gamesPlayed: games.length,
+    wins,
+    losses: Math.max(0, games.length - wins - draws),
     draws,
-    winRate: careerGames > 0 ? Math.round((careerWins / careerGames) * 100) : 0,
-    highestGame: highest || Math.round(430 + r() * 120),
+    winRate: games.length > 0 ? Math.round((wins / games.length) * 100) : 0,
+    highestGame: highest,
     averageScore: games.length ? Math.round(totalScore / games.length) : 0,
     bestFinish: player.tournamentHistory[0]?.place ?? "—",
-    titlesWon: player.seed <= 3 ? Math.floor(1 + r() * 2) : player.seed <= 10 ? (r() < 0.4 ? 1 : 0) : 0,
-    peakRating: player.rating ? player.rating + Math.round(10 + r() * 70) : 0,
+    titlesWon: titles,
+    // No rating history exists, so there is no peak to report beyond the current one.
+    peakRating: player.rating,
     currentStreak: { type: streakType, count: streakCount },
   };
 }
@@ -171,7 +184,13 @@ export function achievements(player: Player, stats: CareerStats): Achievement[] 
       tier: "gold",
     });
   }
-  if (player.seed <= 5) {
+  /*
+   * A high seed is only an achievement where seeding means strength. On the roster
+   * built from registrations it means nothing more than registering early, so
+   * awarding the first five entrants a gold badge would be reading significance
+   * into the order a form was filled in.
+   */
+  if (player.ratingStatus === "rated" && player.seed <= 5) {
     out.push({
       id: "top-seed",
       title: `Top ${player.seed} Seed`,
@@ -229,46 +248,21 @@ export function achievements(player: Player, stats: CareerStats): Achievement[] 
   return out;
 }
 
-export function documents(player: Player): ProfileDocument[] {
-  const r = rng(player.seed * 977 + player.rating);
-  const base: ProfileDocument[] = [
-    {
-      id: "doc-id",
-      name: "National identity document",
-      kind: "identity",
-      uploadedAt: "2026-06-12T09:20:00+05:00",
-      verified: isVerified(player),
-      sizeKb: Math.round(180 + r() * 320),
-    },
-    {
-      id: "doc-reg",
-      name: "Tournament registration form",
-      kind: "registration",
-      uploadedAt: "2026-06-18T14:05:00+05:00",
-      verified: true,
-      sizeKb: Math.round(90 + r() * 140),
-    },
-    {
-      id: "doc-rating",
-      name: "Rating certificate",
-      kind: "rating",
-      uploadedAt: "2026-05-30T11:42:00+05:00",
-      verified: player.ratingStatus === "rated",
-      sizeKb: Math.round(60 + r() * 90),
-    },
-  ];
-
-  if (player.division === "recreational" || player.division === "beginner") {
-    base.push({
-      id: "doc-consent",
-      name: "Parental consent form",
-      kind: "consent",
-      uploadedAt: "2026-06-20T10:15:00+05:00",
-      verified: true,
-      sizeKb: Math.round(70 + r() * 60),
-    });
-  }
-  return base;
+/**
+ * Documents held for a player.
+ *
+ * Empty, because nothing is held. This used to list an identity document, a rating
+ * certificate and a parental consent form, each with an upload date, a file size
+ * and a verified tick — none of which existed. Against demo data that was set
+ * dressing; on a page showing a real person's name it is a records system claiming
+ * to hold papers it has never seen, which is the sort of thing somebody relies on.
+ *
+ * The registration form does not collect documents. When it collects one — a
+ * payment receipt is the likely first — it can be listed here from the row that
+ * actually stores it.
+ */
+export function documents(): ProfileDocument[] {
+  return [];
 }
 
 /** Per-round result grid used by the profile heatmap. */

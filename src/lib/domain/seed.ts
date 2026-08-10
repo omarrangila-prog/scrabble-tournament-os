@@ -98,7 +98,9 @@ export const TOURNAMENT: Tournament = {
   // pairings would show mid-event progress the organizer never ran.
   status: "draft",
   system: "swiss",
-  totalRounds: 9,
+  // Five rounds, matching the 23 August event definition. This said nine, so the
+  // dashboard and Live Event reported different round counts for one tournament.
+  totalRounds: 5,
   currentRound: 0,
   divisions: ["masters", "advanced", "recreational", "beginner"],
   rankingRules: ["wins", "spread", "head-to-head"],

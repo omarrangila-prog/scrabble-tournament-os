@@ -56,6 +56,7 @@ import {
   Th,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { useRoster } from "@/lib/supabase/useRoster";
 import { computeStandings } from "@/lib/engine/standings";
 import {
   achievements as buildAchievements,
@@ -82,6 +83,8 @@ import { useIdentityStore } from "@/lib/store/useIdentityStore";
 import { DigitalPlayerCard } from "@/components/identity/DigitalPlayerCard";
 import { CATEGORY_LABEL } from "@/lib/domain/identity";
 import { cn, downloadFile, formatDate, formatDateTime, signed, toCsv } from "@/lib/utils";
+
+const EVENT_ID = "evt-alphabattle-23-august";
 
 const TOOLTIP = {
   borderRadius: 12,
@@ -112,8 +115,16 @@ export default function PlayerProfilePage() {
   const params = useParams<{ playerId: string }>();
   const router = useRouter();
   const store = useStore();
-  const { players, pairings, tournament, divisions, disputes, audit, role } = store;
+  const { pairings, tournament, divisions, disputes, audit, role } = store;
   const identityStore = useIdentityStore();
+
+  /*
+   * The roster comes from the database, so a link from the player list resolves.
+   * Reading it from browser storage meant every profile reached from a real
+   * registration answered "player not found".
+   */
+  const roster = useRoster(EVENT_ID);
+  const players = roster.players;
 
   const [tab, setTab] = React.useState("overview");
   const [ready, setReady] = React.useState(false);
@@ -158,7 +169,7 @@ export default function PlayerProfilePage() {
     () => (player && stats ? buildAchievements(player, stats) : []),
     [player, stats],
   );
-  const docs = React.useMemo(() => (player ? buildDocuments(player) : []), [player]);
+  const docs = buildDocuments();
   const insights = React.useMemo(
     () => (player && stats ? playerInsights(player, stats, heatmap, progression) : []),
     [player, stats, heatmap, progression],
@@ -180,6 +191,14 @@ export default function PlayerProfilePage() {
   const currentGame = games.find((g) => g.round === tournament.currentRound);
   const nameOf = (id: string | null) =>
     id ? players.find((p) => p.id === id)?.fullName ?? "—" : "Bye";
+
+  /*
+   * Still reading. Without this the page says "player not found" for the moment
+   * before the roster arrives, which is the wrong answer rather than a slow one.
+   */
+  if (!roster.loaded) {
+    return <ProfileSkeleton />;
+  }
 
   /* ---- Not found ------------------------------------------------------- */
   if (!player) {

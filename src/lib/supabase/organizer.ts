@@ -161,6 +161,102 @@ export async function listRegistrations(eventId: string): Promise<OrganizerRegis
   }));
 }
 
+/**
+ * Checks a player in from the roster.
+ *
+ * The desk has a list of names, not codes, so this goes in by row id and is gated
+ * on staff membership rather than on knowing a participant's code. Returns whether
+ * they were already in, so the screen can say "already checked in at 09:14" rather
+ * than silently doing nothing.
+ */
+export async function staffCheckIn(
+  recordId: string,
+): Promise<{ ok: boolean; at?: string; already?: boolean; message?: string }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_check_in", { p_record_id: recordId });
+  if (error) {
+    if (error.message.toLowerCase().includes("could not find the function")) {
+      return { ok: false, message: "Staff check-in needs migration 0016 applied." };
+    }
+    return { ok: false, message: "Could not check that player in." };
+  }
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  return {
+    ok: true,
+    at: row?.out_checked_in_at ? String(row.out_checked_in_at) : undefined,
+    already: row?.out_already === true,
+  };
+}
+
+/** Reverses a check-in, for when staff tap the wrong row. */
+export async function staffUndoCheckIn(recordId: string): Promise<boolean> {
+  const db = supabase();
+  if (!db) return false;
+
+  const { data, error } = await db.rpc("staff_undo_check_in", { p_record_id: recordId });
+  return !error && data === true;
+}
+
+export type WalkInOutcome =
+  | { ok: true; id: string; checkInCode: string }
+  | { ok: false; message: string };
+
+/**
+ * Registers somebody at the door.
+ *
+ * Walk-ins are a fact of the day: a friend brought along, a sibling, somebody who
+ * pays cash at the table. They are inserted through a database function so the
+ * check-in code is allocated server-side and the row is subject to the same rules
+ * as a form registration — the browser cannot mark one paid.
+ */
+export async function addWalkIn(input: {
+  eventId: string;
+  fullName: string;
+  mobile: string;
+  playingLevel: string;
+  amount: number;
+  by: string;
+}): Promise<WalkInOutcome> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_add_walkin", {
+    p_event_id: input.eventId,
+    p_full_name: input.fullName,
+    p_mobile: input.mobile,
+    p_playing_level: input.playingLevel,
+    p_amount: input.amount,
+    p_by: input.by,
+  });
+
+  if (error) {
+    /*
+     * The function is missing until migration 0016 is applied. Saying so beats
+     * "could not add player", which sends the organizer looking for a typo in the
+     * name on the busiest morning of the year.
+     */
+    if (error.message.toLowerCase().includes("could not find the function")) {
+      return {
+        ok: false,
+        message: "Walk-in entry needs migration 0016 applied to the database.",
+      };
+    }
+    return { ok: false, message: "Could not add the player. Please try again." };
+  }
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  if (!row?.out_id) return { ok: false, message: "Could not add the player. Please try again." };
+
+  return {
+    ok: true,
+    id: String(row.out_id),
+    checkInCode: String(row.out_check_in_code ?? ""),
+  };
+}
+
 /** Marks a payment verified, recording who decided. */
 export async function verifyPayment(recordId: string, by: string): Promise<boolean> {
   const db = supabase();

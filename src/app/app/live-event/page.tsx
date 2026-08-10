@@ -35,12 +35,15 @@ import {
 } from "@/components/ui";
 import {
   selectActiveEvent,
-  selectScopedRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
 import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useStore } from "@/lib/store/useStore";
+import { staffCheckIn, staffUndoCheckIn } from "@/lib/supabase/organizer";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { RosterGate } from "@/components/organizer/RosterGate";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
+import type { Player } from "@/lib/domain/types";
 import {
   canAdvanceRound,
   formatClock,
@@ -48,7 +51,9 @@ import {
   remainingMs,
 } from "@/lib/engine/roundTimer";
 import { qrToDataUri } from "@/lib/qr/qrcode";
-import { cn } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
+
+const EVENT_ID = "evt-alphabattle-23-august";
 
 /** The states a director moves through on the day, in order. */
 const DAY_FLOW: EventState[] = [
@@ -75,7 +80,13 @@ export default function LiveEventPage() {
   const app = useStore();
 
   const event = selectActiveEvent(events);
-  const registrations = selectScopedRegistrations(events);
+
+  /*
+   * Who is playing comes from the database. This page used to read registrations
+   * from browser storage, which is empty, so the arrival list had no rows and
+   * "publish pairings" could never find two players to pair.
+   */
+  const roster = useRoster(EVENT_ID);
 
   const origin = React.useSyncExternalStore(
     () => () => {},
@@ -105,8 +116,13 @@ export default function LiveEventPage() {
   const phase = timer ? phaseOf(timer) : "not-started";
   const remaining = timer ? remainingMs(timer) : event.roundMinutes * 60_000;
 
-  const checkedIn = live.checkedInCount(event.id);
-  const approved = registrations.filter((r) => r.status === "approved");
+  /*
+   * Arrivals are counted from the database, so the number agrees with the one the
+   * self check-in page and the venue display show. Counting them in this browser
+   * gave each device its own answer.
+   */
+  const attending = roster.players.filter((p) => p.checkIn !== "withdrawn");
+  const checkedIn = attending.filter((p) => p.checkIn === "checked-in").length;
   const progress = live.progressFor(event.id, round);
   const advance = canAdvanceRound(progress);
 
@@ -126,9 +142,9 @@ export default function LiveEventPage() {
   };
 
   const publishPairings = () => {
-    const ids = approved
-      .filter((r) => live.isCheckedIn(event.id, r.id))
-      .map((r) => r.id);
+    const ids = attending
+      .filter((p) => p.checkIn === "checked-in")
+      .map((p) => p.id);
     if (ids.length < 2) {
       app.toast({
         title: "Not enough players checked in",
@@ -146,7 +162,20 @@ export default function LiveEventPage() {
     <div>
       <PageHeader
         title="Live Event"
-        badge={<Badge tone="success" dot pulse>{EVENT_STATE_LABEL[event.state]}</Badge>}
+        badge={
+          /*
+           * Pulses only while a round is genuinely running. It used to pulse green
+           * in every state, so a page opened the week before the event announced
+           * itself as live.
+           */
+          <Badge
+            tone={phase === "running" ? "success" : "neutral"}
+            dot={phase === "running"}
+            pulse={phase === "running"}
+          >
+            {EVENT_STATE_LABEL[event.state]}
+          </Badge>
+        }
         subtitle={`${event.name} · round ${round} of ${event.rounds}`}
         actions={
           <Link href={`/live/${event.slug}`} target="_blank" rel="noreferrer">
@@ -159,7 +188,7 @@ export default function LiveEventPage() {
 
       {/* Metrics --------------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <Stat label="Checked in" value={checkedIn} sub={`of ${approved.length} approved`} icon={<UserCheck className="size-5" />} tone="success" />
+        <Stat label="Checked in" value={checkedIn} sub={`of ${attending.length} registered`} icon={<UserCheck className="size-5" />} tone="success" />
         <Stat label="Boards" value={progress.totalBoards} sub={`round ${round}`} icon={<Grid3x3 className="size-5" />} tone="primary" />
         <Stat label="Verified" value={progress.verified} sub={`${progress.percentComplete}% complete`} icon={<CheckCircle2 className="size-5" />} tone="success" />
         <Stat label="Awaiting" value={progress.awaitingConfirmation} sub="opponent confirmation" icon={<Timer className="size-5" />} tone={progress.awaitingConfirmation ? "warning" : "success"} />
@@ -344,38 +373,18 @@ export default function LiveEventPage() {
         <Card className="xl:col-span-12">
           <CardHeader
             title="Check-in"
-            subtitle={`${checkedIn} of ${approved.length} approved players are at the venue`}
+            subtitle={`${checkedIn} of ${attending.length} registered players are at the venue`}
             icon={<Users className="size-4.5" />}
+            action={
+              <Button size="sm" variant="secondary" onClick={roster.reload}>
+                Refresh
+              </Button>
+            }
           />
-          <div className="max-h-[380px] space-y-1 overflow-y-auto px-4 pb-4 scroll-slim">
-            {approved.slice(0, 40).map((r) => {
-              const inVenue = live.isCheckedIn(event.id, r.id);
-              return (
-                <div
-                  key={r.id}
-                  className={cn(
-                    "flex items-center gap-3 rounded-control px-3 py-2.5",
-                    inVenue ? "bg-success-050/60" : "bg-[rgb(var(--c-surface-soft))]",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13.5px] font-semibold text-ink">{r.fullName}</span>
-                    <span className="block truncate text-[11.5px] capitalize text-muted">
-                      {(r.confirmedDivision ?? r.preferredDivision).replace(/-/g, " ")} · {r.club}
-                    </span>
-                  </span>
-                  <Button
-                    size="sm"
-                    variant={inVenue ? "ghost" : "secondary"}
-                    onClick={() =>
-                      inVenue ? live.undoCheckIn(event.id, r.id) : live.checkIn(event.id, r.id)
-                    }
-                  >
-                    {inVenue ? "Undo" : "Check in"}
-                  </Button>
-                </div>
-              );
-            })}
+          <div className="px-4 pb-4">
+            <RosterGate access={roster.access} loaded={roster.loaded}>
+              <ArrivalList players={attending} onChanged={roster.reload} />
+            </RosterGate>
           </div>
         </Card>
       </div>
@@ -394,6 +403,159 @@ export default function LiveEventPage() {
         }}
       />
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The arrival list, and the desk's way of marking somebody present.
+ *
+ * Writes to the database rather than to this browser, so the count on the venue
+ * display, the count on the self check-in page and the count here are the same
+ * number. Every device previously kept its own tally.
+ *
+ * Search comes first because on the day the list is long and the question is
+ * always about one specific person standing in front of you.
+ */
+function ArrivalList({
+  players,
+  onChanged,
+}: {
+  players: Player[];
+  onChanged: () => void;
+}) {
+  const app = useStore();
+  const [query, setQuery] = React.useState("");
+  const [pending, setPending] = React.useState<string | null>(null);
+  const [hideArrived, setHideArrived] = React.useState(false);
+
+  const shown = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return players.filter((p) => {
+      if (hideArrived && p.checkIn === "checked-in") return false;
+      if (!q) return true;
+      return (
+        p.fullName.toLowerCase().includes(q) ||
+        p.playerId.toLowerCase().includes(q) ||
+        p.emergencyContact.phone.includes(q)
+      );
+    });
+  }, [players, query, hideArrived]);
+
+  const check = async (player: Player) => {
+    setPending(player.id);
+    const result = await staffCheckIn(player.id);
+    setPending(null);
+
+    if (!result.ok) {
+      app.toast({ title: "Not checked in", description: result.message ?? "", tone: "critical" });
+      return;
+    }
+
+    onChanged();
+    app.toast({
+      title: result.already
+        ? `${player.fullName} was already checked in`
+        : `${player.fullName} checked in`,
+      description: result.at ? `Arrival recorded at ${formatTime(result.at)}.` : "",
+      tone: result.already ? "warning" : "success",
+    });
+  };
+
+  const undo = async (player: Player) => {
+    setPending(player.id);
+    const ok = await staffUndoCheckIn(player.id);
+    setPending(null);
+
+    if (!ok) {
+      app.toast({ title: "Could not undo", description: "Please try again.", tone: "critical" });
+      return;
+    }
+    onChanged();
+    app.toast({
+      title: `${player.fullName} marked not arrived`,
+      description: "Their arrival has been cleared.",
+      tone: "success",
+    });
+  };
+
+  if (players.length === 0) {
+    return (
+      <EmptyState
+        title="Nobody has registered yet"
+        description="Registrations appear here as they come in from the public form."
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search a name, entry number or mobile"
+          className="sm:max-w-sm"
+        />
+        <Button
+          size="sm"
+          variant={hideArrived ? "primary" : "secondary"}
+          onClick={() => setHideArrived((v) => !v)}
+          className="sm:ml-auto"
+        >
+          {hideArrived ? "Showing not arrived" : "Show everyone"}
+        </Button>
+      </div>
+
+      {shown.length === 0 ? (
+        <EmptyState
+          title="Nobody matches"
+          description={
+            hideArrived
+              ? "Everyone matching that search has already arrived."
+              : "No player matches that search."
+          }
+        />
+      ) : (
+        <div className="max-h-[380px] space-y-1 overflow-y-auto scroll-slim">
+          {shown.map((p) => {
+            const inVenue = p.checkIn === "checked-in";
+            const busy = pending === p.id;
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-control px-3 py-2.5",
+                  inVenue ? "bg-success-050/60" : "bg-[rgb(var(--c-surface-soft))]",
+                )}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] font-semibold text-ink">
+                    {p.fullName}
+                  </span>
+                  <span className="block truncate text-[11.5px] capitalize text-muted">
+                    {p.playerId} · {p.division.replace(/-/g, " ")}
+                    {inVenue && p.checkInAt ? ` · in at ${formatTime(p.checkInAt)}` : ""}
+                  </span>
+                </span>
+                {p.payment !== "paid" ? (
+                  <Badge tone="warning">unpaid</Badge>
+                ) : null}
+                <Button
+                  size="sm"
+                  variant={inVenue ? "ghost" : "secondary"}
+                  disabled={busy}
+                  onClick={() => (inVenue ? undo(p) : check(p))}
+                >
+                  {busy ? "…" : inVenue ? "Undo" : "Check in"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 

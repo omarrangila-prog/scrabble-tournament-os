@@ -35,13 +35,25 @@ import {
 } from "@/components/ui";
 import { SyncIndicator } from "@/components/ui/states";
 import { selectStandings, useStore } from "@/lib/store/useStore";
+import { useRoster } from "@/lib/supabase/useRoster";
 import { cn, formatTime, signed, timeAgo } from "@/lib/utils";
 import { LetterTile } from "@/components/art/ScrabbleArt";
+
+const EVENT_ID = "evt-alphabattle-23-august";
 
 export default function CommandCentrePage() {
   const router = useRouter();
   const store = useStore();
-  const { tournament, players, pairings, venue, activity } = store;
+  const { tournament, pairings, venue, activity } = store;
+
+  /*
+   * The player count comes from the database. This is the first screen an
+   * organizer opens, and it reported "No players yet" however many people had
+   * registered, because it was counting an array in browser storage that nothing
+   * fills any more.
+   */
+  const roster = useRoster(EVENT_ID);
+  const players = roster.players;
 
   const round = tournament.currentRound;
   const roundPairings = React.useMemo(
@@ -61,7 +73,12 @@ export default function CommandCentrePage() {
   const approvedExceptions = roundPairings.filter((p) =>
     p.conflicts.some((c) => !!c.acknowledgedReason),
   ).length;
-  const health = playable > 0 ? Math.round(((playable - conflicted) / playable) * 100) : 100;
+  /*
+   * No boards means there is nothing to report, not a perfect score. This read
+   * 100% before a single pairing existed, which is a confident claim about work
+   * that has not happened.
+   */
+  const health = playable > 0 ? Math.round(((playable - conflicted) / playable) * 100) : null;
   const completion = playable > 0 ? Math.round((verified / playable) * 100) : 0;
 
   const standings = React.useMemo(
@@ -112,7 +129,15 @@ export default function CommandCentrePage() {
                 <Badge tone="warning">Setup</Badge>
               )}
               <Badge tone="neutral">Swiss System</Badge>
-              <SyncIndicator state="synced" />
+              {/*
+                * Reports the roster read, rather than claiming "Synced"
+                * unconditionally as it did when nothing was being synced at all.
+                */}
+              {roster.loaded ? (
+                roster.access === "ok" ? <SyncIndicator state="synced" /> : null
+              ) : (
+                <SyncIndicator state="syncing" />
+              )}
             </div>
 
             <h1 className="mt-3 text-[26px] font-extrabold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[34px]">
@@ -208,32 +233,57 @@ export default function CommandCentrePage() {
         <Stat
           label="Active Boards"
           value={liveGames}
-          sub={pending.length ? `${pending.length} awaiting results` : "All results in"}
+          sub={
+            roundPairings.length === 0
+              ? "No boards yet"
+              : pending.length
+                ? `${pending.length} awaiting results`
+                : "All results in"
+          }
           icon={<Activity className="size-5" />}
           tone="success"
           onClick={() => router.push("/app/score-entry")}
         />
         <Stat
           label="Pairing Health"
-          value={`${health}%`}
+          value={health === null ? "—" : `${health}%`}
           sub={
-            approvedExceptions
-              ? `${approvedExceptions} approved exception${approvedExceptions === 1 ? "" : "s"}`
-              : conflicted
-                ? `${conflicted} to review`
-                : "No conflicts"
+            health === null
+              ? "No pairings yet"
+              : approvedExceptions
+                ? `${approvedExceptions} approved exception${approvedExceptions === 1 ? "" : "s"}`
+                : conflicted
+                  ? `${conflicted} to review`
+                  : "No conflicts"
           }
           icon={<CheckCircle2 className="size-5" />}
-          tone={health >= 95 ? "success" : "warning"}
+          tone={health === null ? "neutral" : health >= 95 ? "success" : "warning"}
           onClick={() => router.push("/app/pairings?tab=constraints")}
         />
+        {/*
+          * Was "Schedule: 8 min behind" — a figure invented from the number of
+          * results outstanding. Nothing in the system measures pacing against a
+          * plan, so it now reports the tournament state, which is a fact.
+          */}
         <Stat
-          label="Schedule"
-          value={pending.length > 2 ? "8 min behind" : "On time"}
-          sub={pending.length > 2 ? "Recoverable" : "Round pacing normal"}
+          label="Tournament"
+          value={
+            tournament.status === "live"
+              ? "Running"
+              : tournament.status === "complete"
+                ? "Complete"
+                : "Not started"
+          }
+          sub={
+            tournament.status === "live"
+              ? `Round ${round} of ${tournament.totalRounds}`
+              : tournament.status === "complete"
+                ? "All rounds played"
+                : "Set up and pair to begin"
+          }
           icon={<CalendarClock className="size-5" />}
-          tone={pending.length > 2 ? "warning" : "success"}
-          onClick={() => router.push("/app/analytics")}
+          tone={tournament.status === "live" ? "success" : "neutral"}
+          onClick={() => router.push("/app/live-event")}
         />
         <Stat
           label="Venue"
@@ -566,7 +616,8 @@ function RoundStat({
 function AttentionCentre() {
   const router = useRouter();
   const store = useStore();
-  const { players, pairings, tournament, disputes, venue } = store;
+  const { pairings, tournament, disputes, venue } = store;
+  const players = useRoster(EVENT_ID).players;
   const round = tournament.currentRound;
 
   const pending = pairings.filter(

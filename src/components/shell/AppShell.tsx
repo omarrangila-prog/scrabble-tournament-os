@@ -474,7 +474,7 @@ function SidebarFooter({
       {!collapsed ? (
         <div className="mt-2 flex items-center gap-1.5 px-1">
           <Cloud className="size-3.5 shrink-0 text-success" />
-          <span className="text-[11.5px] text-muted">Synced · local demo storage</span>
+          <span className="text-[11.5px] text-muted">Roster from database</span>
         </div>
       ) : null}
 
