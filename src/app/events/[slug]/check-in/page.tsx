@@ -7,24 +7,24 @@ import { AlertTriangle, Check, Clock, MapPin, Wallet } from "lucide-react";
 import { Button, Field, Input } from "@/components/ui";
 import { CodeInput } from "@/components/checkin/CodeInput";
 import {
-  arrivalCounts,
   attemptVerdict,
   CHECK_IN_CODE_LENGTH,
-  findByCode,
-  findByToken,
-  maskName,
   paymentGate,
   recordFailure,
   type AttemptLog,
   type CheckInMethod,
 } from "@/lib/domain/checkIn";
+import { selectEventBySlug, useEventStore } from "@/lib/store/useEventStore";
+import type { GuestPaymentStatus } from "@/lib/store/useEventStore";
 import {
-  selectEventBySlug,
-  selectRegistrations,
-  useEventStore,
-  type GuestRegistration,
-} from "@/lib/store/useEventStore";
-import { CATEGORY_LABEL } from "@/lib/domain/identity";
+  arrivalTotals,
+  checkInParticipant,
+  recoverRegistration,
+  findByCheckInCode,
+  findByPersonalToken,
+  type CheckInSubject,
+} from "@/lib/supabase/registrations";
+import { CATEGORY_LABEL, type PlayerCategory } from "@/lib/domain/identity";
 import { formatDate, formatTime } from "@/lib/utils";
 
 const CREAM = "#F5F0E4";
@@ -57,11 +57,11 @@ export default function CheckInPage() {
 
   const store = useEventStore();
   const event = selectEventBySlug(store, slug);
-  const registrations = event ? selectRegistrations(store, event.id) : [];
+  const eventId = event?.id;
 
   const [code, setCode] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
-  const [candidate, setCandidate] = React.useState<GuestRegistration | null>(null);
+  const [candidate, setCandidate] = React.useState<CheckInSubject | null>(null);
   const [done, setDone] = React.useState<{ at: string; already: boolean } | null>(null);
   const [recovering, setRecovering] = React.useState(false);
 
@@ -71,14 +71,40 @@ export default function CheckInPage() {
    * the domain rule is shared so both apply the same one.
    */
   const [attempts, setAttempts] = React.useState<AttemptLog>({ failures: [] });
+  const [busy, setBusy] = React.useState(false);
+  const [totals, setTotals] = React.useState({ expected: 0, checkedIn: 0 });
+
+  React.useEffect(() => {
+    if (!eventId) return;
+    let live = true;
+    arrivalTotals(eventId).then((t) => {
+      if (live) setTotals(t);
+    });
+    return () => {
+      live = false;
+    };
+  }, [eventId, done]);
 
   /*
    * A personal link identifies its holder immediately — that is the point of
    * sending it. The tap that follows is the check-in, not a second lookup.
    */
-  const tokenLookup =
-    token && event ? findByToken(registrations, token, event.id) : null;
-  const fromToken = tokenLookup?.found ? tokenLookup.registration : null;
+  /*
+   * A personal link identifies its holder from the database, not from this
+   * browser. The registration was almost certainly made on a different device.
+   */
+  const [fromToken, setFromToken] = React.useState<CheckInSubject | null>(null);
+
+  React.useEffect(() => {
+    if (!token || !eventId) return;
+    let live = true;
+    findByPersonalToken(eventId, token).then((found) => {
+      if (live) setFromToken(found);
+    });
+    return () => {
+      live = false;
+    };
+  }, [token, eventId]);
 
   const subject = candidate ?? fromToken;
 
@@ -97,9 +123,9 @@ export default function CheckInPage() {
     );
   }
 
-  const counts = arrivalCounts(registrations);
+  const counts = totals;
 
-  const submitCode = (entered: string) => {
+  const submitCode = async (entered: string) => {
     setError(null);
 
     const verdict = attemptVerdict(attempts, nowMs());
@@ -108,33 +134,44 @@ export default function CheckInPage() {
       return;
     }
 
-    const found = findByCode(registrations, entered, event.id);
-    if (!found.found) {
+    setBusy(true);
+    const found = await findByCheckInCode(event.id, entered);
+    setBusy(false);
+
+    if (!found) {
       setAttempts((log) => recordFailure(log, nowMs()));
       setCode("");
-      setError(
-        found.reason === "wrong-event"
-          ? "That code is for a different event."
-          : "We could not find that code. Please check and try again.",
-      );
+      setError("We could not find that code. Please check and try again.");
       return;
     }
 
-    setCandidate(found.registration);
+    setCandidate(found);
   };
 
-  const confirm = (method: CheckInMethod) => {
-    if (!subject) return;
-    const outcome = store.checkIn(subject.id, method);
+  /*
+   * The arrival is recorded by the database, which holds the row lock, refuses a
+   * second arrival and stamps its own clock. Doing this in the browser would let
+   * two taps count twice and a wrong phone clock write a wrong time.
+   */
+  const confirm = async (method: CheckInMethod) => {
+    if (!subject || !event) return;
 
-    if (outcome.result === "blocked") {
-      setError(outcome.reason);
+    setBusy(true);
+    const outcome = await checkInParticipant({
+      eventId: event.id,
+      code: candidate ? code : undefined,
+      token: candidate ? undefined : subject.token,
+      method,
+    });
+    setBusy(false);
+
+    if (outcome.result === "blocked" || outcome.result === "not_found") {
+      setError(outcome.message);
       return;
     }
-    setDone({
-      at: outcome.result === "already-checked-in" ? outcome.at : outcome.at,
-      already: outcome.result === "already-checked-in",
-    });
+
+    setDone({ at: outcome.at, already: outcome.result === "already_checked_in" });
+    setTotals(await arrivalTotals(event.id));
   };
 
   /* ---- Checked in ------------------------------------------------------ */
@@ -155,7 +192,7 @@ export default function CheckInPage() {
 
   /* ---- Confirm it is them --------------------------------------------- */
   if (subject) {
-    const gate = paymentGate(subject.paymentStatus);
+    const gate = paymentGate(subject.paymentStatus as GuestPaymentStatus);
     const alreadyIn = Boolean(subject.checkedInAt);
 
     return (
@@ -173,10 +210,15 @@ export default function CheckInPage() {
           </p>
 
           <dl className="mt-4 space-y-1.5 text-left">
-            <Row label="Playing level" value={CATEGORY_LABEL[subject.confirmedDivision ?? subject.preferredDivision]} />
+            <Row
+              label="Playing level"
+              value={
+                CATEGORY_LABEL[subject.playingLevel as PlayerCategory] ?? subject.playingLevel
+              }
+            />
             <Row
               label="Registration"
-              value={subject.status === "waitlisted" ? "Waiting list" : "Confirmed"}
+              value={subject.registrationStatus === "waitlisted" ? "Waiting list" : "Confirmed"}
             />
             <Row
               label="Payment"
@@ -220,10 +262,10 @@ export default function CheckInPage() {
               size="lg"
               className="w-full border-0"
               style={{ background: FOREST, color: "white" }}
-              disabled={!gate.allowed}
+              disabled={!gate.allowed || busy}
               onClick={() => confirm(fromToken && !candidate ? "personal_link" : "venue_qr")}
             >
-              {alreadyIn ? "Show my check-in" : "Check me in"}
+              {busy ? "Checking you in…" : alreadyIn ? "Show my check-in" : "Check me in"}
             </Button>
 
             {/* Wrong person: back out rather than checking somebody else in. */}
@@ -251,7 +293,7 @@ export default function CheckInPage() {
     return (
       <Shell>
         <Recover
-          registrations={registrations}
+          eventId={event.id}
           onBack={() => setRecovering(false)}
           onFound={(r) => {
             setRecovering(false);
@@ -293,10 +335,10 @@ export default function CheckInPage() {
           size="lg"
           className="mt-5 w-full border-0"
           style={{ background: FOREST, color: "white" }}
-          disabled={code.length !== CHECK_IN_CODE_LENGTH}
+          disabled={code.length !== CHECK_IN_CODE_LENGTH || busy}
           onClick={() => submitCode(code)}
         >
-          Check me in
+          {busy ? "Looking you up…" : "Check me in"}
         </Button>
 
         <button
@@ -377,7 +419,7 @@ function Success({
   eventDate,
   venue,
 }: {
-  registration: GuestRegistration;
+  registration: CheckInSubject;
   at: string;
   already: boolean;
   eventName: string;
@@ -435,21 +477,22 @@ function Success({
  * somebody trying phone numbers to learn who is attending.
  */
 function Recover({
-  registrations,
+  eventId,
   onBack,
   onFound,
 }: {
-  registrations: GuestRegistration[];
+  eventId: string;
   onBack: () => void;
-  onFound: (r: GuestRegistration) => void;
+  onFound: (subject: CheckInSubject) => void;
 }) {
   const [contact, setContact] = React.useState("");
   const [lastName, setLastName] = React.useState("");
-  const [match, setMatch] = React.useState<GuestRegistration | null>(null);
+  const [match, setMatch] = React.useState<{ maskedName: string; token: string } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [attempts, setAttempts] = React.useState<AttemptLog>({ failures: [] });
+  const [busy, setBusy] = React.useState(false);
 
-  const search = () => {
+  const search = async () => {
     setError(null);
 
     const verdict = attemptVerdict(attempts, nowMs(), 4);
@@ -458,22 +501,9 @@ function Recover({
       return;
     }
 
-    const needle = contact.trim().toLowerCase();
-    const digits = needle.replace(/\D/g, "");
-    const surname = lastName.trim().toLowerCase();
-
-    /*
-     * Both a contact and a surname are required. Either alone turns this into a
-     * lookup somebody could sweep; together it only confirms what the person
-     * already knows.
-     */
-    const found = registrations.find((r) => {
-      const contactMatch =
-        (digits.length >= 7 && r.mobile.replace(/\D/g, "").endsWith(digits.slice(-7))) ||
-        (needle.includes("@") && r.email.toLowerCase() === needle);
-      const nameMatch = r.fullName.toLowerCase().split(/\s+/).includes(surname);
-      return contactMatch && nameMatch;
-    });
+    setBusy(true);
+    const found = await recoverRegistration(eventId, contact, lastName);
+    setBusy(false);
 
     if (!found) {
       setAttempts((log) => recordFailure(log, nowMs()));
@@ -490,7 +520,7 @@ function Recover({
           Registration found
         </p>
         <p className="mt-3 num text-[26px] font-extrabold" style={{ color: BROWN }}>
-          {maskName(match.fullName)}
+          {match.maskedName}
         </p>
         <p className="mt-1 text-[13px]" style={{ color: `${BROWN}A6` }}>
           Is this you?
@@ -499,7 +529,11 @@ function Recover({
           size="lg"
           className="mt-5 w-full border-0"
           style={{ background: FOREST, color: "white" }}
-          onClick={() => onFound(match)}
+          onClick={async () => {
+            const subject = await findByPersonalToken(eventId, match.token);
+            if (subject) onFound(subject);
+            else setError("Please see the event desk.");
+          }}
         >
           Yes, continue
         </Button>
@@ -548,10 +582,10 @@ function Recover({
         size="lg"
         className="mt-5 w-full border-0"
         style={{ background: FOREST, color: "white" }}
-        disabled={!contact.trim() || !lastName.trim()}
+        disabled={!contact.trim() || !lastName.trim() || busy}
         onClick={search}
       >
-        Find my registration
+        {busy ? "Searching…" : "Find my registration"}
       </Button>
 
       <button

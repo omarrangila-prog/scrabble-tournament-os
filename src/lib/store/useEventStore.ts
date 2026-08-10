@@ -439,8 +439,19 @@ export const useEventStore = create<EventStore>()(
         const event = get().events.find((e) => e.id === input.eventId);
         const count = get().registrations.filter((r) => r.eventId === input.eventId).length;
 
-        // Over capacity goes to the waiting list rather than being rejected.
-        const overCapacity = event ? count >= event.capacity : false;
+        /*
+         * Over capacity goes to the waiting list rather than being rejected.
+         *
+         * Capacity 0 means "no limit set", not "full". Without the guard, 0 >= 0
+         * held and every entrant was waitlisted from the very first one —
+         * AlphaBattle has no capacity set, so everybody who registered was told
+         * they were on a waiting list for an event with room for all of them.
+         *
+         * The same fault was fixed in registrationStatusOf for the public status
+         * badge; it was still live here, on the record that actually gets stored.
+         */
+        const capped = Boolean(event && event.capacity > 0);
+        const overCapacity = capped && count >= event!.capacity;
         const status: GuestRegistrationStatus =
           overCapacity && event?.waitingList ? "waitlisted" : "submitted";
 

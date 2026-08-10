@@ -23,6 +23,7 @@ import {
 import { redeemDiscount } from "@/lib/domain/events";
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
+import { saveRegistration } from "@/lib/supabase/registrations";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { formatDate } from "@/lib/utils";
 
@@ -64,6 +65,16 @@ export default function RegisterPage() {
   } | null>(null);
   const [campaign, setCampaign] = React.useState<CampaignReduction | undefined>();
   const [codeError, setCodeError] = React.useState<string | null>(null);
+
+  /*
+   * Whether the record reached the database, and why not.
+   *
+   * Declared here with the other hooks rather than beside the submit handler:
+   * hooks must run in the same order on every render, and there is an early
+   * return below for an unknown event.
+   */
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   if (!event) {
     return (
@@ -107,7 +118,7 @@ export default function RegisterPage() {
     });
   };
 
-  const submit = (reg: GameOnRegistration) => {
+  const submit = async (reg: GameOnRegistration) => {
     const quote = quoteFee(reg.membershipStatus, campaign, event.fee, event.currency);
 
     /*
@@ -149,6 +160,58 @@ export default function RegisterPage() {
       currency: event.currency,
     });
 
+    /*
+     * The record goes to the database, not just this browser.
+     *
+     * Until now a registration lived in localStorage, so it existed only on the
+     * phone that made it: the organizer never saw it and clearing the browser
+     * destroyed it. The local store is still written, so the confirmation screen
+     * has something to render immediately, but the database is the record.
+     *
+     * A failed save must not show a confirmation. Somebody who has already
+     * transferred money and is told "registration received" when nothing was
+     * saved has no way of knowing anything is wrong.
+     */
+    /*
+     * Read from the live store, not the snapshot this render closed over.
+     *
+     * `store` is the value captured when the component rendered, so it does not
+     * contain the registration created on the line above. Reading it gave
+     * undefined, and the row that reached the database held almost nothing — no
+     * name, no mobile, no check-in code. The confirmation still said "received",
+     * so the failure was invisible from the outside.
+     */
+    const local = useEventStore
+      .getState()
+      .registrations.find((r) => r.token === token);
+    setSaving(true);
+    setSaveError(null);
+
+    if (!local) {
+      setSaving(false);
+      setSaveError("We could not save your registration. Please try again.");
+      return;
+    }
+
+    const saved = await saveRegistration({
+      eventId: event.id,
+      organizationId: event.organizationId,
+      checkInCode: local.checkInCode ?? "",
+      data: {
+        ...local,
+        // Sent as the claim actually made. The database decides whether a
+        // receipt-backed claim becomes verified; the browser may not.
+        paymentStatus: reg.receiptFileName ? "receipt-uploaded" : local.paymentStatus,
+      },
+    });
+
+    setSaving(false);
+
+    if (!saved.ok) {
+      setSaveError(saved.message);
+      return;
+    }
+
     setSubmitted({ token, registration: reg });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -180,6 +243,9 @@ export default function RegisterPage() {
         paymentStatus={
           store.registrations.find((r) => r.token === submitted.token)?.paymentStatus ??
           "not-submitted"
+        }
+        checkInCode={
+          store.registrations.find((r) => r.token === submitted.token)?.checkInCode ?? ""
         }
       />
     );
@@ -277,6 +343,37 @@ export default function RegisterPage() {
           {codeError ? (
             <p className="mt-2 text-center text-[12.5px] text-critical">{codeError}</p>
           ) : null}
+
+          {/*
+            * Saving, and failing to save.
+            *
+            * Somebody who has already transferred money must never be shown a
+            * confirmation for a registration that was not stored. The message
+            * says what to do next rather than what went wrong technically.
+            */}
+          {saving ? (
+            <p
+              className="mt-3 text-center text-[12.5px] font-semibold"
+              style={{ color: FOREST }}
+              role="status"
+            >
+              Saving your registration…
+            </p>
+          ) : null}
+
+          {saveError ? (
+            <div
+              className="mt-3 rounded-2xl px-4 py-3 text-center"
+              style={{ background: "rgba(200,60,60,0.08)" }}
+              role="alert"
+            >
+              <p className="text-[13px] font-semibold text-critical">{saveError}</p>
+              <p className="mt-1 text-[12px]" style={{ color: `${BROWN}A6` }}>
+                Your details are still on this page. Press Submit to try again, or
+                contact {event.contactPhone || "the organizer"} if it keeps failing.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <p className="mt-6 text-center text-[12px]" style={{ color: `${BROWN}88` }}>
@@ -306,12 +403,15 @@ function GameOnConfirmation({
   event,
   payable,
   paymentStatus,
+  checkInCode,
 }: {
   token: string;
   registration: GameOnRegistration;
   event: ReturnType<typeof selectEventBySlug>;
   payable: number;
   paymentStatus: GuestPaymentStatus;
+  /** The six digits they will type at the venue. */
+  checkInCode: string;
 }) {
   const origin = React.useSyncExternalStore(
     () => () => {},
@@ -322,6 +422,14 @@ function GameOnConfirmation({
   if (!event) return null;
 
   const personalUrl = origin ? `${origin}/r/${token}` : "";
+  /*
+   * The one-tap check-in link. Points straight at the check-in page with the
+   * personal token, so on the day it is a single tap rather than a page to read
+   * and a code to find.
+   */
+  const checkInUrl = origin
+    ? `${origin}/events/${event.slug}/check-in?t=${token}`
+    : "";
   const money = (n: number) => `${event.currency} ${n.toLocaleString("en-PK")}`;
 
   /*
@@ -373,6 +481,60 @@ function GameOnConfirmation({
             </div>
           </div>
         </Card>
+
+        {/*
+          * The check-in code, given the prominence it needs.
+          *
+          * This is the one thing they must still have on the day, and it was
+          * missing entirely — the database held it but the confirmation never
+          * showed it, so nobody would have known their code. Large, spaced and
+          * copyable, because it gets read off a phone in a doorway.
+          */}
+        {checkInCode ? (
+          <div
+            className="mt-4 rounded-[20px] p-5 text-center"
+            style={{ background: FOREST }}
+          >
+            <p
+              className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
+              style={{ color: GOLD }}
+            >
+              Your check-in code
+            </p>
+            <p
+              className="num mt-2 text-[40px] font-extrabold leading-none tracking-[0.16em]"
+              style={{ color: CREAM }}
+            >
+              {checkInCode}
+            </p>
+            <p className="mt-3 text-[12.5px] leading-relaxed" style={{ color: `${CREAM}B3` }}>
+              Bring this on {formatDate(event.startDate)}. Scan the code at the venue
+              and enter these six digits.
+            </p>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <Button
+                size="sm"
+                className="w-full border-0"
+                style={{ background: CREAM, color: BROWN }}
+                onClick={() => navigator.clipboard?.writeText(checkInCode)}
+              >
+                Copy code
+              </Button>
+              {checkInUrl ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="w-full"
+                  style={{ color: CREAM }}
+                  onClick={() => navigator.clipboard?.writeText(checkInUrl)}
+                >
+                  Copy one-tap check-in link
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         {/*
           * Named from the event, not hardcoded. An AlphaBattle entrant was told

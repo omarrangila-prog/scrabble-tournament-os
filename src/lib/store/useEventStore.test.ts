@@ -187,3 +187,38 @@ describe("check-in through the store", () => {
     expect(counts.notArrived).toBe(1);
   });
 });
+
+/**
+ * Capacity 0 means "no limit set", not "full".
+ *
+ * This fault has now appeared twice: once in the public status badge, and again
+ * in the write path that stores the record. With no capacity configured, 0 >= 0
+ * held and every entrant was stored as waitlisted — so everybody registering for
+ * an event with unlimited room was told they were on a waiting list.
+ */
+describe("capacity and the waiting list", () => {
+  beforeEach(() => {
+    useEventStore.getState().resetEvents();
+  });
+
+  it("does not waitlist anybody when no capacity is set", () => {
+    submitOne("First Entrant");
+    const [r] = useEventStore.getState().registrations;
+
+    expect(useEventStore.getState().events[0].capacity).toBe(0);
+    expect(r.status).toBe("submitted");
+    expect(r.status).not.toBe("waitlisted");
+  });
+
+  it("still waitlists past a real capacity", () => {
+    const store = useEventStore.getState();
+    store.updateEvent(store.events[0].id, { capacity: 2, waitingList: true });
+
+    submitOne("One");
+    submitOne("Two");
+    submitOne("Three");
+
+    const statuses = useEventStore.getState().registrations.map((r) => r.status);
+    expect(statuses.filter((s) => s === "waitlisted")).toHaveLength(1);
+  });
+});
