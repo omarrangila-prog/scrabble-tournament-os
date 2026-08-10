@@ -6,12 +6,12 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { CalendarDays, ExternalLink, MapPin, Users } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Skeleton } from "@/components/ui";
 import {
-  selectScopedRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
 import { EVENT_STATE_LABEL } from "@/lib/domain/events";
 import { WORKSPACE_TABS } from "@/lib/domain/eventPhase";
 import { activeEvent, scopeStatus } from "@/lib/domain/scope";
+import { useRoster } from "@/lib/supabase/useRoster";
 import { cn, formatDate } from "@/lib/utils";
 
 /**
@@ -44,7 +44,14 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
     organizationId: store.activeOrganizationId,
     eventId,
   });
-  const registrations = selectScopedRegistrations(store);
+  /*
+   * Registrations from the database, not from browser storage.
+   *
+   * This header read the local store and announced "0 of 0 places filled" above a
+   * tournament with real entrants in Postgres — a wrong figure repeated on every tab of
+   * the workspace, which is the worst place for one to hide.
+   */
+  const roster = useRoster(eventId);
 
   if (status === "loading") {
     return (
@@ -73,43 +80,51 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
   }
 
   const activeTab = pathname.split("/").pop() ?? "overview";
-  const approved = registrations.filter((r) => r.status === "approved").length;
+  const registered = roster.registrations.length;
 
   return (
     <div>
-      {/* Event identity — always visible, so the workspace never feels ambiguous. */}
-      <div className="glass-raised rounded-feature p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[22px] font-extrabold tracking-[-0.02em] text-ink">
-                {event.name}
-              </h1>
-              <Badge tone="primary">{EVENT_STATE_LABEL[event.state]}</Badge>
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted">
-              <span className="inline-flex items-center gap-1.5">
-                <CalendarDays className="size-3.5" />
-                {formatDate(event.startDate)}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="size-3.5" />
-                {event.venueName}, {event.city}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Users className="size-3.5" />
-                <span className="num">{approved}</span> of{" "}
-                <span className="num">{event.capacity}</span> places filled
-              </span>
-            </div>
-          </div>
+      {/*
+        * One line, not a panel.
+        *
+        * This was a full identity card repeating the event name, state, date, venue and
+        * a capacity figure — above tabs, inside a shell that already names the event in
+        * the sidebar. Four tabs each opened with the same fourteen lines, so every
+        * screen looked like the last one and the page's own heading was buried below
+        * the fold. The facts are still here; they take a sentence.
+        */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-muted">
+        <Badge tone="primary">{EVENT_STATE_LABEL[event.state]}</Badge>
+        <span className="inline-flex items-center gap-1.5">
+          <CalendarDays className="size-3.5" />
+          {formatDate(event.startDate)}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <MapPin className="size-3.5" />
+          {event.venueName}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <Users className="size-3.5" />
+          <span className="num">{registered}</span>
+          {event.capacity > 0 ? (
+            <>
+              {" of "}
+              <span className="num">{event.capacity}</span> places filled
+            </>
+          ) : (
+            <> registered</>
+          )}
+        </span>
 
-          <Link href={`/events/${event.slug}`} target="_blank" rel="noreferrer">
-            <Button variant="secondary" size="sm" icon={<ExternalLink className="size-3.5" />}>
-              Public page
-            </Button>
-          </Link>
-        </div>
+        <Link
+          href={`/events/${event.slug}`}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-auto inline-flex items-center gap-1.5 font-semibold text-primary-600 hover:underline"
+        >
+          <ExternalLink className="size-3.5" />
+          Public page
+        </Link>
       </div>
 
       {/* Tabs */}
