@@ -47,6 +47,7 @@ import {
 import { buildCitation, PerformanceRecord, tierFor, unsupportedClaims } from "@/lib/engine/citations";
 import { performanceRecordsFor } from "@/lib/engine/standings";
 import { qrToDataUri } from "@/lib/qr/qrcode";
+import { CertificateSheet } from "@/components/certificates/CertificateSheet";
 import { cn, formatDate } from "@/lib/utils";
 import { emailCertificate } from "@/lib/email/client";
 
@@ -411,6 +412,49 @@ export default function AwardsPage() {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The placement, worded for a sentence rather than a table.
+ *
+ * The stored statement is a label — "1st place, Recreational division" — which reads
+ * badly mid-sentence: "for 1st place, recreational division at Blufy's". This turns it
+ * into "finishing 1st in the recreational category", which is what the line needs.
+ * "Category" rather than "division" because that is the word the public site and the
+ * registration form use with participants.
+ */
+function placementPhrase(statement: string): string {
+  const match = /^(\d+)(?:st|nd|rd|th)\s+place,\s*(.+?)\s*(?:division)?$/i.exec(statement.trim());
+  if (!match) return statement.toLowerCase();
+
+  const [, place, group] = match;
+  const suffix = place === "1" ? "st" : place === "2" ? "nd" : place === "3" ? "rd" : "th";
+  return `finishing ${place}${suffix} in the ${group.toLowerCase()} category`;
+}
+
+/**
+ * The date in the template's own wording — "23rd August, 2026".
+ *
+ * The source file spells it out with an ordinal, so a date formatted any other way
+ * would read as a different document. Built here rather than with `formatDate`, which
+ * produces "23 Aug 2026" for the interface.
+ */
+function printableDate(iso: string): string {
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return iso;
+
+  const day = date.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11
+      ? "st"
+      : day % 10 === 2 && day !== 12
+        ? "nd"
+        : day % 10 === 3 && day !== 13
+          ? "rd"
+          : "th";
+
+  const month = date.toLocaleDateString("en-GB", { month: "long" });
+  return `${day}${suffix} ${month}, ${date.getFullYear()}`;
+}
+
 function PreviewModal({
   certificate,
   eventName,
@@ -436,6 +480,11 @@ function PreviewModal({
 
   if (!certificate) return null;
   const url = origin ? verificationUrl(origin, certificate.code) : "";
+  /*
+   * Generated once the origin is known, so the code in it points at this deployment
+   * rather than at nothing.
+   */
+  const qr = url ? qrToDataUri(url, { size: 320 }) : undefined;
   const citation = record ? buildCitation(record, tierFor(record)) : null;
 
   /**
@@ -511,63 +560,36 @@ function PreviewModal({
       }
     >
       <div className="space-y-3">
-        <div
-          className={cn(
-            "rounded-feature border-2 p-7 text-center",
+        {/*
+          * The organizer's own certificate, rebuilt from their Canva file.
+          *
+          * This was a gold-bordered panel of the app's own invention. It bore no
+          * relation to the design they had made and had been handing out, so what a
+          * winner received looked nothing like what the organizer thought they were
+          * sending.
+          */}
+        <CertificateSheet
+          recipientName={certificate.recipientName}
+          dateLabel={printableDate(eventDate)}
+          code={certificate.code}
+          verifyUrl={url}
+          qrDataUri={qr}
+          /*
+           * A placement only when the certificate asserts one. Participation
+           * certificates keep the template's original wording; a winner's states what
+           * they won, which is the whole point of having it in writing.
+           */
+          placement={
+            certificate.kind === "participation" ? undefined : placementPhrase(certificate.statement)
+          }
+          draftNotice={
             certificate.status === "revoked"
-              ? "border-critical bg-critical-050"
-              : "border-gold bg-gradient-to-br from-gold-050 to-[rgb(var(--c-surface-strong))]",
-          )}
-        >
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">{eventName}</p>
-          {/*
-            * The date of the event, not the date the certificate was generated.
-            * Somebody reading this in a year wants to know when it was won, and the
-            * two are not the same day — a certificate reissued in September would
-            * otherwise claim to be from September.
-            */}
-          <p className="mt-1 text-[11.5px] font-semibold tracking-[0.08em] text-muted">
-            {formatDate(eventDate)}
-          </p>
-          <p className="mt-4 text-[12.5px] uppercase tracking-[0.14em] text-muted">
-            {certificate.statement}
-          </p>
-          <p className="text-champion mt-1.5 text-[26px] font-extrabold tracking-[-0.02em]">
-            {certificate.recipientName}
-          </p>
-          {certificate.detail ? (
-            <p className="mt-2 text-[12.5px] leading-relaxed text-muted">{certificate.detail}</p>
-          ) : null}
-
-          {certificate.status === "revoked" ? (
-            <p className="mt-4 rounded-control bg-white/70 px-3 py-2 text-[12px] font-semibold text-critical">
-              Withdrawn — {certificate.revokedReason}
-            </p>
-          ) : null}
-
-          <div className="mt-5 flex flex-col items-center gap-2">
-            {url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={qrToDataUri(url, { size: 120 })}
-                alt={`Verification QR for certificate ${certificate.code}`}
-                width={120}
-                height={120}
-                className="rounded-compact bg-white p-1.5"
-              />
-            ) : null}
-            <code className="num text-[13px] font-bold tracking-[0.12em] text-ink">
-              {certificate.code}
-            </code>
-            <p className="text-[10.5px] text-faint">Scan to verify</p>
-          </div>
-
-          {certificate.issuedBy ? (
-            <p className="mt-4 text-[11px] text-muted">Issued by {certificate.issuedBy}</p>
-          ) : (
-            <p className="mt-4 text-[11px] text-[#a76d16]">Draft — not yet issued</p>
-          )}
-        </div>
+              ? `Withdrawn — ${certificate.revokedReason ?? "no longer valid"}`
+              : certificate.issuedBy
+                ? undefined
+                : "Draft — not yet issued"
+          }
+        />
 
         {/* The figures behind the wording, so a claim can be checked. */}
         {citation?.evidence.length ? (

@@ -424,3 +424,46 @@ body {
   font-optical-sizing: auto;
   font-variation-settings: "SOFT" 30, "WONK" 0;
 }
+
+/*
+ * Printing a certificate.
+ *
+ * The sheet is A4 landscape with no margin, because the design's border runs to the
+ * edge of the page — a printer margin would inset the frame and leave a white band
+ * around it. `print-color-adjust: exact` keeps the paper texture and the gold rules,
+ * which browsers otherwise strip to save ink and which are most of the design.
+ *
+ * Front and back are separate pages, so the verification code lands on the reverse
+ * rather than halfway down the front.
+ */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  .certificate-sheet {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .certificate-page {
+    width: 100%;
+    break-after: page;
+    page-break-after: always;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .certificate-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* Everything around the certificate — the modal frame, buttons, the app shell. */
+  .certificate-hide-in-print {
+    display: none !important;
+  }
+}
