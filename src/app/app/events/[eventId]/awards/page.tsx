@@ -46,7 +46,7 @@ import {
 import { buildCitation, PerformanceRecord, tierFor, unsupportedClaims } from "@/lib/engine/citations";
 import { performanceRecordsFor } from "@/lib/engine/standings";
 import { qrToDataUri } from "@/lib/qr/qrcode";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const STATUS_TONE = {
   draft: "neutral",
@@ -375,6 +375,7 @@ export default function AwardsPage() {
       <PreviewModal
         certificate={preview}
         eventName={event.name}
+        eventDate={event.startDate}
         origin={origin}
         record={records.find((r) => r.playerId === preview?.recipientId)}
         onClose={() => setPreview(null)}
@@ -403,12 +404,15 @@ export default function AwardsPage() {
 function PreviewModal({
   certificate,
   eventName,
+  eventDate,
   origin,
   record,
   onClose,
 }: {
   certificate: Certificate | null;
   eventName: string;
+  /** The day it was won. A certificate without one is undated evidence. */
+  eventDate: string;
   origin: string;
   record?: PerformanceRecord;
   onClose: () => void;
@@ -448,6 +452,15 @@ function PreviewModal({
           )}
         >
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted">{eventName}</p>
+          {/*
+            * The date of the event, not the date the certificate was generated.
+            * Somebody reading this in a year wants to know when it was won, and the
+            * two are not the same day — a certificate reissued in September would
+            * otherwise claim to be from September.
+            */}
+          <p className="mt-1 text-[11.5px] font-semibold tracking-[0.08em] text-muted">
+            {formatDate(eventDate)}
+          </p>
           <p className="mt-4 text-[12.5px] uppercase tracking-[0.14em] text-muted">
             {certificate.statement}
           </p>

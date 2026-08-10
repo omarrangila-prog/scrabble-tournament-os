@@ -141,6 +141,14 @@ export default function VerifyPage() {
                       certificate.division ? ["Division", certificate.division] : null,
                       certificate.detail ? ["Detail", certificate.detail] : null,
                       event ? ["Event", event.name] : null,
+                      /*
+                       * The date of the event, next to its name.
+                       *
+                       * "Issued" below is when the certificate was produced, which is
+                       * not when the thing was won — reissue one in September and the
+                       * only date on the page would say September.
+                       */
+                      event ? ["Date", formatDate(event.startDate)] : null,
                       certificate.issuedAt
                         ? ["Issued", formatDate(certificate.issuedAt)]
                         : null,
