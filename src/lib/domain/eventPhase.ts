@@ -14,15 +14,13 @@
 import { EventState } from "./events";
 
 /** A workspace tab. The order is the order the organizer sees. */
-export type WorkspaceTab =
-  | "overview"
-  | "registrations"
-  | "payments"
-  | "scrabble"
-  | "live"
-  | "awards"
-  | "analytics"
-  | "settings";
+/*
+ * Only the tabs that exist. Overview, Registrations, Speed Scrabble and Settings
+ * were removed for reading browser storage, and keeping them in this union let
+ * guidance and alerts keep pointing at them — the type is what makes a dangling
+ * target a compile error instead of a click that goes nowhere.
+ */
+export type WorkspaceTab = "payments" | "live" | "awards" | "analytics";
 
 /**
  * The workspace tabs.
@@ -32,15 +30,20 @@ export type WorkspaceTab =
  * being split across "Players & Divisions" and "Scores & Standings". A director
  * running the competition works in one place.
  */
+/*
+ * The workspace tabs that have a database behind them.
+ *
+ * Overview, Registrations, Speed Scrabble and Settings were removed: the first
+ * three duplicated screens that now read Postgres, using browser storage that
+ * nothing fills, and the fourth edited event settings that were never saved
+ * anywhere. A tab that shows an empty version of a page which works elsewhere is
+ * worse than no tab.
+ */
 export const WORKSPACE_TABS: { id: WorkspaceTab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "registrations", label: "Registrations" },
   { id: "payments", label: "Payments" },
-  { id: "scrabble", label: "Speed Scrabble" },
   { id: "live", label: "Live Event" },
   { id: "awards", label: "Awards & Certificates" },
   { id: "analytics", label: "Analytics" },
-  { id: "settings", label: "Settings" },
 ];
 
 export function isWorkspaceTab(value: string): value is WorkspaceTab {
@@ -123,11 +126,11 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
      */
     primary: nav(
       "complete-setup",
-      "Complete event setup",
-      "settings",
+      "Check payment details",
+      "payments",
       "Payment details are needed before registration can open.",
     ),
-    secondary: [nav("preview-form", "Preview registration form", "registrations")],
+    secondary: [nav("preview-form", "Preview registration form", "payments")],
   },
 
   "registration-open": {
@@ -135,7 +138,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     next: "Share the link so people can register.",
     primary: run("share", "Share registration", "Copy the link or show the QR code."),
     secondary: [
-      nav("view-registrations", "View registrations", "registrations"),
+      nav("view-registrations", "View registrations", "payments"),
       nav("review-payments", "Review payments", "payments"),
       move("close-registration", "Close registration", "registration-closed", undefined, true),
     ],
@@ -144,7 +147,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "registration-closed": {
     status: "Registration is closed.",
     next: "Confirm divisions and seeding before the event day.",
-    primary: nav("confirm-divisions", "Confirm divisions", "scrabble", "Review requested against final divisions."),
+    primary: nav("confirm-divisions", "Confirm divisions", "live", "Review requested against final divisions."),
     secondary: [
       nav("review-payments", "Review payments", "payments"),
       move("start-preparing", "Start preparing", "preparing"),
@@ -156,7 +159,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     next: "Open check-in when players start arriving.",
     primary: move("open-check-in", "Open check-in", "check-in-open", "Players can mark themselves present."),
     secondary: [
-      nav("seeding", "Review seeding", "scrabble"),
+      nav("seeding", "Review seeding", "live"),
       nav("payments", "Review payments", "payments"),
     ],
   },
@@ -172,7 +175,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     status: "Check-in is closed.",
     next: "Publish the pairings for this round.",
     primary: nav("publish-pairings", "Publish pairings", "live", "Assigns boards and shows them to players."),
-    secondary: [nav("standings", "View standings", "scrabble")],
+    secondary: [nav("standings", "View standings", "live")],
   },
 
   "round-published": {
@@ -198,10 +201,10 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "result-entry": {
     status: "Results are being submitted and confirmed.",
     next: "Every board must be verified before the next round.",
-    primary: nav("verify-scores", "Verify scores", "scrabble", "Confirm results and settle any conflicts."),
+    primary: nav("verify-scores", "Verify scores", "live", "Confirm results and settle any conflicts."),
     secondary: [
       move("start-break", "Start break", "break"),
-      nav("standings", "View standings", "scrabble"),
+      nav("standings", "View standings", "live"),
     ],
   },
 
@@ -210,7 +213,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     next: "Prepare the next round, or move to final review after the last one.",
     primary: nav("next-round", "Prepare next round", "live", "Pairs the next round from current standings."),
     secondary: [
-      nav("standings", "View standings", "scrabble"),
+      nav("standings", "View standings", "live"),
       move("final-review", "Go to final review", "final-review"),
     ],
   },
@@ -218,7 +221,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "final-review": {
     status: "All rounds are complete. Results are under final review.",
     next: "Lock the standings, then generate certificates.",
-    primary: nav("review-standings", "Review final standings", "scrabble", "Check every result before locking."),
+    primary: nav("review-standings", "Review final standings", "live", "Check every result before locking."),
     secondary: [
       nav("awards", "Assign prizes", "awards"),
       move("complete", "Mark event complete", "completed", undefined, true),
@@ -231,7 +234,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     primary: nav("certificates", "Generate certificates", "awards", "Winners, awards and participation."),
     secondary: [
       nav("analytics", "View analytics", "analytics"),
-      nav("standings", "Final standings", "scrabble"),
+      nav("standings", "Final standings", "live"),
       move("archive", "Archive event", "archived", undefined, true),
     ],
   },
@@ -240,7 +243,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     status: "This event is archived and read-only.",
     next: "Its results and certificates remain available.",
     primary: nav("analytics", "View analytics", "analytics", "The full record of the event."),
-    secondary: [nav("standings", "Final standings", "scrabble")],
+    secondary: [nav("standings", "Final standings", "live")],
   },
 };
 
@@ -356,7 +359,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "conflicts",
       severity: "critical",
       message: `${input.scoreConflicts} score conflict${input.scoreConflicts === 1 ? " needs" : "s need"} a ruling.`,
-      tab: "scrabble",
+      tab: "live",
     });
 
   if (input.paymentsAwaiting > 0)
@@ -372,7 +375,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "boards",
       severity: "warning",
       message: `${input.unverifiedBoards} board${input.unverifiedBoards === 1 ? " has" : "s have"} no verified result.`,
-      tab: "scrabble",
+      tab: "live",
     });
 
   if (input.unassignedPlayers > 0)
@@ -380,7 +383,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "divisions",
       severity: "info",
       message: `${input.unassignedPlayers} player${input.unassignedPlayers === 1 ? " has" : "s have"} no confirmed division.`,
-      tab: "scrabble",
+      tab: "live",
     });
 
   if (input.capacityUsed >= 100)
@@ -388,7 +391,7 @@ export function eventAlerts(input: AlertInput): EventAlert[] {
       id: "capacity",
       severity: "warning",
       message: "The event is at capacity. Further entries go to the waiting list.",
-      tab: "registrations",
+      tab: "live",
     });
 
   return alerts;

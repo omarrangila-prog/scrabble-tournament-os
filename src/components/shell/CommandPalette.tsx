@@ -12,10 +12,11 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { useStore } from "@/lib/store/useStore";
 import { Avatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ALL_ROUTES } from "./nav";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useRoster } from "@/lib/supabase/useRoster";
 
 export interface SearchResult {
   id: string;
@@ -40,20 +41,16 @@ const KIND_ICON: Record<SearchResult["kind"], React.ElementType> = {
 
 /** Searches every entity the specification requires the palette to reach. */
 function useGlobalSearch(query: string): SearchResult[] {
-  const players = useStore((s) => s.players);
-  const pairings = useStore((s) => s.pairings);
-  const rounds = useStore((s) => s.rounds);
-  const disputes = useStore((s) => s.disputes);
-  const tournaments = useStore((s) => s.tournaments);
-  const currentRound = useStore((s) => s.tournament.currentRound);
+  /*
+   * Players come from the database. This read `useStore((s) => s.players)`, which
+   * nothing fills any more, so searching a real entrant's name found nothing.
+   */
+  const players = useRoster(ACTIVE_EVENT_ID).players;
 
   return React.useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
     const out: SearchResult[] = [];
-    const nameOf = (id: string | null) =>
-      id ? players.find((p) => p.id === id)?.fullName ?? "—" : "Bye";
-
     for (const p of players) {
       if (
         p.fullName.toLowerCase().includes(q) ||
@@ -75,68 +72,24 @@ function useGlobalSearch(query: string): SearchResult[] {
     }
 
     // "board 14" / "14" → the board in the current round.
+    /*
+     * Boards, rounds, disputes and tournaments used to be searchable here. Each one
+     * enumerated a browser-storage collection and pointed at a screen that has since
+     * been removed for reading the same empty store — so every one of those results
+     * was a route to a blank page. Players and destinations are what remain, and
+     * both are backed by the database.
+     */
     const boardNum = Number(q.replace(/[^0-9]/g, ""));
     if (!Number.isNaN(boardNum) && boardNum > 0) {
-      for (const pr of pairings.filter((x) => x.round === currentRound && x.board === boardNum)) {
-        out.push({
-          id: `board-${pr.id}`,
-          kind: "Board",
-          title: `Board ${pr.board}`,
-          subtitle: `${nameOf(pr.playerAId)} vs ${nameOf(pr.playerBId)} · Round ${pr.round}`,
-          href: `/app/pairings?board=${pr.board}`,
-        });
-      }
-    }
-
-    if ("pairings".includes(q) || q.startsWith("pair")) {
       out.push({
-        id: "pairings-page",
-        kind: "Pairing",
-        title: "Round pairings",
-        subtitle: `Round ${currentRound} · pairing engine`,
-        href: "/app/pairings",
+        id: "board-search",
+        kind: "Board",
+        title: `Board ${boardNum}`,
+        subtitle: "Open score entry for this round",
+        href: "/app/score-entry",
       });
     }
 
-    for (const r of rounds) {
-      if (`round ${r.number}`.includes(q) || q === String(r.number)) {
-        out.push({
-          id: `round-${r.id}`,
-          kind: "Round",
-          title: `Round ${r.number}`,
-          subtitle: `${r.status} · ${r.pairingCount} pairings`,
-          href: `/app/pairings?round=${r.number}`,
-        });
-      }
-    }
-
-    for (const d of disputes) {
-      if (
-        d.caseNumber.toLowerCase().includes(q) ||
-        d.description.toLowerCase().includes(q) ||
-        d.category.includes(q)
-      ) {
-        out.push({
-          id: `dispute-${d.id}`,
-          kind: "Dispute",
-          title: d.caseNumber,
-          subtitle: `${d.category} · board ${d.board} · ${d.status}`,
-          href: `/app/arbiter?case=${d.id}`,
-        });
-      }
-    }
-
-    for (const t of tournaments) {
-      if (t.name.toLowerCase().includes(q) || t.city.toLowerCase().includes(q)) {
-        out.push({
-          id: `tournament-${t.id}`,
-          kind: "Tournament",
-          title: t.name,
-          subtitle: `${t.city} · ${t.system} · ${t.totalRounds} rounds`,
-          href: "/app/tournaments",
-        });
-      }
-    }
 
     for (const report of [
       "Final standings", "Round pairings", "Cross tables", "Attendance report",
@@ -166,7 +119,7 @@ function useGlobalSearch(query: string): SearchResult[] {
     }
 
     return out.slice(0, 24);
-  }, [query, players, pairings, rounds, disputes, tournaments, currentRound]);
+  }, [query, players]);
 }
 
 export function CommandPalette({

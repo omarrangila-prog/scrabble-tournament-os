@@ -27,16 +27,17 @@ const ALL_STATES: EventState[] = [
 ];
 
 describe("workspace tabs", () => {
-  it("exposes the eight tabs in order", () => {
+  it("exposes only tabs that have a database behind them", () => {
+    /*
+     * Was eight. Overview, Registrations, Speed Scrabble and Settings read browser
+     * storage that nothing fills, so each showed an empty version of a screen that
+     * works elsewhere.
+     */
     expect(WORKSPACE_TABS.map((t) => t.id)).toEqual([
-      "overview",
-      "registrations",
       "payments",
-      "scrabble",
       "live",
       "awards",
       "analytics",
-      "settings",
     ]);
   });
 
@@ -45,16 +46,19 @@ describe("workspace tabs", () => {
    * across separate tabs made a director running the competition move between
    * screens to do a single job.
    */
-  it("keeps the whole Scrabble competition under one tab", () => {
-    const ids = WORKSPACE_TABS.map((t) => t.id);
-    expect(ids).toContain("scrabble");
-    expect(ids).not.toContain("scores");
-    expect(ids).not.toContain("players");
+  it("does not offer a tab whose page was removed", () => {
+    const ids = WORKSPACE_TABS.map((t) => t.id) as string[];
+    for (const gone of ["overview", "registrations", "scrabble", "settings"]) {
+      expect(ids).not.toContain(gone);
+    }
   });
 
   it("recognises real tabs and rejects anything else", () => {
-    expect(isWorkspaceTab("overview")).toBe(true);
-    expect(isWorkspaceTab("settings")).toBe(true);
+    expect(isWorkspaceTab("payments")).toBe(true);
+    expect(isWorkspaceTab("live")).toBe(true);
+    // A tab that used to exist must not still validate.
+    expect(isWorkspaceTab("overview")).toBe(false);
+    expect(isWorkspaceTab("scrabble")).toBe(false);
     expect(isWorkspaceTab("nonsense")).toBe(false);
     expect(isWorkspaceTab("")).toBe(false);
   });
@@ -95,10 +99,11 @@ describe("phaseGuidance", () => {
    * payment account exists, so offering "Open registration" here would be a
    * button that refuses — pointing at the screen that unblocks it is honest.
    */
-  it("leads a draft to completing setup rather than to a button that refuses", () => {
+  it("leads a draft to checking payment details rather than to a button that refuses", () => {
     const g = phaseGuidance("draft");
     expect(g.primary.kind).toBe("navigate");
-    expect(g.primary.tab).toBe("settings");
+    // The settings tab is gone; payment details are what a draft is missing.
+    expect(g.primary.tab).toBe("payments");
     expect(g.primary.hint).toContain("Payment");
   });
 

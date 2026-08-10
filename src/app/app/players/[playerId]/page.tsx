@@ -7,7 +7,6 @@ import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
-  AlertTriangle,
   Award,
   BarChart3,
   Calendar,
@@ -18,7 +17,6 @@ import {
   Grid3x3,
   Info,
   ListOrdered,
-  Mail,
   Phone,
   Settings2,
   ShieldCheck,
@@ -115,7 +113,7 @@ export default function PlayerProfilePage() {
   const params = useParams<{ playerId: string }>();
   const router = useRouter();
   const store = useStore();
-  const { pairings, tournament, divisions, disputes, audit, role } = store;
+  const { pairings, tournament, divisions, audit, role } = store;
   const identityStore = useIdentityStore();
 
   /*
@@ -433,7 +431,7 @@ export default function PlayerProfilePage() {
                               <p className="mt-1 text-[12.5px] text-muted">Game in progress</p>
                             )}
                           </div>
-                          <Button variant="secondary" size="sm" className="mt-2.5 w-full" onClick={() => router.push(`/app/pairings?board=${currentGame.board}`)}>
+                          <Button variant="secondary" size="sm" className="mt-2.5 w-full" onClick={() => router.push("/app/score-entry")}>
                             Open pairing
                           </Button>
                         </>
@@ -750,20 +748,6 @@ export default function PlayerProfilePage() {
                     </div>
                   </Card>
 
-                  {disputes.filter((d) => d.playerIds.includes(player.id)).length > 0 ? (
-                    <Card className="lg:col-span-12">
-                      <CardHeader title="Arbiter cases involving this player" icon={<AlertTriangle className="size-4.5" />} />
-                      <div className="space-y-2 px-5 pb-5">
-                        {disputes.filter((d) => d.playerIds.includes(player.id)).map((d) => (
-                          <button key={d.id} onClick={() => router.push(`/app/arbiter?case=${d.id}`)} className="flex w-full items-center gap-3 rounded-control bg-[rgb(var(--c-surface))] px-3.5 py-2.5 text-left hover:bg-[rgb(var(--c-surface-strong))]">
-                            <span className="text-[12.5px] font-semibold text-ink num">{d.caseNumber}</span>
-                            <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">{d.description}</span>
-                            <Badge tone={d.status === "closed" ? "success" : "warning"} dot>{d.status}</Badge>
-                          </button>
-                        ))}
-                      </div>
-                    </Card>
-                  ) : null}
                 </div>
               ) : null}
 
@@ -1108,24 +1092,13 @@ export default function PlayerProfilePage() {
                     </dl>
                   </Card>
 
-                  <Card>
-                    <CardHeader title="Send a message" subtitle="Delivered through the player app" icon={<Mail className="size-4.5" />} />
-                    <div className="space-y-2 px-5 pb-5">
-                      {["Check-in reminder", "Board changed", "Round starting", "Result verified"].map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => store.toast({ title: "Message sent", description: `“${t}” was sent to ${player.fullName}.`, tone: "success" })}
-                          className="flex w-full items-center justify-between rounded-control bg-[rgb(var(--c-surface))] px-3.5 py-2.5 text-left text-[13px] text-ink transition-colors hover:bg-[rgb(var(--c-surface-strong))]"
-                        >
-                          {t}
-                          <ChevronRight className="size-4 text-faint" />
-                        </button>
-                      ))}
-                      <Button variant="secondary" size="sm" className="w-full" onClick={() => router.push("/app/communication")}>
-                        Open communication centre
-                      </Button>
-                    </div>
-                  </Card>
+                  {/*
+                    * "Send a message" removed. Four buttons — check-in reminder,
+                    * board changed, round starting, result verified — each raised
+                    * "Message sent" and sent nothing. No messaging provider is
+                    * configured, so a director would have believed a player had
+                    * been told about a board change that never reached them.
+                    */}
                 </div>
               ) : null}
 

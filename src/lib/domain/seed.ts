@@ -62,7 +62,12 @@ export const VENUE: Venue = {
 };
 
 export const DIVISIONS: Division[] = [
-  { id: "masters", name: "Masters", shortName: "MST", ratingFloor: 1750, ratingCeiling: 2200, accent: "primary" },
+  /*
+   * Masters is deliberately absent. The user removed it — those players enter as
+   * advanced — and leaving it here offered a division on every dropdown that
+   * nobody could be placed in, which is how two screens came to default to an
+   * empty table.
+   */
   { id: "advanced", name: "Advanced", shortName: "ADV", ratingFloor: 1300, ratingCeiling: 1800, accent: "secondary" },
   { id: "recreational", name: "Recreational", shortName: "REC", ratingFloor: 1100, ratingCeiling: 1650, maxAge: 18, accent: "success" },
   { id: "beginner", name: "Beginner", shortName: "NOV", ratingFloor: 800, ratingCeiling: 1350, maxAge: 14, accent: "warning" },
@@ -102,7 +107,8 @@ export const TOURNAMENT: Tournament = {
   // dashboard and Live Event reported different round counts for one tournament.
   totalRounds: 5,
   currentRound: 0,
-  divisions: ["masters", "advanced", "recreational", "beginner"],
+  // The three the event actually runs. Masters was removed by the organizer.
+  divisions: ["advanced", "recreational", "beginner"],
   rankingRules: ["wins", "spread", "head-to-head"],
   constraints: {
     avoidRepeatOpponents: true,

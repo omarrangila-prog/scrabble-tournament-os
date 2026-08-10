@@ -1,12 +1,10 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle2, MapPin, Plus, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, MapPin, Users } from "lucide-react";
 import {
   Badge,
-  Button,
   Card,
   EmptyState,
   PageHeader,
@@ -39,7 +37,7 @@ export default function EventsPage() {
 
   const open = (eventId: string) => {
     store.setActiveEvent(eventId);
-    router.push(`/app/events/${eventId}/overview`);
+    router.push(`/app/events/${eventId}/payments`);
   };
 
   const filtered = events.filter((e) =>
@@ -60,13 +58,11 @@ export default function EventsPage() {
       <PageHeader
         title="Events"
         subtitle="Select a tournament to open its workspace."
-        actions={
-          <Link href="/app/events/new">
-            <Button variant="primary" icon={<Plus className="size-4" />}>
-              Create tournament
-            </Button>
-          </Link>
-        }
+        /*
+         * No "Create tournament" button. It wrote the event to browser storage,
+         * where no registration or game could ever attach to it, and then reported
+         * that the event had been created successfully.
+         */
       />
 
       <div className="grid grid-cols-3 gap-3">
@@ -169,15 +165,7 @@ export default function EventsPage() {
                   ? "Try a different search."
                   : "Create your first tournament to open registration."
               }
-              action={
-                events.length ? undefined : (
-                  <Link href="/app/events/new">
-                    <Button variant="primary" icon={<Plus className="size-4" />}>
-                      Create tournament
-                    </Button>
-                  </Link>
-                )
-              }
+
             />
           </Card>
         )}

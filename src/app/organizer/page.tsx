@@ -75,7 +75,7 @@ export default function LandingPage() {
     setError(null);
     setBusy(mode);
     signIn(role);
-    window.setTimeout(() => router.push(mode === "demo" ? "/app" : "/app/tournaments"), 380);
+    window.setTimeout(() => router.push("/app"), 380);
   };
 
   return (

@@ -10,5 +10,6 @@ export default async function EventWorkspaceIndex({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  redirect(`/app/events/${eventId}/overview`);
+  // Overview was removed with the rest of the browser-storage screens.
+  redirect(`/app/events/${eventId}/payments`);
 }

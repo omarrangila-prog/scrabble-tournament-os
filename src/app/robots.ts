@@ -26,7 +26,6 @@ export default function robots(): MetadataRoute.Robots {
           // Personal links and check-in records are per-participant, not content.
           "/r/",
           "/events/*/check-in",
-          "/register/",
         ],
       },
     ],

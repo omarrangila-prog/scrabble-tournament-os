@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import {
   selectActiveEvent,
   selectOrgEvents,
@@ -47,7 +47,7 @@ export function EventSwitcher({ collapsed = false }: { collapsed?: boolean }) {
   const choose = (eventId: string) => {
     store.setActiveEvent(eventId);
     setOpen(false);
-    router.push(`/events/${eventId}/overview`);
+    router.push(`/app/events/${eventId}/payments`);
   };
 
   if (collapsed) {
@@ -129,16 +129,11 @@ export function EventSwitcher({ collapsed = false }: { collapsed?: boolean }) {
             )}
           </div>
 
-          <button
-            onClick={() => {
-              setOpen(false);
-              router.push("/app/events/new");
-            }}
-            className="flex w-full items-center gap-2 border-t border-line px-4 py-3 text-[13px] font-semibold text-primary transition-colors hover:bg-primary-050"
-          >
-            <Plus className="size-4" />
-            Create tournament
-          </button>
+          {/*
+               * Creating an event wrote it to browser storage only, so registrations
+               * and games could never attach to it. Next year's event is a row in the
+               * database, not a form here.
+               */}
         </div>
       ) : null}
     </div>

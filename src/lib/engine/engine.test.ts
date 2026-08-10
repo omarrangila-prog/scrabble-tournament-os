@@ -459,7 +459,7 @@ describe("a full tournament, end to end", () => {
       const { pairings: fresh } = generateRound({
         players,
         pairings,
-        tournament: { ...TOURNAMENT, currentRound: round },
+        tournament: { ...tournament, currentRound: round },
         round,
       });
 
@@ -517,7 +517,7 @@ describe("a full tournament, end to end", () => {
     const { pairings, unpaired } = generateRound({
       players,
       pairings: playThrough(),
-      tournament: { ...TOURNAMENT, currentRound: 6 },
+      tournament: { ...tournament, currentRound: 6 },
       round: 6,
     });
 

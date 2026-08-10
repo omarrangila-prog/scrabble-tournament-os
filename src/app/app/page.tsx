@@ -16,7 +16,6 @@ import {
   Grid3x3,
   ListOrdered,
   MapPin,
-  MapPinned,
   Play,
   Radio,
   Settings2,
@@ -37,6 +36,7 @@ import {
 import { SyncIndicator } from "@/components/ui/states";
 import { selectStandings, useStore } from "@/lib/store/useStore";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useGames } from "@/lib/supabase/useGames";
 import { cn, formatTime, signed, timeAgo } from "@/lib/utils";
 import { LetterTile } from "@/components/art/ScrabbleArt";
 
@@ -86,7 +86,6 @@ export default function CommandCentrePage() {
     [store],
   );
   const playerOf = (id: string) => players.find((p) => p.id === id);
-  const boardsFree = venue.totalBoards - playable;
 
   return (
     <div>
@@ -170,7 +169,7 @@ export default function CommandCentrePage() {
               <Button
                 variant="primary"
                 icon={<Grid3x3 className="size-4" />}
-                onClick={() => router.push("/app/pairings?tab=preview")}
+                onClick={() => router.push("/app/live-event")}
               >
                 Generate Round {round + 1}
               </Button>
@@ -228,7 +227,7 @@ export default function CommandCentrePage() {
           sub={`${completion}% completed`}
           icon={<ListOrdered className="size-5" />}
           tone="info"
-          onClick={() => router.push("/app/pairings")}
+          onClick={() => router.push("/app/live-event")}
         />
         <Stat
           label="Active Boards"
@@ -258,7 +257,7 @@ export default function CommandCentrePage() {
           }
           icon={<CheckCircle2 className="size-5" />}
           tone={health === null ? "neutral" : health >= 95 ? "success" : "warning"}
-          onClick={() => router.push("/app/pairings?tab=constraints")}
+          onClick={() => router.push("/app/live-event")}
         />
         {/*
           * Was "Schedule: 8 min behind" — a figure invented from the number of
@@ -285,14 +284,11 @@ export default function CommandCentrePage() {
           tone={tournament.status === "live" ? "success" : "neutral"}
           onClick={() => router.push("/app/live-event")}
         />
-        <Stat
-          label="Venue"
-          value={`${venue.totalBoards} boards`}
-          sub={`${boardsFree} available`}
-          icon={<MapPinned className="size-5" />}
-          tone="gold"
-          onClick={() => router.push("/app/venue")}
-        />
+        {/*
+          * A "Venue: 0 boards" tile linking to a seating screen that no longer
+          * exists. No venue layout is stored anywhere, so the number was always
+          * zero and the link always led nowhere.
+          */}
       </div>
 
       {/* ---------------------------------------------------------------- */}
@@ -307,7 +303,7 @@ export default function CommandCentrePage() {
             icon={<Gauge className="size-4.5" />}
             action={
               <Link
-                href="/app/pairings"
+                href="/app/live-event"
                 className="text-[12.5px] font-semibold text-primary-600 hover:underline"
               >
                 Open
@@ -449,51 +445,11 @@ export default function CommandCentrePage() {
       {/* Bottom grid                                                       */}
       {/* ---------------------------------------------------------------- */}
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
-        <Card className="xl:col-span-4">
-          <CardHeader
-            title="Venue & Board Status"
-            subtitle={venue.name}
-            icon={<MapPinned className="size-4.5" />}
-            action={
-              <Link
-                href="/app/venue"
-                className="text-[12.5px] font-semibold text-primary-600 hover:underline"
-              >
-                Seating
-              </Link>
-            }
-          />
-          <div className="px-5 pb-5">
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                ["In use", playable],
-                ["Accessible", venue.accessibleBoards.length],
-                ["Available", boardsFree],
-              ].map(([label, value]) => (
-                <div
-                  key={String(label)}
-                  className="rounded-control bg-[rgb(var(--c-surface-soft))] px-2.5 py-2.5 text-center"
-                >
-                  <p className="num text-[19px] font-extrabold text-ink">{value as number}</p>
-                  <p className="text-[11px] text-muted">{label as string}</p>
-                </div>
-              ))}
-            </div>
-            <ul className="mt-3 space-y-1.5">
-              {venue.halls.map((h) => (
-                <li
-                  key={h}
-                  className="flex items-center gap-2 rounded-control bg-[rgb(var(--c-surface-soft))] px-3 py-2.5 text-[12.5px] text-ink"
-                >
-                  <span className="size-1.5 shrink-0 rounded-full bg-success" />
-                  <span className="min-w-0 flex-1 truncate">{h}</span>
-                  <Badge tone="success">Ready</Badge>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Card>
-
+        {/*
+          * "Venue & Board Status" removed. It read a venue that is never set: no
+          * halls, no accessible boards, zero total — so the card rendered three
+          * zeroes and an empty list, under a link to a screen that is now gone.
+          */}
         <Card className="xl:col-span-4">
           <CardHeader
             title="Round Timeline"
@@ -616,33 +572,33 @@ function RoundStat({
 function AttentionCentre() {
   const router = useRouter();
   const store = useStore();
-  const { pairings, tournament, disputes, venue } = store;
+  const { tournament } = store;
   const players = useRoster(ACTIVE_EVENT_ID).players;
-  const round = tournament.currentRound;
 
-  const pending = pairings.filter(
-    (p) => p.round === round && p.status === "awaiting-verification",
+  /*
+   * Games come from the database, so these alerts describe the tournament that is
+   * actually being run. Every one of them read `store.pairings` before, which
+   * nothing fills, so the Attention Centre could only ever say "nothing needs
+   * attention" — the one message it must never get wrong.
+   */
+  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const round = games.round;
+
+  const boards = games.games.filter((g) => g.round === round);
+  const outstanding = boards.filter((g) => g.scoreA === null);
+  const everyBoardIn = boards.length > 0 && outstanding.length === 0;
+
+  /*
+   * Players who arrived but hold no board this round. On the day this is the
+   * question that actually comes up: somebody is standing in the room and the
+   * pairing sheet does not have them on it.
+   */
+  const seated = new Set(boards.flatMap((g) => [g.playerA, g.playerB].filter(Boolean) as string[]));
+  const arrivedUnseated = players.filter(
+    (p) => p.checkIn === "checked-in" && !seated.has(p.id),
   );
-  const latePlayer = players.find((p) => p.checkIn === "late");
-  const absentPlayers = players.filter((p) => p.checkIn === "absent");
-  const nextRoundExists = pairings.some((p) => p.round === round + 1);
-  const openDispute = disputes.find((d) => d.status !== "closed" && d.category === "score");
 
-  const unreported = absentPlayers[0];
-  const unreportedBoard = unreported
-    ? pairings.find(
-        (p) => p.round === round && (p.playerAId === unreported.id || p.playerBId === unreported.id),
-      )
-    : undefined;
-
-  // A player needing step-free access who is not on an accessible board.
-  const accessIssue = pairings.find((p) => {
-    if (p.round !== round || p.playerBId === null) return false;
-    const needs = [p.playerAId, p.playerBId].some((id) =>
-      players.find((x) => x.id === id)?.accommodation?.toLowerCase().includes("wheelchair"),
-    );
-    return needs && !venue.accessibleBoards.includes(p.board);
-  });
+  const unpaid = players.filter((p) => p.checkIn === "checked-in" && p.payment === "pending");
 
   type Alert = {
     id: string;
@@ -657,90 +613,65 @@ function AttentionCentre() {
 
   const alerts: Alert[] = [];
 
-  if (unreported) {
+  if (round > 0 && arrivedUnseated.length > 0) {
     alerts.push({
-      id: "no-report",
+      id: "unseated",
       tone: "critical",
-      title: `Board ${unreportedBoard?.board ?? 14} player missing`,
-      body: `${unreported.fullName} (${unreported.playerId}) has not reported. The clock is running on this board.`,
-      actionLabel: "View player",
-      onAction: () => router.push(`/app/players/${unreported.playerId}`),
-      secondaryLabel: "Mark absent",
-      onSecondary: () => {
-        store.setPlayerStatus(unreported.id, "absent", "No show at board");
-        store.toast({
-          title: "Player marked absent",
-          description: `${unreported.fullName} was excluded from the next round.`,
-          tone: "warning",
-        });
-      },
+      title: `${arrivedUnseated.length} player${arrivedUnseated.length === 1 ? "" : "s"} arrived with no board`,
+      body:
+        arrivedUnseated.length === 1
+          ? `${arrivedUnseated[0]!.fullName} has checked in but is not on the round ${round} sheet.`
+          : `They have checked in but are not on the round ${round} sheet. Re-pair to include them.`,
+      actionLabel: "Open Live Event",
+      onAction: () => router.push("/app/live-event"),
     });
   }
 
-  for (const p of pending.slice(0, 2)) {
+  if (outstanding.length > 0) {
     alerts.push({
-      id: `pending-${p.id}`,
+      id: "outstanding",
       tone: "warning",
-      title: `Board ${p.board} score incomplete`,
-      body: "A result was submitted but is still awaiting verification.",
-      actionLabel: "Verify result",
+      title: `${outstanding.length} board${outstanding.length === 1 ? "" : "s"} without a score`,
+      body: `Round ${round} cannot be closed until every board is recorded. Board${
+        outstanding.length === 1 ? "" : "s"
+      } ${outstanding.slice(0, 6).map((g) => g.board).join(", ")}${
+        outstanding.length > 6 ? "…" : ""
+      }.`,
+      actionLabel: "Enter scores",
       onAction: () => router.push("/app/score-entry"),
     });
   }
 
-  if (openDispute) {
+  if (unpaid.length > 0) {
     alerts.push({
-      id: "conflict",
-      tone: "critical",
-      title: `Board ${openDispute.board} score conflict`,
-      body: `${openDispute.caseNumber} — both players submitted different losing scores.`,
-      actionLabel: "Open case",
-      onAction: () => router.push(`/app/arbiter?case=${openDispute.id}`),
-    });
-  }
-
-  if (accessIssue) {
-    alerts.push({
-      id: "access",
+      id: "unpaid",
       tone: "warning",
-      title: "Accessible-table reassignment pending",
-      body: `Board ${accessIssue.board} is not step-free but is assigned to a player who requires it.`,
-      actionLabel: "Open seating",
-      onAction: () => router.push("/app/venue"),
+      title: `${unpaid.length} player${unpaid.length === 1 ? "" : "s"} playing without a verified payment`,
+      body: "They have arrived and their payment has not been confirmed.",
+      actionLabel: "Open payments",
+      onAction: () => router.push(`/app/events/${ACTIVE_EVENT_ID}/payments`),
     });
   }
 
-  if (latePlayer) {
-    alerts.push({
-      id: "late",
-      tone: "warning",
-      title: "Late-entry decision pending",
-      body: `${latePlayer.fullName} is expected at ${formatTime(latePlayer.expectedArrival)}. Decide on inclusion in round ${round + 1}.`,
-      actionLabel: "Open decision",
-      onAction: () => router.push("/app/check-in?late=1"),
-      secondaryLabel: "Include",
-      onSecondary: () => {
-        store.checkInPlayer(latePlayer.id, "director decision");
-        store.toast({
-          title: "Late player included",
-          description: `${latePlayer.fullName} will be paired in round ${round + 1}.`,
-          tone: "success",
-        });
-      },
-    });
-  }
-
-  if (!nextRoundExists) {
+  if (everyBoardIn && round < tournament.totalRounds) {
     alerts.push({
       id: "next-round",
       tone: "info",
-      title: `Round ${round + 1} blocked`,
-      body:
-        pending.length > 0
-          ? `${pending.length} pending result${pending.length === 1 ? "" : "s"} must be verified before the next round can be generated.`
-          : "All results are verified. The next round is ready to generate.",
-      actionLabel: "Open Pairing Lab",
-      onAction: () => router.push("/app/pairings?tab=preview"),
+      title: `Round ${round} is complete`,
+      body: `Every board is recorded. Round ${round + 1} can be paired and published.`,
+      actionLabel: "Pair next round",
+      onAction: () => router.push("/app/live-event"),
+    });
+  }
+
+  if (round === 0 && players.some((p) => p.checkIn === "checked-in")) {
+    alerts.push({
+      id: "not-started",
+      tone: "info",
+      title: "Players have arrived and no round is paired",
+      body: `${players.filter((p) => p.checkIn === "checked-in").length} checked in. Pair round 1 when you are ready.`,
+      actionLabel: "Open Live Event",
+      onAction: () => router.push("/app/live-event"),
     });
   }
 

@@ -29,6 +29,9 @@ import {
   Th,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { useGames } from "@/lib/supabase/useGames";
 import { computeStandings } from "@/lib/engine/standings";
 import { cn, formatDate, formatTime, signed } from "@/lib/utils";
 
@@ -46,11 +49,36 @@ const NAV = [
 
 export default function PublicSitePage() {
   const store = useStore();
-  const { tournament, players, pairings, divisions, venue, announcements } = store;
+  const { tournament, divisions, venue, announcements } = store;
+
+  /*
+   * The venue screen reads the database.
+   *
+   * This is the display on the wall, and it was reading browser storage — so it
+   * showed an empty board list and empty standings beside a room full of people
+   * playing. Standings are computed here from verified games rather than stored,
+   * the same as everywhere else.
+   */
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const players = roster.players;
+  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const pairings = games.pairings;
+
   const [tab, setTab] = React.useState("home");
   const [query, setQuery] = React.useState("");
   const [division, setDivision] = React.useState("all");
-  const [round, setRound] = React.useState(String(tournament.currentRound));
+  const [round, setRound] = React.useState("0");
+
+  /*
+   * Follow the published rounds until somebody picks one. Tracking the previous
+   * value keeps this a render-time decision rather than state written from an
+   * effect, which the compiler forbids.
+   */
+  const [seenRound, setSeenRound] = React.useState(0);
+  if (games.round !== seenRound) {
+    setSeenRound(games.round);
+    setRound(String(games.round));
+  }
 
   const nameOf = (id: string | null) =>
     id ? players.find((p) => p.id === id)?.fullName ?? "—" : "Bye";
@@ -71,14 +99,22 @@ export default function PublicSitePage() {
     );
   });
 
-  const liveCount = pairings.filter(
-    (p) => p.round === tournament.currentRound && p.status === "live",
+  // Boards still being played: paired, no score yet.
+  const liveCount = games.games.filter(
+    (g) => g.round === games.round && g.scoreA === null,
   ).length;
 
-  const latestResults = pairings
-    .filter((p) => p.status === "verified" && p.scoreA !== undefined)
-    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
-    .slice(0, 8);
+  /*
+   * Most recently recorded first, using the time the score was entered. The old
+   * version sorted on `completedAt`, which nothing sets, so the order was whatever
+   * the array happened to be in.
+   */
+  const latestResults = games.games
+    .filter((g) => g.scoreA !== null)
+    .sort((a, b) => (b.verifiedAt ?? "").localeCompare(a.verifiedAt ?? ""))
+    .slice(0, 8)
+    .map((g) => pairings.find((p) => p.id === g.id)!)
+    .filter(Boolean);
 
   /*
    * Leaders from the event's own top division, not a hardcoded "masters".
@@ -116,9 +152,9 @@ export default function PublicSitePage() {
             </p>
           </div>
           {/* Public page: never claim a round is under way before one is. */}
-          {tournament.status === "live" && tournament.currentRound > 0 ? (
+          {games.round > 0 && liveCount > 0 ? (
             <Badge tone="success" dot pulse className="hidden sm:inline-flex">
-              Live · Round {tournament.currentRound}
+              Live · Round {games.round}
             </Badge>
           ) : (
             <Badge tone="neutral" className="hidden sm:inline-flex">
@@ -173,7 +209,7 @@ export default function PublicSitePage() {
 
                 <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {[
-                    ["Current round", `${tournament.currentRound} of ${tournament.totalRounds}`],
+                    ["Current round", `${games.round} of ${tournament.totalRounds}`],
                     ["Boards live", String(liveCount)],
                     ["Divisions", String(divisions.length)],
 
@@ -279,7 +315,7 @@ export default function PublicSitePage() {
                     ))}
                   </Select>
                   <Select value={round} onChange={(e) => setRound(e.target.value)} aria-label="Round">
-                    {Array.from({ length: tournament.currentRound }, (_, i) => i + 1).map((r) => (
+                    {Array.from({ length: games.round }, (_, i) => i + 1).map((r) => (
                       <option key={r} value={r}>Round {r}</option>
                     ))}
                   </Select>
@@ -329,7 +365,7 @@ export default function PublicSitePage() {
             <CardHeader title={`Round ${round} results`} subtitle="Verified results only" />
             <div className="px-5 pb-3">
               <Select value={round} onChange={(e) => setRound(e.target.value)} aria-label="Round" className="sm:max-w-[200px]">
-                {Array.from({ length: tournament.currentRound }, (_, i) => i + 1).map((r) => (
+                {Array.from({ length: games.round }, (_, i) => i + 1).map((r) => (
                   <option key={r} value={r}>Round {r}</option>
                 ))}
               </Select>
@@ -404,8 +440,8 @@ export default function PublicSitePage() {
             <CardHeader title="Schedule" subtitle={`${tournament.totalRounds} rounds`} icon={<Calendar className="size-4.5" />} />
             <div className="space-y-1.5 px-5 pb-5">
               {Array.from({ length: tournament.totalRounds }, (_, i) => i + 1).map((r) => {
-                const done = r < tournament.currentRound;
-                const current = r === tournament.currentRound;
+                const done = r < games.round;
+                const current = r === games.round;
                 const start = 9 + Math.floor((r - 1) * 1.25);
                 return (
                   <div
@@ -529,10 +565,27 @@ export default function PublicSitePage() {
 
 function PublicStandings() {
   const store = useStore();
-  const { players, pairings, tournament, divisions } = store;
-  const [division, setDivision] = React.useState("masters");
-  const [round, setRound] = React.useState(String(tournament.currentRound));
+  const { tournament, divisions } = store;
+
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const players = roster.players;
+  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const pairings = games.pairings;
+
+  /*
+   * Opens on a division this event has. It opened on "masters", which was removed,
+   * so the public standings table was empty and its heading said "undefined
+   * standings".
+   */
+  const [division, setDivision] = React.useState<string>(divisions[0]?.id ?? "recreational");
+  const [round, setRound] = React.useState("0");
   const [query, setQuery] = React.useState("");
+
+  const [seenRound, setSeenRound] = React.useState(0);
+  if (games.round !== seenRound) {
+    setSeenRound(games.round);
+    setRound(String(games.round));
+  }
 
   const rows = computeStandings(players, pairings, tournament, {
     division,
@@ -560,7 +613,7 @@ function PublicStandings() {
               ))}
             </Select>
             <Select value={round} onChange={(e) => setRound(e.target.value)} aria-label="Round">
-              {Array.from({ length: tournament.currentRound }, (_, i) => i + 1).map((r) => (
+              {Array.from({ length: games.round }, (_, i) => i + 1).map((r) => (
                 <option key={r} value={r}>After round {r}</option>
               ))}
             </Select>

@@ -72,21 +72,14 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
   ...EXTRA_NAV.map((i) => ({ href: i.href.split("#")[0], label: i.label })),
 
   /*
-   * Reachable from the event workspace rather than the sidebar. Every entry must
-   * resolve: this list feeds the global search and the command palette, so a stale
-   * href here is a search result that leads to a 404. Teams, Broadcast and
-   * Promotions were left behind when those pages were removed.
+   * Reachable from the event workspace rather than the sidebar.
+   *
+   * Every entry must resolve and must be backed by the database. This list feeds
+   * the global search and the command palette, so a stale href is a search result
+   * that leads to a 404, and a screen reading browser storage is a search result
+   * that leads to an empty page.
    */
-  { href: "/app/events/new", label: "Create tournament" },
-  { href: "/app/payments", label: "Payments" },
-  { href: "/app/tournaments", label: "Tournaments" },
-  { href: "/app/check-in", label: "Check-in" },
-  { href: "/app/categories", label: "Divisions" },
-  { href: "/app/seeding", label: "Seeding" },
-  { href: "/app/venue", label: "Seating & Venue" },
-  { href: "/app/pairings", label: "Pairing Lab" },
   { href: "/app/score-entry", label: "Score Entry" },
   { href: "/app/standings", label: "Live Standings" },
-  { href: "/app/arbiter", label: "Arbiter Desk" },
   { href: "/app/certificates", label: "Certificates" },
 ];
