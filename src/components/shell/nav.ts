@@ -75,6 +75,8 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
    * that leads to a 404, and a screen reading browser storage is a search result
    * that leads to an empty page.
    */
+  { href: "/app/events", label: "Tournaments" },
+  { href: "/app/events/new", label: "Create tournament" },
   { href: "/app/score-entry", label: "Score Entry" },
   { href: "/app/standings", label: "Live Standings" },
   { href: "/app/certificates", label: "Certificates" },
