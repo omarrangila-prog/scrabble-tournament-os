@@ -143,6 +143,22 @@ up when it returns. Scores entered while offline are not saved; re-enter them.
 
 ## If something looks wrong
 
+**"This deployment has no database connection: NEXT_PUBLIC_… is not set."** The
+hosting project is missing that environment variable. Add it in Vercel under
+**Settings → Environment Variables**, then redeploy — Next.js reads `NEXT_PUBLIC_`
+values at build time, so a redeploy is required and not optional.
+
+Two variables are needed:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+```
+
+Either `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or the older
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` works; newer Supabase projects give you the first.
+Both are safe in a browser — the database enforces who may read what.
+
 **A screen says "needs migration NNNN applied".** That migration has not been run.
 Apply it with `scripts/apply-migrations.sh NNNN`, which needs `SUPABASE_DB_URL` in
 `.env.local`.

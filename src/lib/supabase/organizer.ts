@@ -12,7 +12,7 @@
  * anonymous visitor sees, which is nothing.
  */
 
-import { supabase } from "./client";
+import { missingConfig, supabase } from "./client";
 
 export interface OrganizerRegistration {
   id: string;
@@ -70,7 +70,21 @@ export type SignInOutcome =
  */
 export async function signIn(email: string, password: string): Promise<SignInOutcome> {
   const db = supabase();
-  if (!db) return { ok: false, message: "Sign-in is not available right now." };
+  if (!db) {
+    /*
+     * Says which variable is missing. This read "Sign-in is not available right
+     * now", which is true and useless: the cause is always one absent environment
+     * variable, and naming it is the difference between a thirty-second fix and an
+     * evening spent guessing at the app.
+     */
+    const missing = missingConfig();
+    return {
+      ok: false,
+      message: missing
+        ? `This deployment has no database connection: ${missing} is not set. Add it in the hosting project's environment variables and redeploy.`
+        : "Sign-in is not available right now.",
+    };
+  }
 
   const trimmed = email.trim().toLowerCase();
 

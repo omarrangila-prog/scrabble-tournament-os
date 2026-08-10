@@ -19,8 +19,36 @@ function url(): string | undefined {
   return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 }
 
+/**
+ * The browser key, under either of the names Supabase has used for it.
+ *
+ * Supabase renamed the anon key to the publishable key, and a project set up after
+ * that change hands you `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. This only read the
+ * old name, so a deployment configured with the new one had no key at all — every
+ * call fell back to browser storage and the sign-in screen said "Sign-in is not
+ * available right now", which is true but says nothing about why.
+ *
+ * Both names are accepted because both are correct depending on when the project
+ * was created, and there is no version of this worth making somebody debug.
+ */
 function anonKey(): string | undefined {
-  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+    undefined
+  );
+}
+
+/**
+ * What is missing, for a screen that has to explain itself.
+ *
+ * Naming the variable turns "it does not work" into something fixable without
+ * reading the source.
+ */
+export function missingConfig(): string | null {
+  if (!url()) return "NEXT_PUBLIC_SUPABASE_URL";
+  if (!anonKey()) return "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
+  return null;
 }
 
 /** Whether a usable project is configured. Both values are required. */
