@@ -277,6 +277,32 @@ export function computeStandings(
 /* -------------------------------------------------------------------------- */
 
 /**
+ * The highest single score a player recorded, or undefined if they have none.
+ *
+ * Only verified games count, and only games with a score: an unplayed board is not a
+ * zero. Undefined rather than 0 when there is nothing, so a caller can tell "no games
+ * recorded" apart from "scored nothing".
+ */
+function highestGameFor(playerId: string, pairings: Pairing[]): number | undefined {
+  let best: number | undefined;
+
+  for (const pairing of pairings) {
+    if (pairing.status !== "verified") continue;
+
+    const isA = pairing.playerAId === playerId;
+    const isB = pairing.playerBId === playerId;
+    if (!isA && !isB) continue;
+
+    const score = isA ? pairing.scoreA : pairing.scoreB;
+    if (score === undefined) continue;
+
+    if (best === undefined || score > best) best = score;
+  }
+
+  return best;
+}
+
+/**
  * Converts standings into the performance records certificates are written
  * from.
  *
@@ -326,6 +352,15 @@ export function performanceRecordsFor(
         spread: row.spread,
         gamesPlayed: row.played,
         roundsScheduled: tournament.totalRounds,
+        /*
+         * The player's best single game, from the results themselves.
+         *
+         * This was never populated, which quietly disabled every statement that depends
+         * on it — the citation engine's "highest game" fact and the personal note on the
+         * certificate both had a branch they could not reach. A field left undefined is
+         * indistinguishable from a tournament where nobody scored well.
+         */
+        highestGame: highestGameFor(player.id, pairings),
       });
     });
   }

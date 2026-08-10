@@ -64,6 +64,8 @@ export interface CertificateSend {
   recipientName: string;
   statement: string;
   detail?: string;
+  /** The same personal line the printed certificate carries. */
+  personalNote?: string;
   code: string;
   eventName: string;
   eventDate: string;

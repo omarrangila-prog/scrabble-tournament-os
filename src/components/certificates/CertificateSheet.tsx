@@ -43,6 +43,14 @@ export interface CertificateSheetProps {
    * should have that in writing.
    */
   placement?: string;
+  /**
+   * What this person did, in their own words on their own certificate.
+   *
+   * Everybody gets one — the point is that somebody who finished sixth receives a
+   * document about them rather than a form letter. Always a fact from their results, so a
+   * player who lost every game reads what they played and not invented praise.
+   */
+  personalNote?: string;
   /** Held-back certificates are marked, so a draft cannot be mistaken for an issued one. */
   draftNotice?: string;
 }
@@ -54,6 +62,7 @@ export function CertificateSheet({
   verifyUrl,
   qrDataUri,
   placement,
+  personalNote,
   draftNotice,
 }: CertificateSheetProps) {
   const isAward = Boolean(placement);
@@ -170,6 +179,19 @@ export function CertificateSheet({
           )}
         </p>
 
+        {/*
+          * The personal line. Kept lighter and smaller than the sentence above it, so it
+          * reads as a remark about this person rather than a second title.
+          */}
+        {personalNote ? (
+          <p
+            className="absolute inset-x-0 px-[15%] text-center"
+            style={{ top: "48.4%", fontSize: "2.2cqw", lineHeight: 1.4, opacity: 0.82 }}
+          >
+            {personalNote}
+          </p>
+        ) : null}
+
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/certificate/artwork.png"
@@ -180,7 +202,7 @@ export function CertificateSheet({
            * image is cropped to its visible content. Left as extracted it carried a
            * tall transparent margin, which printed the illustration across the date.
            */
-          style={{ left: "20.5%", width: "59%", top: "52.5%" }}
+          style={{ left: "20.5%", width: "59%", top: personalNote ? "54%" : "52.5%" }}
         />
 
         <p

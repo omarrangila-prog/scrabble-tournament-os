@@ -47,6 +47,7 @@ import {
 import { buildCitation, PerformanceRecord, tierFor, unsupportedClaims } from "@/lib/engine/citations";
 import { performanceRecordsFor } from "@/lib/engine/standings";
 import { qrToDataUri } from "@/lib/qr/qrcode";
+import { personalNote } from "@/lib/engine/personalNote";
 import { CertificateSheet } from "@/components/certificates/CertificateSheet";
 import { cn, formatDate } from "@/lib/utils";
 import { emailCertificate } from "@/lib/email/client";
@@ -380,6 +381,12 @@ export default function AwardsPage() {
         eventName={event.name}
         eventDate={event.startDate}
         /*
+         * The whole field, because a superlative can only be checked against it. Passing
+         * one record alone would leave the note able to say "the highest game" without
+         * knowing whether it was.
+         */
+        records={records}
+        /*
          * The winner's address, from the registration they entered with. Looked up
          * here rather than typed, so a certificate cannot be emailed to the wrong
          * person by a slip at the keyboard.
@@ -460,6 +467,7 @@ function PreviewModal({
   eventName,
   eventDate,
   recipientEmail,
+  records,
   origin,
   record,
   onClose,
@@ -470,6 +478,8 @@ function PreviewModal({
   eventDate: string;
   /** Empty when the entrant gave no address, which the button says rather than hides. */
   recipientEmail: string;
+  /** Every performance in the event, so a personal note can be checked against the field. */
+  records: PerformanceRecord[];
   origin: string;
   record?: PerformanceRecord;
   onClose: () => void;
@@ -485,6 +495,13 @@ function PreviewModal({
    * rather than at nothing.
    */
   const qr = url ? qrToDataUri(url, { size: 320 }) : undefined;
+
+  /*
+   * The line about this person specifically. Everyone gets one, and it is always drawn
+   * from their own results — a certificate that says nothing about the holder is a form
+   * letter, and one that praises them without cause is worse.
+   */
+  const note = record ? personalNote(record, records) : undefined;
   const citation = record ? buildCitation(record, tierFor(record)) : null;
 
   /**
@@ -500,6 +517,7 @@ function PreviewModal({
       recipientName: certificate.recipientName,
       statement: certificate.statement,
       detail: certificate.detail,
+      personalNote: note?.text,
       code: certificate.code,
       eventName,
       eventDate: formatDate(eventDate),
@@ -582,6 +600,7 @@ function PreviewModal({
           placement={
             certificate.kind === "participation" ? undefined : placementPhrase(certificate.statement)
           }
+          personalNote={note?.text}
           draftNotice={
             certificate.status === "revoked"
               ? `Withdrawn — ${certificate.revokedReason ?? "no longer valid"}`

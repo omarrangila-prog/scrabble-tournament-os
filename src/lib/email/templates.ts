@@ -130,6 +130,8 @@ export interface CertificateEmail {
   detail?: string;
   verifyUrl: string;
   code: string;
+  /** The line about this person, the same one printed on the certificate. */
+  personalNote?: string;
 }
 
 /**
@@ -150,8 +152,11 @@ export function certificateEmail(input: CertificateEmail): Composed {
     `<p style="margin:4px 0 0;font-size:12px;font-weight:600;color:rgba(62,47,35,0.6);">${escape(input.eventDate)}</p>`,
     `<p style="margin:16px 0 0;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.statement)}</p>`,
     `<p style="margin:6px 0 0;font-size:24px;font-weight:800;color:${BROWN};">${escape(input.recipientName)}</p>`,
+    input.personalNote
+      ? `<p style="margin:10px 0 0;font-size:13.5px;color:rgba(62,47,35,0.78);">${escape(input.personalNote)}</p>`
+      : "",
     input.detail
-      ? `<p style="margin:10px 0 0;font-size:13px;color:rgba(62,47,35,0.7);">${escape(input.detail)}</p>`
+      ? `<p style="margin:8px 0 0;font-size:13px;color:rgba(62,47,35,0.7);">${escape(input.detail)}</p>`
       : "",
     `<p style="margin:16px 0 0;font-size:11px;letter-spacing:1.2px;color:rgba(62,47,35,0.5);">VERIFICATION ${escape(input.code)}</p>`,
     `</td></tr></table>`,
@@ -167,6 +172,7 @@ export function certificateEmail(input: CertificateEmail): Composed {
     `${input.eventName}`,
     `${input.eventDate}`,
     `${input.statement}`,
+    input.personalNote ?? "",
     input.detail ?? "",
     ``,
     `Verification code: ${input.code}`,

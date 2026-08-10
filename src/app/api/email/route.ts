@@ -35,6 +35,7 @@ interface CertificateRequest {
   recipientName: string;
   statement: string;
   detail?: string;
+  personalNote?: string;
   code: string;
   eventName: string;
   eventDate: string;
@@ -178,6 +179,7 @@ export async function POST(request: Request) {
       eventDate: body.eventDate,
       statement: body.statement,
       detail: body.detail,
+      personalNote: body.personalNote,
       verifyUrl: body.verifyUrl,
       code: body.code,
     });
