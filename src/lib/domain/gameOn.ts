@@ -678,11 +678,21 @@ export function paymentInstructions(
  * blank image or a screenshot of somebody else's transfer. Paid and unpaid
  * entrants become indistinguishable in the records.
  *
- * The duplicate and amount checks still run and still flag, so a reviewer can
- * find the suspicious ones afterwards — but nothing is held back at the point
- * of upload.
+ * The organizer has chosen this twice, knowing the trade: no receipt-checking work
+ * on the day, in exchange for revenue figures that include money nobody confirmed
+ * and a payments queue that is empty by construction. It is their event and their
+ * money, so it stays on.
  *
- * Set to false to restore review-before-verified.
+ * What follows from it, recorded so nobody has to rediscover it:
+ *
+ *   - `paymentStatus` is "verified" the moment a file is attached, so the roster
+ *     shows every entrant paid and the review queue shows nothing waiting;
+ *   - the duplicate and amount checks still run and still flag, so a reviewer who
+ *     goes looking can find the suspicious ones;
+ *   - a receipt can still be rejected afterwards from the payments screen, which
+ *     records who decided and why.
+ *
+ * Set to false to hold each upload for review instead.
  */
 export const AUTO_VERIFY_ON_UPLOAD = true;
 

@@ -582,10 +582,19 @@ function GameOnConfirmation({
           </Card>
         ) : null}
 
-        <p className="mt-5 flex items-center justify-center gap-1.5 text-[12.5px]"
+        {/*
+          * This said "A confirmation has been sent to <email>". No email is sent —
+          * there is no mail provider configured — so somebody who closed this page
+          * trusting that promise would have had nothing: no code, no link, and no
+          * way to check in without finding a volunteer.
+          *
+          * It now tells them to keep what is on the screen, which is the only copy
+          * that exists.
+          */}
+        <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[12.5px]"
            style={{ color: `${BROWN}99` }}>
-          <Mail className="size-3.5" />
-          A confirmation has been sent to {registration.email}
+          <Mail className="size-3.5 shrink-0" />
+          Save your code before closing this page — we do not email it.
         </p>
 
         <Link href={`/events/${event.slug}`}>
