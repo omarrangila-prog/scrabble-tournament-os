@@ -36,7 +36,6 @@ import {
 import { SyncIndicator } from "@/components/ui/states";
 import { selectStandings, useStore } from "@/lib/store/useStore";
 import { cn, formatTime, signed, timeAgo } from "@/lib/utils";
-import { CopilotPanel } from "@/components/copilot/CopilotPanel";
 import { LetterTile } from "@/components/art/ScrabbleArt";
 
 export default function CommandCentrePage() {
@@ -527,7 +526,6 @@ export default function CommandCentrePage() {
         </Card>
 
         <div className="xl:col-span-12">
-          <CopilotPanel compact />
         </div>
       </div>
     </div>

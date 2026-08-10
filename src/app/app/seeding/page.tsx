@@ -38,8 +38,6 @@ import { useStore } from "@/lib/store/useStore";
 import { DivisionId, Player } from "@/lib/domain/types";
 import { cn } from "@/lib/utils";
 import { SeedListPanel } from "@/components/seeding/SeedListPanel";
-import { useGuidedDemo } from "@/lib/store/guidedDemo";
-import { Sparkles } from "lucide-react";
 import { Tabs } from "@/components/ui";
 
 const ACCENT: Record<string, string> = {
@@ -51,7 +49,6 @@ const ACCENT: Record<string, string> = {
 
 export default function SeedingPage() {
   const store = useStore();
-  const startDemo = useGuidedDemo((s) => s.start);
   const { players, divisions } = store;
 
   const [query, setQuery] = React.useState("");
@@ -169,13 +166,6 @@ export default function SeedingPage() {
         subtitle="Drag a player onto another division, or adjust seeds directly. Every change is reversible before the tournament starts."
         actions={
           <>
-            <Button
-              variant="secondary"
-              icon={<Sparkles className="size-4" />}
-              onClick={() => startDemo("seeding")}
-            >
-              Seeding walkthrough
-            </Button>
             <Button
               variant="secondary"
               icon={<Undo2 className="size-4" />}

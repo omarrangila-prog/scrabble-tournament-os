@@ -15,13 +15,11 @@ import {
   PanelLeft,
   RotateCcw,
   Search,
-  Sparkles,
   Sun,
   X,
 } from "lucide-react";
-import { Badge, Button } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { useGuidedDemo } from "@/lib/store/guidedDemo";
 import { ROLE_LABEL } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
 import { cn, formatTime } from "@/lib/utils";
@@ -29,7 +27,6 @@ import { EventSwitcher } from "./EventSwitcher";
 import { ALL_ROUTES, EXTRA_NAV, NAV_ITEMS } from "./nav";
 import { CommandPalette } from "./CommandPalette";
 import { Toaster } from "./Toaster";
-import { GuidedDemoOverlay, GuidedDemoSummary } from "./GuidedDemoOverlay";
 
 type BadgeKey = "pending" | "disputes" | "live" | "registrations";
 
@@ -129,8 +126,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const activity = useStore((s) => s.activity);
   const signOut = useStore((s) => s.signOut);
   const resetDemo = useStore((s) => s.resetDemo);
-  const startDemo = useGuidedDemo((s) => s.start);
-  const demoActive = useGuidedDemo((s) => s.active);
 
   // A refresh keeps tournament data but not the session; restore a sensible one.
   React.useEffect(() => {
@@ -323,19 +318,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
 
             <div className="ml-auto flex items-center gap-1.5 lg:ml-0">
-              <Badge tone="success" dot pulse className="hidden xl:inline-flex">
-                Round {tournament.currentRound} live
-              </Badge>
-
-              <Button
-                size="sm"
-                variant={demoActive ? "primary" : "secondary"}
-                onClick={() => startDemo("tournament")}
-                icon={<Sparkles className="size-3.5" />}
-                className="hidden sm:inline-flex"
-              >
-                Guided Demo
-              </Button>
+              {tournament.status === "live" && tournament.currentRound > 0 ? (
+                <Badge tone="success" dot pulse className="hidden xl:inline-flex">
+                  Round {tournament.currentRound} live
+                </Badge>
+              ) : null}
 
               <button
                 onClick={toggle}
@@ -442,8 +429,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <Toaster />
-      <GuidedDemoOverlay />
-      <GuidedDemoSummary />
     </div>
   );
 }

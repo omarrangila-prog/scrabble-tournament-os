@@ -1,16 +1,10 @@
 import {
   BarChart3,
-  Banknote,
-  Bell,
-  CalendarClock,
-  CalendarDays,
   CircleHelp,
-  FileText,
   Gauge,
   IdCard,
   Radio,
   ShieldCheck,
-  Sparkles,
   Trophy,
   Users,
   Wallet,
@@ -34,26 +28,26 @@ export interface NavItem {
  * "which area of the product" instead of "which of twenty-two screens".
  *
  * The workspace tabs are defined separately in `domain/eventPhase`.
+ *
+ * Trimmed to the screens that actually do something. Several pages offered
+ * buttons that showed a confirmation and changed nothing — Promotions, Teams,
+ * Broadcast, Reports, Finance, Copilot and Implementation Scope among them — and
+ * a control that pretends to work is worse than one that is absent: the organizer
+ * believes an action was taken. They are no longer reachable from navigation.
  */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Command Centre", icon: Gauge },
-  { href: "/app/events", label: "Events", icon: CalendarDays },
-  { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
   { href: "/app/registrations", label: "Registrations", icon: IdCard, badgeKey: "registrations" },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
-  { href: "/app/finance", label: "Finance", icon: Banknote },
+  { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
   { href: "/app/certificates", label: "Awards", icon: Trophy },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 /** Secondary navigation, pinned above the profile footer. */
 export const EXTRA_NAV: NavItem[] = [
-  { href: "/app/reports", label: "Reports", icon: FileText },
-  { href: "/app/communication", label: "Communication", icon: Bell },
-  { href: "/app/copilot", label: "Tournament Copilot", icon: Sparkles },
   { href: "/app/settings", label: "Settings", icon: ShieldCheck },
-  { href: "/app/scope", label: "Implementation Scope", icon: CalendarClock },
   { href: "/app/settings#help", label: "Help & Support", icon: CircleHelp },
 ];
 

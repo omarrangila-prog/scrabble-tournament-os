@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { Badge, Button, Field, Input, Select } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { useGuidedDemo } from "@/lib/store/guidedDemo";
 import { ROLE_SUMMARY } from "@/lib/store/permissions";
 import { useTheme } from "@/lib/design/theme";
 import { Role } from "@/lib/domain/types";
@@ -55,7 +54,6 @@ const CAPABILITIES = [
 export default function LandingPage() {
   const router = useRouter();
   const signIn = useStore((s) => s.signIn);
-  const startDemo = useGuidedDemo((s) => s.start);
   const { theme, toggle } = useTheme();
 
   const [role, setRole] = React.useState<Role>("director");
@@ -77,7 +75,6 @@ export default function LandingPage() {
     setError(null);
     setBusy(mode);
     signIn(role);
-    if (mode === "demo") startDemo();
     window.setTimeout(() => router.push(mode === "demo" ? "/app" : "/app/tournaments"), 380);
   };
 
