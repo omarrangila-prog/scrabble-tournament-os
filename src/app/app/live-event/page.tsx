@@ -44,6 +44,8 @@ import { staffCheckIn, staffUndoCheckIn } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
 import { clearRound, publishRound } from "@/lib/supabase/games";
+import { setEventPhase, useEventState } from "@/lib/supabase/useEventState";
+import { announceBoardsChanged } from "@/lib/supabase/realtime";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import { generateRound } from "@/lib/engine/pairing";
 import { validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
@@ -97,6 +99,12 @@ export default function LiveEventPage() {
    * results all agree with what the score table and the participant board list see.
    */
   const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+
+  /*
+   * The stored phase. Reading it back means this screen shows what participants
+   * are actually seeing, rather than what this browser last set.
+   */
+  const storedPhase = useEventState(ACTIVE_EVENT_ID);
   const [publishing, setPublishing] = React.useState(false);
 
   const origin = React.useSyncExternalStore(
@@ -145,15 +153,55 @@ export default function LiveEventPage() {
 
   const liveUrl = origin ? `${origin}/live/${event.slug}` : `/live/${event.slug}`;
 
-  const setState = (state: EventState) => {
-    events.setEventState(event.id, state);
-    if (state === "round-active") {
+  /*
+   * The phase as the database holds it, which is what participants are seeing.
+   * Falls back to this browser's copy only until the first read returns, so the
+   * controls do not flicker through a wrong state on load.
+   */
+  const eventState = storedPhase.state ?? event.state;
+
+  /**
+   * Moves the event to a new phase.
+   *
+   * Writes to the database, because the phase decides what every participant's
+   * phone shows. It used to write to this browser only — so "Open check-in"
+   * changed this laptop and nothing else, and a phone scanning the venue code was
+   * still being told to register, all day, whatever the director pressed.
+   *
+   * The toast now reports what actually happened rather than announcing that
+   * participant screens were updated regardless.
+   */
+  const setState = async (next: EventState) => {
+    const written = await setEventPhase(event.id, next);
+
+    if (!written.ok) {
+      app.toast({
+        title: "Phase not changed",
+        description: written.message ?? "Please try again.",
+        tone: "critical",
+      });
+      return;
+    }
+
+    // Kept in step so this screen's own controls stay consistent immediately.
+    events.setEventState(event.id, next);
+    storedPhase.reload();
+
+    if (next === "round-active") {
       live.ensureTimer(event.id, round, event.roundMinutes);
       live.start(event.id, round);
     }
+
+    /*
+     * Nudge the phones. Without this they wait out their poll, which is the wrong
+     * behaviour at exactly the moment they need to move on — from check-in to the
+     * board list.
+     */
+    announceBoardsChanged(event.id);
+
     app.toast({
-      title: EVENT_STATE_LABEL[state],
-      description: "Participant screens and the venue display have been updated.",
+      title: EVENT_STATE_LABEL[next],
+      description: "Every participant screen and the venue display now show this phase.",
       tone: "success",
     });
   };
@@ -273,7 +321,7 @@ export default function LiveEventPage() {
             dot={phase === "running"}
             pulse={phase === "running"}
           >
-            {EVENT_STATE_LABEL[event.state]}
+            {EVENT_STATE_LABEL[eventState]}
           </Badge>
         }
         subtitle={`${event.name} · round ${round} of ${event.rounds}`}
@@ -334,7 +382,7 @@ export default function LiveEventPage() {
 
             <div className="mt-3 flex flex-wrap gap-2">
               {phase === "not-started" ? (
-                <Button variant="success" icon={<Play className="size-4" />} onClick={() => setState("round-active")}>
+                <Button variant="success" icon={<Play className="size-4" />} onClick={() => void setState("round-active")}>
                   Start round
                 </Button>
               ) : null}
@@ -349,7 +397,7 @@ export default function LiveEventPage() {
                 </Button>
               ) : null}
               {phase === "running" || phase === "paused" ? (
-                <Button variant="danger" icon={<Square className="size-4" />} onClick={() => { live.end(event.id, round); setState("result-entry"); }}>
+                <Button variant="danger" icon={<Square className="size-4" />} onClick={() => { live.end(event.id, round); void setState("result-entry"); }}>
                   End round
                 </Button>
               ) : null}
@@ -391,7 +439,7 @@ export default function LiveEventPage() {
             )}
             <p className="text-center text-[12px] leading-relaxed text-muted">
               This code never changes. It opens whatever the event needs right now —
-              currently <strong className="font-semibold text-ink">{EVENT_STATE_LABEL[event.state]}</strong>.
+              currently <strong className="font-semibold text-ink">{EVENT_STATE_LABEL[eventState]}</strong>.
             </p>
           </div>
         </Card>
@@ -401,7 +449,7 @@ export default function LiveEventPage() {
           <CardHeader title="Event phase" subtitle="Controls what every participant sees" />
           <div className="space-y-3 px-5 pb-5">
             <Field label="Current phase">
-              <Select value={event.state} onChange={(e) => setState(e.target.value as EventState)}>
+              <Select value={eventState} onChange={(e) => void setState(e.target.value as EventState)}>
                 {DAY_FLOW.map((s) => (
                   <option key={s} value={s}>
                     {EVENT_STATE_LABEL[s]}
@@ -411,17 +459,17 @@ export default function LiveEventPage() {
             </Field>
 
             <div className="space-y-2">
-              {event.state === "registration-closed" || event.state === "preparing" ? (
-                <Button variant="primary" className="w-full" icon={<UserCheck className="size-4" />} onClick={() => setState("check-in-open")}>
+              {eventState === "registration-closed" || eventState === "preparing" ? (
+                <Button variant="primary" className="w-full" icon={<UserCheck className="size-4" />} onClick={() => void setState("check-in-open")}>
                   Open check-in
                 </Button>
               ) : null}
-              {event.state === "check-in-open" ? (
-                <Button variant="primary" className="w-full" onClick={() => setState("check-in-closed")}>
+              {eventState === "check-in-open" ? (
+                <Button variant="primary" className="w-full" onClick={() => void setState("check-in-closed")}>
                   Close check-in ({checkedIn} in)
                 </Button>
               ) : null}
-              {event.state === "check-in-closed" ? (
+              {eventState === "check-in-closed" ? (
                 <Button
                   variant="primary"
                   className="w-full"
@@ -432,7 +480,7 @@ export default function LiveEventPage() {
                   {publishing ? "Publishing…" : `Pair and publish round ${games.round + 1}`}
                 </Button>
               ) : null}
-              {event.state === "result-entry" ? (
+              {eventState === "result-entry" ? (
                 <>
                   <div
                     className={cn(
@@ -442,12 +490,12 @@ export default function LiveEventPage() {
                   >
                     {advance.reason}
                   </div>
-                  <Button variant="secondary" className="w-full" icon={<Coffee className="size-4" />} onClick={() => setState("break")}>
+                  <Button variant="secondary" className="w-full" icon={<Coffee className="size-4" />} onClick={() => void setState("break")}>
                     Start break
                   </Button>
                 </>
               ) : null}
-              {event.state === "break" ? (
+              {eventState === "break" ? (
                 <Button
                   variant="primary"
                   className="w-full"
@@ -455,7 +503,7 @@ export default function LiveEventPage() {
                   disabled={round >= event.rounds}
                   onClick={() => {
                     live.setRound(event.id, round + 1);
-                    setState("check-in-closed");
+                    void setState("check-in-closed");
                   }}
                 >
                   {round >= event.rounds ? "Final round complete" : `Prepare round ${round + 1}`}

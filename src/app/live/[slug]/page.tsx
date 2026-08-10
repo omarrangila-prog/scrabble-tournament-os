@@ -4,23 +4,20 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  ArrowRight,
   CalendarDays,
   Clock,
   MapPin,
   Trophy,
   UserCheck,
 } from "lucide-react";
-import { Badge, Button, Card, CardHeader, EmptyState, Field, Input } from "@/components/ui";
+import { Badge, Button, Card, CardHeader, EmptyState } from "@/components/ui";
 import {
-  GuestRegistration,
   selectEventBySlug,
-  selectRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
-import { EVENT_STATE_LABEL, STATE_DESTINATION } from "@/lib/domain/events";
-import { useLiveStore } from "@/lib/store/useLiveStore";
+import { EVENT_STATE_LABEL, STATE_DESTINATION, type EventState } from "@/lib/domain/events";
 import { BoardList } from "@/components/public/BoardList";
+import { useEventState } from "@/lib/supabase/useEventState";
 import { formatDate } from "@/lib/utils";
 
 /**
@@ -36,23 +33,18 @@ export default function LiveEventPage() {
   const slug = decodeURIComponent(params.slug ?? "");
 
   const store = useEventStore();
-  const live = useLiveStore();
   const event = selectEventBySlug(store, slug);
-  const registrations = event ? selectRegistrations(store, event.id) : [];
 
-  /** The device remembers who it belongs to, so identity is asked once. */
-  const [identity, setIdentity] = React.useState<GuestRegistration | null>(null);
-  const [lookup, setLookup] = React.useState("");
-  const [lookupError, setLookupError] = React.useState<string | null>(null);
-
-  // Restore a previous session on this device.
-  const remembered = live.sessionFor(event?.id ?? "");
-  const [restored, setRestored] = React.useState(false);
-  if (!restored && remembered && !identity) {
-    setRestored(true);
-    const found = registrations.find((r) => r.id === remembered);
-    if (found) setIdentity(found);
-  }
+  /*
+   * The phase comes from the database, not from this phone.
+   *
+   * Reading it from browser storage meant every device had its own copy, seeded to
+   * `registration-open` and never changed by anything the director did — so this
+   * page showed "Register now" all day, to people who had already registered.
+   *
+   * Called above the not-found guard because a hook has to run on every render.
+   */
+  const phase = useEventState(event?.id ?? "");
 
   if (!event) {
     return (
@@ -62,73 +54,32 @@ export default function LiveEventPage() {
     );
   }
 
-  const destination = STATE_DESTINATION[event.state];
+  const state = phase.state ?? event.state;
+  const destination = STATE_DESTINATION[state];
 
-  const identify = () => {
-    const q = lookup.trim().toLowerCase();
-    if (!q) return;
-    const found = registrations.find(
-      (r) =>
-        r.email.toLowerCase() === q ||
-        r.mobile.replace(/\D/g, "").endsWith(q.replace(/\D/g, "")) ||
-        r.token.toLowerCase() === q ||
-        r.fullName.toLowerCase() === q,
-    );
-    if (!found) {
-      setLookupError("We could not find that entry. Try your email, or ask a volunteer.");
-      return;
-    }
-    setLookupError(null);
-    setIdentity(found);
-    live.rememberSession(event.id, found.id);
-  };
-
-  /* ---- Identity gate ------------------------------------------------- */
-
-  if (!identity && destination !== "register" && destination !== "closed") {
-    return (
-      <Shell>
-        <EventHeading event={event} />
-        <Card className="mt-6">
-          <CardHeader
-            title="Let's find you"
-            subtitle="Enter the email or phone number you registered with."
-          />
-          <div className="space-y-3 px-5 pb-5">
-            <Field label="Email or mobile number" error={lookupError ?? undefined}>
-              <Input
-                autoFocus
-                value={lookup}
-                onChange={(e) => setLookup(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && identify()}
-                placeholder="you@example.com"
-                invalid={!!lookupError}
-              />
-            </Field>
-            <Button variant="primary" size="lg" className="w-full" onClick={identify}>
-              Continue
-              <ArrowRight className="size-4" />
-            </Button>
-            <p className="text-center text-[12.5px] text-muted">
-              No password needed. This device will remember you for the rest of the event.
-            </p>
-          </div>
-        </Card>
-      </Shell>
-    );
-  }
+  /*
+   * No identity gate.
+   *
+   * This page used to demand an email or mobile before showing anything, matched
+   * against registrations in browser storage — which is empty, so nobody could ever
+   * be identified and the page was a dead end for every participant.
+   *
+   * Nothing here needs to know who you are. The board list is a pairing sheet, and
+   * checking in has its own page where a code or a personal link proves identity
+   * against the database.
+   */
 
   /* ---- Phase views ---------------------------------------------------- */
 
   return (
     <Shell>
-      <EventHeading event={event} />
+      <EventHeading event={event} state={state} />
 
       {destination === "closed" ? (
         <Card className="mt-6">
           <EmptyState
             icon={<Clock className="size-5" />}
-            title={EVENT_STATE_LABEL[event.state]}
+            title={EVENT_STATE_LABEL[state]}
             description="Nothing to do here just yet. Check back closer to the start."
           />
         </Card>
@@ -233,20 +184,6 @@ export default function LiveEventPage() {
         </Card>
       ) : null}
 
-      {identity ? (
-        <p className="mt-6 text-center text-[12px] text-faint">
-          Signed in as {identity.fullName} ·{" "}
-          <button
-            onClick={() => {
-              live.forgetSession(event.id);
-              setIdentity(null);
-            }}
-            className="underline underline-offset-2 hover:text-muted"
-          >
-            not you?
-          </button>
-        </p>
-      ) : null}
     </Shell>
   );
 }
@@ -257,11 +194,21 @@ function Shell({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto max-w-lg px-5 py-8 sm:py-12">{children}</div>;
 }
 
-function EventHeading({ event }: { event: { name: string; state: string; startDate: string; venueName: string } }) {
+function EventHeading({
+  event,
+  state,
+}: {
+  event: { name: string; startDate: string; venueName: string };
+  /** The phase from the database, not this device's copy of it. */
+  state: EventState;
+}) {
+  // Pulses only while a round is running, rather than in every phase.
+  const running = state === "round-active";
+
   return (
     <div>
-      <Badge tone="success" dot pulse>
-        {EVENT_STATE_LABEL[event.state as keyof typeof EVENT_STATE_LABEL]}
+      <Badge tone={running ? "success" : "neutral"} dot={running} pulse={running}>
+        {EVENT_STATE_LABEL[state]}
       </Badge>
       <h1 className="mt-3 text-[24px] font-extrabold leading-tight tracking-[-0.03em] text-ink">
         {event.name}
