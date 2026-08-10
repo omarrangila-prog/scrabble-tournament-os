@@ -24,6 +24,7 @@ import {
   User,
   Venue,
 } from "./types";
+import { TOURNAMENT_ID } from "./eventSeed";
 
 /** Mulberry32 — small, fast, deterministic PRNG. */
 export function rng(seed: number) {
@@ -90,7 +91,8 @@ export const USERS: User[] = [
 ];
 
 export const TOURNAMENT: Tournament = {
-  id: "t-pnsc-2026",
+  // Imported so the event and the tournament cannot name different ids.
+  id: TOURNAMENT_ID,
   name: "Blufy's AlphaBattle 2026",
   organizer: "Blufy's AlphaBattle",
   organizationId: "org-federation",

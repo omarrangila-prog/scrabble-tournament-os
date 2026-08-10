@@ -406,7 +406,7 @@ export default function RegisterPage() {
         <p className="mt-6 text-center text-[12px]" style={{ color: `${BROWN}88` }}>
           <Link
             href={`/events/${event.slug}`}
-            className="underline underline-offset-2"
+            className="tap-target underline underline-offset-2"
           >
             Back to event details
           </Link>

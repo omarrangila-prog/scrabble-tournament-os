@@ -554,7 +554,7 @@ export default function PublicSitePage() {
           <p className="text-[12.5px] text-muted">
             {tournament.organizer} · Powered by Blufy&rsquo;s AlphaBattle
           </p>
-          <Link href="/organizer" className="text-[12px] text-primary underline underline-offset-2">
+          <Link href="/organizer" className="tap-target text-[12px] text-primary underline underline-offset-2">
             Organizer sign in
           </Link>
         </div>

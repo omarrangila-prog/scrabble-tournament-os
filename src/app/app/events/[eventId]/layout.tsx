@@ -120,9 +120,9 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
           href={`/events/${event.slug}`}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto inline-flex items-center gap-1.5 font-semibold text-primary-600 hover:underline"
+          className="tap-target ml-auto inline-flex items-center gap-1.5 font-semibold text-primary-600 hover:underline"
         >
-          <ExternalLink className="size-3.5" />
+          <ExternalLink className="tap-target size-3.5" />
           Public page
         </Link>
       </div>

@@ -163,7 +163,7 @@ function Header({ hasPast }: { hasPast: boolean }) {
       <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-center gap-x-4 gap-y-3 px-5 py-5 sm:px-8 sm:py-6">
         <Link
           href="/"
-          className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
+          className="tap-target text-[14px] font-extrabold uppercase tracking-[0.14em]"
           style={{ color: BROWN }}
         >
           Blufy&rsquo;s AlphaBattle
@@ -471,7 +471,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
               <a
                 key={item.href}
                 href={item.href}
-                className="text-[13.5px] font-semibold transition-opacity hover:opacity-70"
+                className="tap-target text-[13.5px] font-semibold transition-opacity hover:opacity-70"
                 style={{ color: `${CREAM}CC` }}
               >
                 {item.label}
@@ -479,7 +479,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
             ))}
             <a
               href="https://instagram.com"
-              className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
+              className="tap-target inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
               style={{ color: `${CREAM}CC` }}
             >
               <Camera className="size-3.5" aria-hidden />
@@ -487,7 +487,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
             </a>
             <a
               href="mailto:info@blufysalphabattle.com"
-              className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
+              className="tap-target inline-flex items-center gap-1.5 text-[13.5px] font-semibold transition-opacity hover:opacity-70"
               style={{ color: `${CREAM}CC` }}
             >
               <Mail className="size-3.5" aria-hidden />

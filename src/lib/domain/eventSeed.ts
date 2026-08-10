@@ -40,6 +40,14 @@ const T = (day: string, time = "10:00") => {
  */
 export const ACTIVE_EVENT_ID = "evt-alphabattle-23-august";
 
+/**
+ * The tournament the active event is scored through.
+ *
+ * Kept beside the event id because they have to agree: the awards screen compares them
+ * and quietly does nothing when they differ.
+ */
+export const TOURNAMENT_ID = "t-pnsc-2026";
+
 export const PAYMENT_ACCOUNTS = {
   methods: ["bank-transfer", "easypaisa"] as PaymentMethod[],
   bank:
@@ -99,6 +107,16 @@ const ALPHABATTLE: PublicEvent = {
     "Street No. 3, Karachi Memon Co-operative Housing Society, P.E.C.H.S., Karachi",
   city: "Karachi",
   mapsUrl: "https://maps.app.goo.gl/xFEWE2Rr38GjaeScA",
+
+  /*
+   * The tournament this event is scored and certified through.
+   *
+   * Absent until now, and the Certificate Studio checks it before doing anything: with
+   * no link it reported "No tournament is linked to this event yet" and could not
+   * prepare a single certificate. The award screen was therefore inert for the one event
+   * the system runs — reachable, titled, and unable to produce the thing it exists for.
+   */
+  tournamentId: TOURNAMENT_ID,
 
   startDate: "2026-08-23",
   startTime: "12:00",

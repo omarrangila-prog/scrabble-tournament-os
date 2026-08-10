@@ -239,7 +239,7 @@ export default function RegistrationsPage() {
                           {r.checkInCode ? (
                             <button
                               onClick={() => copyCode(r)}
-                              className="num inline-flex items-center gap-1.5 text-[13px] font-bold text-ink hover:text-primary"
+                              className="tap-target num inline-flex items-center gap-1.5 text-[13px] font-bold text-ink hover:text-primary"
                               title="Copy this code"
                             >
                               {r.checkInCode}

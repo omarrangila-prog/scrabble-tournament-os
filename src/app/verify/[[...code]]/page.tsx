@@ -189,7 +189,7 @@ export default function VerifyPage() {
         ) : null}
 
         <p className="mt-8 text-center text-[12px] text-faint">
-          <Link href="/live" className="underline underline-offset-2 hover:text-muted">
+          <Link href="/live" className="tap-target underline underline-offset-2 hover:text-muted">
             Back to the championship site
           </Link>
         </p>

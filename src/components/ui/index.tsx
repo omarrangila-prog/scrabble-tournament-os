@@ -326,8 +326,13 @@ export function Toggle({
         aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
+        /*
+         * A 44x24 switch is under half the height a thumb needs. `tap-target` extends
+         * the touchable area outwards without changing the switch's size, so the row
+         * keeps its proportions and the control is actually reachable on a phone.
+         */
         className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50",
+          "tap-target relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 disabled:opacity-50",
           checked
             ? "bg-gradient-to-r from-primary to-secondary shadow-[0_4px_12px_rgba(115,87,246,0.34)]"
             : "bg-[rgb(var(--c-line-strong))]",

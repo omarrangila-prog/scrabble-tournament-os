@@ -500,7 +500,7 @@ export default function PublicEventPage() {
                 href={event.mapsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-2 inline-block text-[13px] font-semibold underline underline-offset-2"
+                className="tap-target mt-2 inline-block text-[13px] font-semibold underline underline-offset-2"
                 style={{ color: FOREST }}
               >
                 Open in Maps

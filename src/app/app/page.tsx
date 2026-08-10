@@ -376,7 +376,7 @@ export default function CommandCentrePage() {
             action={
               <Link
                 href="/app/standings"
-                className="text-[12.5px] font-semibold text-primary-600 hover:underline"
+                className="tap-target text-[12.5px] font-semibold text-primary-600 hover:underline"
               >
                 Full table
               </Link>
@@ -495,7 +495,7 @@ export default function CommandCentrePage() {
             action={
               <Link
                 href="/app/settings#audit"
-                className="text-[12.5px] font-semibold text-primary-600 hover:underline"
+                className="tap-target text-[12.5px] font-semibold text-primary-600 hover:underline"
               >
                 Audit log
               </Link>

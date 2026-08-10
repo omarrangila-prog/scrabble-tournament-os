@@ -346,7 +346,7 @@ export default function CheckInPage() {
             setRecovering(true);
             setError(null);
           }}
-          className="mt-4 text-[13px] font-semibold underline underline-offset-4"
+          className="tap-target mt-4 text-[13px] font-semibold underline underline-offset-4"
           style={{ color: `${BROWN}99` }}
         >
           Forgot your code?

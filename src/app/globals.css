@@ -206,6 +206,27 @@ body {
    4. Glass surfaces
    -------------------------------------------------------------------------- */
 
+/*
+ * A finger-sized hit area on a text-sized link.
+ *
+ * Small inline links measured 17 to 24px tall on a phone — under half the 44px a
+ * thumb needs, on links like "Forgot your code?" that somebody taps while standing at
+ * a venue door. Growing them with padding would push every surrounding layout around.
+ *
+ * The pseudo-element extends the touchable region outwards without occupying any
+ * space, so the design is unchanged and the target is reachable. It sits behind the
+ * text and takes no pointer events of its own beyond the link's.
+ */
+@utility tap-target {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -12px -8px;
+  }
+}
+
 @utility glass {
   background: rgb(var(--glass-bg));
   border: 1px solid rgb(var(--glass-border));
