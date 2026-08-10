@@ -71,7 +71,7 @@ export default function HomePage() {
             leaves two empty cells and reads as unfinished. */}
         {upcoming.length > 1 ? (
           <Section id="events" eyebrow="What's on" title="More upcoming experiences" sub="">
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {upcoming.slice(1).map((e) => (
                 <EventCardFor key={e.id} event={e} />
               ))}
@@ -88,7 +88,7 @@ export default function HomePage() {
             title="Past experiences"
             sub="Where we have played before."
           >
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {past.map((e) => (
                 <EventCardFor key={e.id} event={e} />
               ))}
@@ -337,7 +337,7 @@ function Community() {
           competition, conversation and memorable social experiences.
         </p>
 
-        <div className="mt-9 grid gap-6 border-t pt-8 sm:grid-cols-3" style={{ borderColor: `${BROWN}1A` }}>
+        <div className="mt-9 grid grid-cols-1 gap-6 border-t pt-8 sm:grid-cols-3" style={{ borderColor: `${BROWN}1A` }}>
           {pillars.map((p) => (
             <div key={p.title}>
               <p
@@ -389,7 +389,7 @@ function Collaborations() {
         We&rsquo;ve brought people together with
       </h2>
 
-      <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+      <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {COLLABORATORS.map((c) => (
           <li
             key={c.name}

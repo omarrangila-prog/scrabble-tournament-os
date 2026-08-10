@@ -88,7 +88,14 @@ export function CodeInput({
 
   return (
     <div
-      className="flex justify-center gap-2 sm:gap-2.5"
+      /*
+       * The row shrinks to the screen rather than the screen stretching to the row.
+       *
+       * Six fixed 46px boxes plus gaps plus the card's padding came to 366px, so on a
+       * 320px phone the check-in card hung off the side of the page — on the one screen
+       * every participant uses, standing at the door.
+       */
+      className="flex w-full justify-center gap-1.5 sm:gap-2.5"
       role="group"
       aria-label={`Check-in code, ${CHECK_IN_CODE_LENGTH} digits`}
     >
@@ -111,8 +118,13 @@ export function CodeInput({
           onKeyDown={(e) => handleKeyDown(i, e)}
           onFocus={(e) => e.target.select()}
           className={cn(
-            "num h-[58px] w-[46px] rounded-2xl border-2 bg-white text-center text-[26px] font-extrabold",
-            "outline-none transition-colors sm:h-[64px] sm:w-[52px] sm:text-[28px]",
+            /*
+             * Flexible width with a floor, not a fixed width. `min-w-0` lets a box give
+             * ground on a narrow screen; `max-w` stops them stretching absurdly wide on
+             * a tablet. 2.25rem keeps a digit at 26px comfortably readable.
+             */
+            "num h-[58px] min-w-0 flex-1 basis-0 rounded-2xl border-2 bg-white text-center text-[26px] font-extrabold",
+            "min-w-[2.25rem] max-w-[52px] outline-none transition-colors sm:h-[64px] sm:text-[28px]",
             "disabled:opacity-50",
             invalid ? "border-critical" : "border-[#3E2F2333] focus:border-[#2F5D3A]",
           )}

@@ -368,11 +368,19 @@ export default function CheckInPage() {
 /** Nothing but the panel: no navigation, no footer, no distractions. */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
+    /*
+     * Flex centring, not `grid place-items-center`.
+     *
+     * A grid with no column count sizes its single track to max-content, so the card
+     * grew to whatever its widest line wanted — 392px — and hung 92px off the side of a
+     * 320px phone. This is the screen every participant opens at the door, so it has to
+     * fit the smallest phone anybody brings.
+     */
     <main
-      className="grid min-h-dvh place-items-center px-5 py-8"
+      className="flex min-h-dvh items-center justify-center px-5 py-8"
       style={{ background: CREAM }}
     >
-      <div className="w-full max-w-[420px]">{children}</div>
+      <div className="w-full min-w-0 max-w-[420px]">{children}</div>
     </main>
   );
 }

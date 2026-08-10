@@ -660,8 +660,17 @@ export function Stat({
   return (
     <Comp
       onClick={onClick}
+      /*
+       * `min-w-0` on the tile itself, not only on the text inside it.
+       *
+       * A grid item defaults to `min-width: auto`, which means it refuses to shrink
+       * below its content — so on a 320px phone one tile's label widened its column,
+       * the row grew past the viewport, and the whole page scrolled sideways by 10px.
+       * Every screen that shows these tiles was affected, which is why the fix belongs
+       * here rather than on each grid.
+       */
       className={cn(
-        "glass group flex w-full items-start gap-3 rounded-card p-4 text-left transition-all duration-200",
+        "glass group flex w-full min-w-0 items-start gap-3 rounded-card p-4 text-left transition-all duration-200",
         onClick && "hover:-translate-y-0.5 hover:shadow-[var(--sh-card-hover)]",
       )}
     >
@@ -681,12 +690,17 @@ export function Stat({
           {icon}
         </span>
       ) : null}
-      <div className="min-w-0">
-        <p className="text-[12.5px] font-semibold text-muted">{label}</p>
+      <div className="min-w-0 flex-1">
+        {/*
+          * The label and the sub-line wrap rather than force the tile wider. The value
+          * is the number somebody is reading, so it keeps its size; the words around it
+          * are what can afford to take a second line on a narrow screen.
+          */}
+        <p className="break-words text-[12.5px] font-semibold text-muted">{label}</p>
         <p className="num mt-0.5 text-[26px] font-extrabold leading-tight tracking-[-0.03em] text-ink">
           {value}
         </p>
-        {sub ? <p className="mt-0.5 text-[12px] text-muted">{sub}</p> : null}
+        {sub ? <p className="mt-0.5 break-words text-[12px] text-muted">{sub}</p> : null}
       </div>
     </Comp>
   );

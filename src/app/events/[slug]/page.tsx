@@ -325,7 +325,7 @@ export default function PublicEventPage() {
               Pick one when you register. You can join either, or both.
             </p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {tracks.map((t) => (
                 <div
                   key={t}
@@ -351,7 +351,7 @@ export default function PublicEventPage() {
               Pick the one that fits you when you register.
             </p>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {event.divisions.map((d) => (
                 <div
                   key={d}

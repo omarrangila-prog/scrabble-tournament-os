@@ -484,7 +484,7 @@ export function GameOnForm({
                 />
               </Field>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Email address" required error={errors.email}>
                   <Input
                     type="email"
@@ -505,7 +505,7 @@ export function GameOnForm({
                 </Field>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Date of birth">
                   <Input
                     type="date"

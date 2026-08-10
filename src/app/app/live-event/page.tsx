@@ -343,7 +343,7 @@ export default function LiveEventPage() {
         <Stat label="Conflicts" value={progress.conflicts} sub={progress.conflicts ? "need a ruling" : "none"} icon={<AlertTriangle className="size-5" />} tone={progress.conflicts ? "critical" : "success"} />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-12">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
         {/* Timer -------------------------------------------------------- */}
         <Card className="xl:col-span-5">
           <CardHeader
