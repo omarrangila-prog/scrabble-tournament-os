@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { boardsForRound, currentPublicRound, type PublicBoard } from "@/lib/supabase/games";
+import { subscribeToBoardChanges } from "@/lib/supabase/realtime";
 
 /**
  * "Which board am I on?"
@@ -32,6 +33,11 @@ export function BoardList({
   const [query, setQuery] = React.useState("");
   const [ticks, setTicks] = React.useState(0);
 
+  /*
+   * The poll is the guarantee. A phone in a pocket with no signal misses the live
+   * message and still catches up on its next tick, so being briefly late is the
+   * worst case rather than being wrong.
+   */
   React.useEffect(() => {
     const id = window.setInterval(
       () => setTicks((n) => n + 1),
@@ -39,6 +45,17 @@ export function BoardList({
     );
     return () => window.clearInterval(id);
   }, [refreshSeconds]);
+
+  /*
+   * The live nudge, which makes it instant when it arrives. It carries no data —
+   * anyone can join this channel, so a score arriving over it would be a score
+   * nobody authenticated. It only says "look again", and the re-read goes through
+   * the same function as always.
+   */
+  React.useEffect(
+    () => subscribeToBoardChanges(eventId, () => setTicks((n) => n + 1)),
+    [eventId],
+  );
 
   React.useEffect(() => {
     let live = true;

@@ -15,6 +15,7 @@ import {
   listRegistrations,
   type OrganizerRegistration,
 } from "./organizer";
+import { subscribeToRegistrations } from "./realtime";
 
 /** Why the roster is empty, which is not the same question as whether it is. */
 export type RosterAccess =
@@ -142,6 +143,14 @@ export function useRoster(eventId: string): RosterState {
       live = false;
     };
   }, [eventId, reloads]);
+
+  /*
+   * Live updates: a registration arriving, somebody checking in, a payment
+   * verified. On the morning of the event the arrival count on the desk screen and
+   * the one on the wall should be the same number without anybody refreshing
+   * either.
+   */
+  React.useEffect(() => subscribeToRegistrations(eventId, reload), [eventId, reload]);
 
   const players = React.useMemo(
     () => rosterFromRegistrations(registrations),

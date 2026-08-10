@@ -9,6 +9,7 @@
 import type { BoardPlan, GameRow } from "@/lib/domain/games";
 
 import { supabase } from "./client";
+import { announceBoardsChanged } from "./realtime";
 
 /** One row of the public pairing sheet: names, no ids. */
 export interface PublicBoard {
@@ -95,6 +96,13 @@ export async function publishRound(
     return { ok: false, message: "Could not publish the round. Please try again." };
   }
 
+  /*
+   * Tell participants to look again. Sent after the write succeeds, never before —
+   * a nudge for a round that failed to publish would send a room full of people to
+   * boards that do not exist.
+   */
+  announceBoardsChanged(eventId);
+
   return { ok: true, boards: Number(data ?? 0) };
 }
 
@@ -107,6 +115,8 @@ export async function clearRound(eventId: string, round: number): Promise<boolea
     p_event_id: eventId,
     p_round: round,
   });
+
+  if (!error) announceBoardsChanged(eventId);
   return !error;
 }
 
@@ -125,6 +135,7 @@ export async function recordResult(
   scoreB: number | null,
   by: string,
   note?: string,
+  eventId?: string,
 ): Promise<ResultOutcome> {
   const db = supabase();
   if (!db) return { ok: false, message: "The database is not reachable right now." };
@@ -143,15 +154,23 @@ export async function recordResult(
     return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
   }
 
+  /*
+   * The event id is not a parameter here — a game is addressed by its own id — so
+   * the caller passes it in purely to nudge. Without it a recorded score would show
+   * on staff screens instantly and on phones up to thirty seconds later.
+   */
+  if (eventId) announceBoardsChanged(eventId);
+
   return { ok: true };
 }
 
 /** Reopens a board whose score was entered by mistake. */
-export async function clearResult(gameId: string): Promise<boolean> {
+export async function clearResult(gameId: string, eventId?: string): Promise<boolean> {
   const db = supabase();
   if (!db) return false;
 
   const { error } = await db.rpc("staff_clear_result", { p_game_id: gameId });
+  if (!error && eventId) announceBoardsChanged(eventId);
   return !error;
 }
 

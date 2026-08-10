@@ -12,6 +12,7 @@ import {
 import type { Pairing } from "@/lib/domain/types";
 
 import { listGames } from "./games";
+import { subscribeToGames } from "./realtime";
 
 export interface GamesState {
   games: GameRow[];
@@ -85,6 +86,17 @@ export function useGames(eventId: string, tournamentId = eventId): GamesState {
       live = false;
     };
   }, [eventId, reloads]);
+
+  /*
+   * Live updates, so a score entered on one laptop appears on the other without
+   * anybody pressing Refresh. Depends only on the event id — re-subscribing every
+   * time the data reloads would tear the connection down and rebuild it on every
+   * score entered.
+   *
+   * This is an optimisation, not the mechanism: `reload` still works on its own,
+   * so a device that misses a message is a few seconds late rather than wrong.
+   */
+  React.useEffect(() => subscribeToGames(eventId, reload), [eventId, reload]);
 
   const pairings = React.useMemo(
     () => pairingsFromGames(games, tournamentId),

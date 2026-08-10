@@ -101,7 +101,14 @@ export default function ScoreEntryPage() {
     });
 
     setBusy(game.id);
-    const result = await recordResult(game.id, a, b, whoAmI(store.currentUser?.name, roster.signedInAs));
+    const result = await recordResult(
+      game.id,
+      a,
+      b,
+      whoAmI(store.currentUser?.name, roster.signedInAs),
+      undefined,
+      ACTIVE_EVENT_ID,
+    );
     setBusy(null);
 
     if (!result.ok) return fail(result.message);
@@ -132,7 +139,7 @@ export default function ScoreEntryPage() {
 
   const reopen = async (game: GameRow) => {
     setBusy(game.id);
-    const ok = await clearResult(game.id);
+    const ok = await clearResult(game.id, ACTIVE_EVENT_ID);
     setBusy(null);
 
     if (!ok) {
@@ -433,7 +440,7 @@ function CorrectionModal({
     if (!reason.trim()) return setError("Give a reason. It is stored with the result.");
 
     setBusy(true);
-    const result = await recordResult(game.id, a, b, by, reason.trim());
+    const result = await recordResult(game.id, a, b, by, reason.trim(), ACTIVE_EVENT_ID);
     setBusy(false);
 
     if (!result.ok) return setError(result.message);
