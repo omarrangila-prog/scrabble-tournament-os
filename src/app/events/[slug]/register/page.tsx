@@ -24,6 +24,7 @@ import { redeemDiscount } from "@/lib/domain/events";
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
 import { saveRegistration } from "@/lib/supabase/registrations";
+import { emailConfirmation } from "@/lib/email/client";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { formatDate } from "@/lib/utils";
 
@@ -58,6 +59,12 @@ export default function RegisterPage() {
    * The form still accepts `otherEvents` and prices a bundle correctly; nothing
    * is passed, so the block does not render.
    */
+
+  /*
+   * Whether the confirmation email was actually accepted by the provider. Starts
+   * unknown, so the page never claims a send before one has happened.
+   */
+  const [emailed, setEmailed] = React.useState<boolean | null>(null);
 
   const [submitted, setSubmitted] = React.useState<{
     token: string;
@@ -223,6 +230,16 @@ export default function RegisterPage() {
 
     setSubmitted({ token, registration: reg });
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    /*
+     * The confirmation email, after the record is safe and never before it.
+     *
+     * Deliberately not awaited: the participant already has their code on screen, and
+     * a slow mail provider must not hold up the page that carries it. The outcome is
+     * recorded so the page can say whether it actually went — anything else is a
+     * promise nobody checked.
+     */
+    void emailConfirmation(token).then((outcome) => setEmailed(outcome.ok));
   };
 
   if (submitted) {
@@ -239,6 +256,7 @@ export default function RegisterPage() {
 
     return (
       <GameOnConfirmation
+        emailed={emailed}
         token={submitted.token}
         registration={submitted.registration}
         event={event}
@@ -413,6 +431,7 @@ function GameOnConfirmation({
   payable,
   paymentStatus,
   checkInCode,
+  emailed,
 }: {
   token: string;
   registration: GameOnRegistration;
@@ -421,6 +440,12 @@ function GameOnConfirmation({
   paymentStatus: GuestPaymentStatus;
   /** The six digits they will type at the venue. */
   checkInCode: string;
+  /**
+   * Whether the confirmation email was accepted by the provider: null while the
+   * answer is still outstanding. Three states, because the page must not claim a
+   * send before one has happened nor deny one that did.
+   */
+  emailed: boolean | null;
 }) {
   const origin = React.useSyncExternalStore(
     () => () => {},
@@ -592,18 +617,25 @@ function GameOnConfirmation({
         ) : null}
 
         {/*
-          * This said "A confirmation has been sent to <email>". No email is sent —
-          * there is no mail provider configured — so somebody who closed this page
-          * trusting that promise would have had nothing: no code, no link, and no
-          * way to check in without finding a volunteer.
+          * Says what actually happened, in three states.
           *
-          * It now tells them to keep what is on the screen, which is the only copy
-          * that exists.
+          * This once read "A confirmation has been sent to <email>" while no mail
+          * provider existed, so somebody who trusted it and closed the page had
+          * nothing — no code, no link, no way to check in without finding a
+          * volunteer. It then said email is never sent, which stopped being true
+          * once sending was built.
+          *
+          * `emailed` is null until the provider answers, so the page never claims a
+          * send before one has happened, and never denies one that did.
           */}
         <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[12.5px]"
            style={{ color: `${BROWN}99` }}>
           <Mail className="size-3.5 shrink-0" />
-          Save your code before closing this page — we do not email it.
+          {emailed === true
+            ? `A copy has been emailed to ${registration.email}. Keep your code either way.`
+            : emailed === false
+              ? "We could not email you a copy — save your code before closing this page."
+              : "Save your code before closing this page."}
         </p>
 
         <Link href={`/events/${event.slug}`}>

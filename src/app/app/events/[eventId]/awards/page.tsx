@@ -10,6 +10,7 @@ import {
   Check,
   FileCheck2,
   Info,
+  Mail,
   Printer,
   Send,
   ShieldOff,
@@ -47,6 +48,7 @@ import { buildCitation, PerformanceRecord, tierFor, unsupportedClaims } from "@/
 import { performanceRecordsFor } from "@/lib/engine/standings";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { cn, formatDate } from "@/lib/utils";
+import { emailCertificate } from "@/lib/email/client";
 
 const STATUS_TONE = {
   draft: "neutral",
@@ -376,6 +378,14 @@ export default function AwardsPage() {
         certificate={preview}
         eventName={event.name}
         eventDate={event.startDate}
+        /*
+         * The winner's address, from the registration they entered with. Looked up
+         * here rather than typed, so a certificate cannot be emailed to the wrong
+         * person by a slip at the keyboard.
+         */
+        recipientEmail={
+          roster.registrations.find((r) => r.id === preview?.recipientId)?.email ?? ""
+        }
         origin={origin}
         record={records.find((r) => r.playerId === preview?.recipientId)}
         onClose={() => setPreview(null)}
@@ -405,6 +415,7 @@ function PreviewModal({
   certificate,
   eventName,
   eventDate,
+  recipientEmail,
   origin,
   record,
   onClose,
@@ -413,13 +424,56 @@ function PreviewModal({
   eventName: string;
   /** The day it was won. A certificate without one is undated evidence. */
   eventDate: string;
+  /** Empty when the entrant gave no address, which the button says rather than hides. */
+  recipientEmail: string;
   origin: string;
   record?: PerformanceRecord;
   onClose: () => void;
 }) {
+  const app = useStore();
+  const [sending, setSending] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+
   if (!certificate) return null;
   const url = origin ? verificationUrl(origin, certificate.code) : "";
   const citation = record ? buildCitation(record, tierFor(record)) : null;
+
+  /**
+   * Emails the certificate to the person who earned it.
+   *
+   * Reports only what the provider confirmed. A "sent" that was never delivered is
+   * worse than a visible failure, because nobody goes looking for it.
+   */
+  const email = async () => {
+    setSending(true);
+    const outcome = await emailCertificate({
+      to: recipientEmail,
+      recipientName: certificate.recipientName,
+      statement: certificate.statement,
+      detail: certificate.detail,
+      code: certificate.code,
+      eventName,
+      eventDate: formatDate(eventDate),
+      verifyUrl: url,
+    });
+    setSending(false);
+
+    if (!outcome.ok) {
+      app.toast({
+        title: outcome.configured ? "Not sent" : "Email is not set up",
+        description: outcome.message,
+        tone: outcome.configured ? "critical" : "warning",
+      });
+      return;
+    }
+
+    setSent(true);
+    app.toast({
+      title: `Certificate emailed to ${certificate.recipientName}`,
+      description: recipientEmail,
+      tone: "success",
+    });
+  };
 
   return (
     <Modal
@@ -431,6 +485,20 @@ function PreviewModal({
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Close
+          </Button>
+          {/*
+            * Disabled with a reason rather than hidden. An entrant who gave no address
+            * cannot be emailed, and the director should be able to see why instead of
+            * looking for a button that is not there.
+            */}
+          <Button
+            variant="secondary"
+            icon={<Mail className="size-4" />}
+            disabled={sending || sent || !recipientEmail}
+            title={recipientEmail || "This entrant gave no email address"}
+            onClick={email}
+          >
+            {sent ? "Emailed" : sending ? "Sending…" : "Email it"}
           </Button>
           <Button
             variant="primary"
