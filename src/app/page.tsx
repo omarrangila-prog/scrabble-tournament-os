@@ -8,13 +8,32 @@ import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
 import { FeaturedEvent } from "@/components/public/FeaturedEvent";
 import { ScrabbleTile, TileRack, TileWord, wordScore } from "@/components/public/ScrabbleTile";
 import { LINEN_GRAIN, PAPER_GRAIN, ScrabbleBoard } from "@/components/public/ScrabbleBoard";
+import {
+  BRASS,
+  BRASS_EDGE,
+  BRASS_FOIL,
+  EMERALD,
+  EMERALD_LIT,
+  FELT,
+  foilText,
+  IVORY,
+  IVORY_FAINT,
+  IVORY_SOFT,
+  NIGHT,
+  NIGHT_DEEP,
+  raised,
+} from "@/lib/design/palette";
 import { lowestPrice } from "@/lib/seo";
 import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
 
-const CREAM = "#F5F0E4";
-const FOREST = "#2F5D3A";
-const GOLD = "#C89B3C";
-const BROWN = "#3E2F23";
+/*
+ * The old four (cream, forest, gold, brown) all sat in a narrow band of light values, so
+ * nothing on the page could be bright and no edge could catch light. These map the same
+ * roles onto the deeper palette: text, the living green, the metal, and the ground.
+ */
+const CREAM = IVORY;
+const GOLD = BRASS;
+const BROWN = IVORY;
 
 /**
  * Navigation, built from what the page actually contains.
@@ -57,7 +76,14 @@ export default function HomePage() {
    * scrolls sideways by the width of the board.
    */
   return (
-    <div className="relative min-h-dvh overflow-x-hidden" style={{ background: CREAM }}>
+    <div
+      className="relative min-h-dvh overflow-x-hidden"
+      style={{
+        /* Deepest at the edges, warmer where the hero sits — a table under one lamp. */
+        background: `radial-gradient(120% 80% at 50% -8%, ${NIGHT} 0%, ${NIGHT_DEEP} 78%)`,
+        backgroundColor: NIGHT_DEEP,
+      }}
+    >
       <Texture />
       <Header hasPast={past.length > 0} />
 
@@ -161,8 +187,13 @@ function Texture() {
         style={{
           backgroundImage: LINEN_GRAIN,
           backgroundSize: "260px 260px",
-          mixBlendMode: "multiply",
-          opacity: 0.09,
+          /*
+           * `overlay`, not `multiply`. Multiplying grain into a near-black ground removes
+           * light that is not there and the texture simply vanishes; overlay lets the weave
+           * catch a little of it, which is what a felt table does.
+           */
+          mixBlendMode: "overlay",
+          opacity: 0.5,
         }}
         aria-hidden
       />
@@ -176,7 +207,18 @@ function Texture() {
       */}
       <div
         className="pointer-events-none absolute right-[-14%] top-[2%] hidden lg:block"
-        style={{ transform: "rotate(-11deg)", opacity: 0.2 }}
+        style={{
+          transform: "rotate(-11deg)",
+          opacity: 0.17,
+          /*
+           * Dissolved into the ground rather than cropped by it. On a dark page the board's
+           * reds and blues are loud enough to read as a stray graphic pasted over the
+           * corner; a radial mask turns the same object into something the light is only
+           * just catching, and removes the hard edge where it leaves the frame.
+           */
+          maskImage: "radial-gradient(68% 68% at 34% 40%, #000 0%, transparent 82%)",
+          WebkitMaskImage: "radial-gradient(68% 68% at 34% 40%, #000 0%, transparent 82%)",
+        }}
         aria-hidden
       >
         <ScrabbleBoard size="min(52vw, 640px)" />
@@ -203,8 +245,8 @@ function Texture() {
         style={{
           backgroundImage: PAPER_GRAIN,
           backgroundSize: "180px 180px",
-          mixBlendMode: "multiply",
-          opacity: 0.055,
+          mixBlendMode: "overlay",
+          opacity: 0.16,
         }}
         aria-hidden
       />
@@ -213,14 +255,14 @@ function Texture() {
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[720px]"
         style={{
-          background: `radial-gradient(68% 100% at 44% -10%, ${FOREST}1A, transparent 64%)`,
+          background: `radial-gradient(64% 100% at 42% -14%, rgba(39,154,96,0.20), transparent 62%)`,
         }}
         aria-hidden
       />
       <div
         className="pointer-events-none fixed inset-0"
         style={{
-          background: `radial-gradient(120% 88% at 50% 42%, transparent 52%, ${BROWN}1C 100%)`,
+          background: `radial-gradient(118% 86% at 50% 38%, transparent 46%, rgba(0,0,0,0.55) 100%)`,
         }}
         aria-hidden
       />
@@ -264,8 +306,9 @@ function Header({ hasPast }: { hasPast: boolean }) {
 
         <a
           href="#events"
-          className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-bold text-white transition-transform hover:scale-[1.03] md:ml-2"
-          style={{ background: FOREST }}
+          className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-extrabold transition-transform hover:scale-[1.03] md:ml-2"
+          /* Brass with dark type on it: the metal reads as the expensive thing on the page. */
+          style={{ background: BRASS_FOIL, color: "#20180A", boxShadow: raised(0.3) }}
         >
           Explore events
         </a>
@@ -279,7 +322,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
     <section className="min-w-0">
       <p
         className="text-[10.5px] font-bold uppercase tracking-[0.2em] sm:text-[11.5px] sm:tracking-[0.2em]"
-        style={{ color: `${BROWN}99` }}
+        style={{ color: IVORY_FAINT }}
       >
         Karachi&rsquo;s social game experiences
       </p>
@@ -297,7 +340,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
       */}
       <h1
         className="font-display mt-5 leading-[1.05] tracking-[-0.02em]"
-        style={{ color: BROWN, fontWeight: 600 }}
+        style={{ color: IVORY, fontWeight: 600 }}
       >
         <TileRack word="SCRABBLE" maxTile={62} className="block max-w-full" />
         {/*
@@ -307,7 +350,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         */}
         <span
           className="mt-3.5 block text-[11.5px] font-bold uppercase tracking-[0.18em]"
-          style={{ color: `${BROWN}7A` }}
+          style={{ color: BRASS }}
         >
           {wordScore("SCRABBLE")} points, before the board
         </span>
@@ -322,7 +365,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
 
       <p
         className="mt-5 max-w-[46ch] text-[16px] leading-[1.6] sm:text-[19px]"
-        style={{ color: `${BROWN}C9` }}
+        style={{ color: IVORY_SOFT }}
       >
         Discover Scrabble tournaments, board-game nights and social experiences
         designed to bring great people together.
@@ -337,7 +380,10 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
           <a
             href="#events"
             className="inline-flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:gap-3.5 sm:w-auto"
-            style={{ background: FOREST, boxShadow: `0 10px 30px ${FOREST}40` }}
+            style={{
+              background: `linear-gradient(180deg, ${EMERALD_LIT} 0%, ${EMERALD} 100%)`,
+              boxShadow: `${raised(0.6)}, 0 12px 34px rgba(30,122,76,0.34)`,
+            }}
           >
             Explore upcoming events
             <ArrowRight className="size-4" aria-hidden />
@@ -348,7 +394,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
           <a
             href="#past"
             className="inline-flex w-full items-center justify-center rounded-full border px-7 py-3.5 text-[15px] font-bold transition-colors hover:bg-white/70 sm:w-auto"
-            style={{ borderColor: `${BROWN}26`, color: BROWN }}
+            style={{ borderColor: BRASS_EDGE, color: BRASS }}
           >
             See past events
           </a>
@@ -381,7 +427,7 @@ function Section({
       </p>
       <h2
         className="font-display mt-2.5 text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
-        style={{ color: BROWN, fontWeight: 600 }}
+        style={{ ...foilText, fontWeight: 600 }}
       >
         {title}
       </h2>
@@ -427,29 +473,33 @@ function Community() {
         beside wooden tiles reads as a different material from everything around it.
       */}
       <div
-        className="relative overflow-hidden rounded-[20px] px-6 py-11 sm:px-11 sm:py-14"
-        style={{ background: `${GOLD}1F` }}
+        className="relative overflow-hidden rounded-[20px] border px-6 py-11 sm:px-11 sm:py-14"
+        style={{
+          background: `linear-gradient(168deg, ${FELT} 0%, ${NIGHT} 100%)`,
+          borderColor: BRASS_EDGE,
+          boxShadow: raised(0.8),
+        }}
       >
         <span
           className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage: LINEN_GRAIN,
             backgroundSize: "200px 200px",
-            mixBlendMode: "multiply",
-            opacity: 0.14,
+            mixBlendMode: "overlay",
+            opacity: 0.4,
           }}
           aria-hidden
         />
         <span className="relative block">
         <h2
           className="font-display text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
-          style={{ color: BROWN, fontWeight: 600 }}
+          style={{ ...foilText, fontWeight: 600 }}
         >
           More than a game.
         </h2>
         <p
           className="mt-4 max-w-[52ch] text-[15px] leading-[1.65] sm:text-[16.5px]"
-          style={{ color: `${BROWN}C9` }}
+          style={{ color: IVORY_SOFT }}
         >
           Blufy&rsquo;s AlphaBattle brings people together through words,
           competition, conversation and memorable social experiences.
@@ -459,7 +509,7 @@ function Community() {
           {pillars.map((p) => (
             <div key={p.title}>
               <TileWord word={p.title} size={24} gap="0.12em" />
-              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: `${BROWN}B3` }}>
+              <p className="mt-2 text-[14px] leading-relaxed" style={{ color: IVORY_SOFT }}>
                 {p.body}
               </p>
             </div>
@@ -498,7 +548,7 @@ function Collaborations() {
       </p>
       <h2
         className="font-display mt-2.5 text-[24px] leading-[1.12] tracking-[-0.02em] sm:text-[32px]"
-        style={{ color: BROWN, fontWeight: 600 }}
+        style={{ ...foilText, fontWeight: 600 }}
       >
         We&rsquo;ve brought people together with
       </h2>
@@ -507,8 +557,12 @@ function Collaborations() {
         {COLLABORATORS.map((c) => (
           <li
             key={c.name}
-            className="flex items-start gap-3.5 rounded-2xl border bg-white/60 px-5 py-6"
-            style={{ borderColor: `${BROWN}14` }}
+            className="flex items-start gap-3.5 rounded-2xl border px-5 py-6"
+            style={{
+              background: `linear-gradient(168deg, rgba(24,64,44,0.55) 0%, rgba(10,24,17,0.5) 100%)`,
+              borderColor: BRASS_EDGE,
+              boxShadow: raised(0.35),
+            }}
           >
             {/*
               The initial as a tile. It gives each card a mark without inventing a logo
@@ -518,7 +572,7 @@ function Collaborations() {
             <span className="min-w-0 block">
             <p
               className="text-[10px] font-bold uppercase tracking-[0.16em]"
-              style={{ color: `${BROWN}80` }}
+              style={{ color: IVORY_FAINT }}
             >
               {c.relationship}
             </p>
@@ -545,13 +599,13 @@ function About() {
         </p>
         <h2
           className="font-display mt-2.5 text-[26px] leading-[1.12] tracking-[-0.02em] sm:text-[36px]"
-          style={{ color: BROWN, fontWeight: 600 }}
+          style={{ ...foilText, fontWeight: 600 }}
         >
           Everyone plays someone their own level
         </h2>
         <p
           className="mt-4 text-[16px] leading-[1.7] sm:text-[17px]"
-          style={{ color: `${BROWN}C9` }}
+          style={{ color: IVORY_SOFT }}
         >
           Entrants pick a category — beginner, intermediate or advanced — and are
           paired within it, so a first event is a real game rather than a
@@ -572,7 +626,10 @@ function About() {
 function Footer({ hasPast }: { hasPast: boolean }) {
   const nav = navFor(hasPast);
   return (
-    <footer className="relative mt-4 overflow-hidden" style={{ background: BROWN }}>
+    <footer
+      className="relative mt-4 overflow-hidden border-t"
+      style={{ background: NIGHT_DEEP, borderColor: BRASS_EDGE }}
+    >
       {/* Grain, so the darkest block on the page reads as timber rather than as a bar. */}
       <span
         className="pointer-events-none absolute inset-0"
@@ -580,7 +637,7 @@ function Footer({ hasPast }: { hasPast: boolean }) {
           backgroundImage: LINEN_GRAIN,
           backgroundSize: "220px 220px",
           mixBlendMode: "overlay",
-          opacity: 0.22,
+          opacity: 0.35,
         }}
         aria-hidden
       />

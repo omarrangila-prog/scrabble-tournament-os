@@ -6,15 +6,26 @@ import { ArrowRight, CalendarDays, Clock, MapPin, Ticket } from "lucide-react";
 import { badgesFor } from "@/components/public/EventCard";
 import { PublicEvent, registrationStatusOf } from "@/lib/domain/events";
 
-const CREAM = "#F5F0E4";
-const FOREST = "#2F5D3A";
-const GOLD = "#C89B3C";
+import {
+  BRASS,
+  BRASS_EDGE,
+  FELT,
+  FELT_LIT,
+  foilText,
+  IVORY,
+  NIGHT,
+  raised,
+} from "@/lib/design/palette";
+
+/* The card's own names for the shared palette. */
+const CREAM = IVORY;
+const GOLD = BRASS;
 const BROWN = "#3E2F23";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const TONE: Record<string, { bg: string; fg: string }> = {
-  open: { bg: "rgba(255,255,255,0.92)", fg: FOREST },
+  open: { bg: "rgba(255,255,255,0.92)", fg: "#12301F" },
   offer: { bg: "rgba(200,155,60,0.28)", fg: "#FFF3D6" },
   included: { bg: "rgba(255,255,255,0.16)", fg: "#FFFFFF" },
   closed: { bg: "rgba(255,255,255,0.16)", fg: "#FFFFFF" },
@@ -67,13 +78,18 @@ export function FeaturedEvent({
     <article
       className="relative overflow-hidden rounded-[20px]"
       style={{
-        background: FOREST,
-        boxShadow: "0 18px 48px rgba(30,58,37,0.22)",
+        /*
+         * The brightest object on a dark page, and the only one with a metal edge — this
+         * is the thing a visitor is meant to act on, so it is lit like a card under glass.
+         */
+        background: `linear-gradient(165deg, ${FELT_LIT} 0%, ${FELT} 46%, ${NIGHT} 100%)`,
+        border: `1px solid ${BRASS_EDGE}`,
+        boxShadow: `${raised(1)}, 0 0 0 1px rgba(0,0,0,0.4)`,
       }}
     >
       {/* The poster's weave, faint, so the panel is not a flat slab. */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.10]"
+        className="pointer-events-none absolute inset-0 opacity-[0.16]"
         style={{
           backgroundImage: `repeating-linear-gradient(45deg, #FFF6 0 1px, transparent 1px 20px),
                             repeating-linear-gradient(-45deg, #FFF6 0 1px, transparent 1px 20px)`,
@@ -87,7 +103,7 @@ export function FeaturedEvent({
             <div className="mb-6 flex items-baseline gap-2.5">
               <span
                 className="num text-[46px] font-extrabold leading-none tracking-[-0.04em]"
-                style={{ color: CREAM }}
+                style={foilText}
               >
                 {day.getDate()}
               </span>
