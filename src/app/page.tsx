@@ -6,7 +6,7 @@ import { ArrowRight, Camera, Mail } from "lucide-react";
 import { EventCard } from "@/components/public/EventCard";
 import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
 import { FeaturedEvent } from "@/components/public/FeaturedEvent";
-import { ScrabbleTile, TileRack } from "@/components/public/ScrabbleTile";
+import { ScrabbleTile, TileRack, TileWord, wordScore } from "@/components/public/ScrabbleTile";
 import { LINEN_GRAIN, PAPER_GRAIN, ScrabbleBoard } from "@/components/public/ScrabbleBoard";
 import { lowestPrice } from "@/lib/seo";
 import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
@@ -233,11 +233,16 @@ function Header({ hasPast }: { hasPast: boolean }) {
   return (
     <header className="relative">
       <div className="mx-auto flex w-full max-w-[1120px] flex-wrap items-center gap-x-4 gap-y-3 px-5 py-5 sm:px-8 sm:py-6">
+        {/*
+          The mark is one tile. A logo made of the same material as the hero is what ties
+          the page together — and a single B reads at 26px where a whole word would not.
+        */}
         <Link
           href="/"
-          className="tap-target text-[14px] font-extrabold uppercase tracking-[0.14em]"
+          className="tap-target flex items-center gap-2.5 text-[14px] font-extrabold uppercase tracking-[0.14em]"
           style={{ color: BROWN }}
         >
+          <ScrabbleTile letter="B" size={26} rotate={-2} hideValue />
           Blufy&rsquo;s AlphaBattle
         </Link>
 
@@ -295,7 +300,19 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         style={{ color: BROWN, fontWeight: 600 }}
       >
         <TileRack word="SCRABBLE" maxTile={62} className="block max-w-full" />
-        <span className="mt-6 block text-[34px] sm:mt-7 sm:text-[46px] lg:text-[54px]">
+        {/*
+          What the tiles above are worth, counted from the same table the tiles are drawn
+          from rather than typed in. A detail only a player will check — which is exactly
+          who it is for, and why it has to be right.
+        */}
+        <span
+          className="mt-3.5 block text-[11.5px] font-bold uppercase tracking-[0.18em]"
+          style={{ color: `${BROWN}7A` }}
+        >
+          {wordScore("SCRABBLE")} points, before the board
+        </span>
+
+        <span className="mt-5 block text-[34px] sm:mt-6 sm:text-[46px] lg:text-[54px]">
           nights worth
           <br />
           turning up for
@@ -441,12 +458,7 @@ function Community() {
         <div className="mt-9 grid grid-cols-1 gap-6 border-t pt-8 sm:grid-cols-3" style={{ borderColor: `${BROWN}1A` }}>
           {pillars.map((p) => (
             <div key={p.title}>
-              <p
-                className="text-[12px] font-bold uppercase tracking-[0.14em]"
-                style={{ color: GOLD }}
-              >
-                {p.title}
-              </p>
+              <TileWord word={p.title} size={24} gap="0.12em" />
               <p className="mt-2 text-[14px] leading-relaxed" style={{ color: `${BROWN}B3` }}>
                 {p.body}
               </p>
@@ -495,18 +507,25 @@ function Collaborations() {
         {COLLABORATORS.map((c) => (
           <li
             key={c.name}
-            className="rounded-2xl border bg-white/60 px-5 py-6"
+            className="flex items-start gap-3.5 rounded-2xl border bg-white/60 px-5 py-6"
             style={{ borderColor: `${BROWN}14` }}
           >
+            {/*
+              The initial as a tile. It gives each card a mark without inventing a logo
+              nobody supplied — the letter is simply their own name's first letter.
+            */}
+            <ScrabbleTile letter={c.name[0]} size={30} rotate={-2.5} hideValue />
+            <span className="min-w-0 block">
             <p
               className="text-[10px] font-bold uppercase tracking-[0.16em]"
               style={{ color: `${BROWN}80` }}
             >
               {c.relationship}
             </p>
-            <p className="mt-2 text-[15px] font-bold leading-snug" style={{ color: BROWN }}>
+            <p className="mt-1.5 text-[15px] font-bold leading-snug" style={{ color: BROWN }}>
               {c.name}
             </p>
+            </span>
           </li>
         ))}
       </ul>
@@ -568,14 +587,14 @@ function Footer({ hasPast }: { hasPast: boolean }) {
       <div className="mx-auto w-full max-w-[1120px] px-5 py-12 sm:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p
-              className="text-[14px] font-extrabold uppercase tracking-[0.14em]"
-              style={{ color: CREAM }}
-            >
-              Blufy&rsquo;s AlphaBattle
-            </p>
-            <p className="mt-1.5 text-[13px]" style={{ color: `${CREAM}8C` }}>
-              Karachi, Pakistan
+            {/*
+              The name in tiles, closing the page the way it opened. Small enough to read as
+              a signature rather than as a second headline, and it carries the accessible
+              name so the footer still announces who this is.
+            */}
+            <TileWord word="ALPHABATTLE" size={21} gap="0.12em" />
+            <p className="mt-3 text-[13px]" style={{ color: `${CREAM}8C` }}>
+              Blufy&rsquo;s AlphaBattle &middot; Karachi, Pakistan
             </p>
           </div>
 

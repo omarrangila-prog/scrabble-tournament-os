@@ -177,6 +177,64 @@ export function ScrabbleTile({
   );
 }
 
+/** What a word is worth, before any premium square. Unknown characters score nothing. */
+export function wordScore(word: string): number {
+  return [...word.toUpperCase()].reduce((total, l) => total + (TILE_VALUES[l] ?? 0), 0);
+}
+
+/**
+ * A word in loose tiles, with no rack under it.
+ *
+ * The rack is a strong object and belongs to the hero alone. Everywhere else the tiles
+ * need to behave like type — a label, a heading, an initial — so they sit directly on the
+ * page and stay small.
+ *
+ * This is the piece that makes the tile a brand device rather than a one-off illustration:
+ * the same wood, bevel and engraved letter at 20px as at 60px, because every measurement
+ * inside a tile is in `em`.
+ */
+export function TileWord({
+  word,
+  size = 22,
+  className,
+  gap = "0.1em",
+  showValues = false,
+}: {
+  word: string;
+  size?: number | string;
+  className?: string;
+  gap?: string;
+  /**
+   * Point values are off by default here, and that is the rule that keeps the tile from
+   * turning into noise: a value is a 0.2em glyph, so under about 24px it stops being a
+   * number and becomes a smudge in the corner. Big tiles are objects and carry their
+   * value; small tiles are type and carry only the letter.
+   */
+  showValues?: boolean;
+}) {
+  const letters = [...word.toUpperCase()];
+
+  return (
+    <span
+      className={className}
+      role="img"
+      aria-label={word}
+      style={{ display: "inline-flex", flexWrap: "wrap", gap, fontSize: size }}
+    >
+      {letters.map((l, i) => (
+        <ScrabbleTile
+          key={`${l}-${i}`}
+          letter={l}
+          size="1em"
+          hideValue={!showValues}
+          /* Alternating hair-thin tilts: laid by hand, not printed. */
+          rotate={i % 3 === 0 ? -1.1 : i % 3 === 1 ? 0.8 : -0.3}
+        />
+      ))}
+    </span>
+  );
+}
+
 /**
  * A word in tiles, sitting on a wooden rack.
  *
