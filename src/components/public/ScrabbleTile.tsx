@@ -37,6 +37,13 @@ export interface ScrabbleTileProps {
   size?: number | string;
   /** Degrees of tilt. Real tiles are never quite square to the rack. */
   rotate?: number;
+  /**
+   * Milliseconds before this tile settles into place. Staggering a word makes it read as
+   * being laid down letter by letter rather than appearing as a block.
+   */
+  settleDelay?: number;
+  /** Adds the slow idle drift, for tiles lying loose on the table. */
+  drift?: string;
   /** Hides the point value, for a blank. */
   hideValue?: boolean;
   className?: string;
@@ -76,6 +83,8 @@ export function ScrabbleTile({
   size = 64,
   rotate = 0,
   hideValue = false,
+  settleDelay,
+  drift,
   className,
   style,
 }: ScrabbleTileProps) {
@@ -85,9 +94,19 @@ export function ScrabbleTile({
 
   return (
     <span
-      className={className}
+      className={[className, "lp-tile", drift ? "lp-drift" : ""].filter(Boolean).join(" ")}
       aria-hidden
       style={{
+        /*
+         * The tilt is a custom property rather than a literal transform, because the
+         * settle and drift animations both have to finish exactly here. A transform
+         * declared inline would be overwritten by the animation and the tile would
+         * snap square at the end.
+         */
+        ["--tilt" as string]: `${rotate}deg`,
+        ...(settleDelay !== undefined ? { ["--settle" as string]: `${settleDelay}ms` } : {}),
+        ...(drift ? { ["--drift" as string]: drift } : {}),
+
         /* One font size drives every measurement below. */
         fontSize: size,
         width: "1em",
@@ -96,7 +115,6 @@ export function ScrabbleTile({
         position: "relative",
         flex: "none",
         borderRadius: "0.11em",
-        transform: rotate ? `rotate(${rotate}deg)` : undefined,
 
         background: `
           radial-gradient(120% 120% at 22% 14%, ${WOOD_LIT} 0%, ${WOOD_MID} 48%, ${WOOD_SHADE} 100%)
@@ -229,6 +247,7 @@ export function TileWord({
           hideValue={!showValues}
           /* Alternating hair-thin tilts: laid by hand, not printed. */
           rotate={i % 3 === 0 ? -1.1 : i % 3 === 1 ? 0.8 : -0.3}
+          settleDelay={i * 38}
         />
       ))}
     </span>
@@ -314,6 +333,8 @@ export function TileRack({
             /* One em of the rack's own size, so the solved size is the only scale decision. */
             size="1em"
             rotate={i % 2 === 0 ? -0.6 : 0.5}
+            /* Laid left to right, a beat apart. */
+            settleDelay={90 + i * 62}
           />
         ))}
       </span>

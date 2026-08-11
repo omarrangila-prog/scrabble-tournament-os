@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 /**
  * The public site's palette.
  *
@@ -70,7 +72,34 @@ export const foilText = {
  * as a drawing of a panel rather than a panel.
  */
 export const raised = (glow = 0.5) =>
-  `inset 0 1px 0 rgba(244,235,217,0.10),
-   inset 0 -1px 0 rgba(0,0,0,0.35),
-   0 1px 0 rgba(0,0,0,0.4),
-   0 24px 60px rgba(0,0,0,${0.36 * glow + 0.14})`;
+  `inset 0 1px 0 rgba(244,235,217,0.12),
+   inset 0 -1px 0 rgba(0,0,0,0.38),
+   0 1px 0 rgba(0,0,0,0.45),
+   0 2px 4px rgba(0,0,0,${0.26 * glow + 0.1}),
+   0 8px 18px rgba(0,0,0,${0.22 * glow + 0.08}),
+   0 28px 64px rgba(0,0,0,${0.34 * glow + 0.14})`;
+
+/**
+ * The same surface with the light turned up — for a pointer hovering it.
+ *
+ * A hover state that only moves an element is a card sliding on a flat page. A real object
+ * lifting away from a surface does two more things: its shadow spreads and softens as the
+ * gap grows, and its top edge catches more light. Both are here, and the transition on
+ * `.lp-lift` is what makes them arrive together.
+ */
+export const raisedHover = (glow = 0.5) =>
+  `inset 0 1px 0 rgba(244,235,217,0.20),
+   inset 0 -1px 0 rgba(0,0,0,0.38),
+   0 1px 0 rgba(0,0,0,0.45),
+   0 4px 10px rgba(0,0,0,${0.26 * glow + 0.12}),
+   0 16px 34px rgba(0,0,0,${0.24 * glow + 0.1}),
+   0 44px 92px rgba(0,0,0,${0.38 * glow + 0.16})`;
+
+/**
+ * The pair of shadows a lifting surface needs, as custom properties.
+ *
+ * `.lp-lift` swaps between them on hover in CSS, so the resting and hovered shadows are
+ * declared together in one place instead of drifting apart in two.
+ */
+export const liftVars = (glow = 0.5) =>
+  ({ "--sh": raised(glow), "--sh-hover": raisedHover(glow) }) as React.CSSProperties;

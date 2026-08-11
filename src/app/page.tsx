@@ -19,6 +19,7 @@ import {
   IVORY,
   IVORY_FAINT,
   IVORY_SOFT,
+  liftVars,
   NIGHT,
   NIGHT_DEEP,
   raised,
@@ -234,9 +235,9 @@ function Texture() {
         Desktop only: on a narrow screen there is no margin to leave them in.
       */}
       <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-[760px] lg:block" aria-hidden>
-        <ScrabbleTile letter="Q" size={44} rotate={-14} style={{ position: "absolute", left: "3%", top: "58%", opacity: 0.9 }} />
-        <ScrabbleTile letter="I" size={38} rotate={9} style={{ position: "absolute", left: "8.5%", top: "66%", opacity: 0.85 }} />
-        <ScrabbleTile letter="Z" size={40} rotate={22} style={{ position: "absolute", left: "1.5%", top: "72%", opacity: 0.8 }} />
+        <ScrabbleTile letter="Q" size={44} rotate={-14} drift="13s" settleDelay={620} style={{ position: "absolute", left: "3%", top: "58%", opacity: 0.9 }} />
+        <ScrabbleTile letter="I" size={38} rotate={9} drift="17s" settleDelay={780} style={{ position: "absolute", left: "8.5%", top: "66%", opacity: 0.85 }} />
+        <ScrabbleTile letter="Z" size={40} rotate={22} drift="21s" settleDelay={900} style={{ position: "absolute", left: "1.5%", top: "72%", opacity: 0.8 }} />
       </div>
 
       {/* Paper grain, over everything. */}
@@ -306,7 +307,7 @@ function Header({ hasPast }: { hasPast: boolean }) {
 
         <a
           href="#events"
-          className="ml-auto shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-extrabold transition-transform hover:scale-[1.03] md:ml-2"
+          className="lp-sheen ml-auto shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-extrabold transition-transform hover:scale-[1.03] md:ml-2"
           /* Brass with dark type on it: the metal reads as the expensive thing on the page. */
           style={{ background: BRASS_FOIL, color: "#20180A", boxShadow: raised(0.3) }}
         >
@@ -379,7 +380,7 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         {hasEvents ? (
           <a
             href="#events"
-            className="inline-flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:gap-3.5 sm:w-auto"
+            className="lp-sheen inline-flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:gap-3.5 sm:w-auto"
             style={{
               background: `linear-gradient(180deg, ${EMERALD_LIT} 0%, ${EMERALD} 100%)`,
               boxShadow: `${raised(0.6)}, 0 12px 34px rgba(30,122,76,0.34)`,
@@ -426,7 +427,7 @@ function Section({
         {eyebrow}
       </p>
       <h2
-        className="font-display mt-2.5 text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
+        className="font-display lp-foil mt-2.5 text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
         style={{ ...foilText, fontWeight: 600 }}
       >
         {title}
@@ -473,11 +474,12 @@ function Community() {
         beside wooden tiles reads as a different material from everything around it.
       */}
       <div
-        className="relative overflow-hidden rounded-[20px] border px-6 py-11 sm:px-11 sm:py-14"
+        className="lp-lift lp-rise relative overflow-hidden rounded-[20px] border px-6 py-11 sm:px-11 sm:py-14"
         style={{
           background: `linear-gradient(168deg, ${FELT} 0%, ${NIGHT} 100%)`,
           borderColor: BRASS_EDGE,
-          boxShadow: raised(0.8),
+          ...liftVars(0.8),
+          boxShadow: "var(--sh)",
         }}
       >
         <span
@@ -492,7 +494,7 @@ function Community() {
         />
         <span className="relative block">
         <h2
-          className="font-display text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
+          className="font-display lp-foil text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
           style={{ ...foilText, fontWeight: 600 }}
         >
           More than a game.
@@ -547,7 +549,7 @@ function Collaborations() {
         Events &amp; collaborations
       </p>
       <h2
-        className="font-display mt-2.5 text-[24px] leading-[1.12] tracking-[-0.02em] sm:text-[32px]"
+        className="font-display lp-foil mt-2.5 text-[24px] leading-[1.12] tracking-[-0.02em] sm:text-[32px]"
         style={{ ...foilText, fontWeight: 600 }}
       >
         We&rsquo;ve brought people together with
@@ -557,11 +559,12 @@ function Collaborations() {
         {COLLABORATORS.map((c) => (
           <li
             key={c.name}
-            className="flex items-start gap-3.5 rounded-2xl border px-5 py-6"
+            className="lp-lift lp-rise flex items-start gap-3.5 rounded-2xl border px-5 py-6"
             style={{
               background: `linear-gradient(168deg, rgba(24,64,44,0.55) 0%, rgba(10,24,17,0.5) 100%)`,
               borderColor: BRASS_EDGE,
-              boxShadow: raised(0.35),
+              ...liftVars(0.35),
+              boxShadow: "var(--sh)",
             }}
           >
             {/*
@@ -598,7 +601,7 @@ function About() {
           About
         </p>
         <h2
-          className="font-display mt-2.5 text-[26px] leading-[1.12] tracking-[-0.02em] sm:text-[36px]"
+          className="font-display lp-foil mt-2.5 text-[26px] leading-[1.12] tracking-[-0.02em] sm:text-[36px]"
           style={{ ...foilText, fontWeight: 600 }}
         >
           Everyone plays someone their own level

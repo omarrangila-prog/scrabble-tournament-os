@@ -13,8 +13,8 @@ import {
   FELT_LIT,
   foilText,
   IVORY,
+  liftVars,
   NIGHT,
-  raised,
 } from "@/lib/design/palette";
 
 /* The card's own names for the shared palette. */
@@ -76,7 +76,7 @@ export function FeaturedEvent({
 
   return (
     <article
-      className="relative overflow-hidden rounded-[20px]"
+      className="lp-lift relative overflow-hidden rounded-[20px]"
       style={{
         /*
          * The brightest object on a dark page, and the only one with a metal edge — this
@@ -84,7 +84,8 @@ export function FeaturedEvent({
          */
         background: `linear-gradient(165deg, ${FELT_LIT} 0%, ${FELT} 46%, ${NIGHT} 100%)`,
         border: `1px solid ${BRASS_EDGE}`,
-        boxShadow: `${raised(1)}, 0 0 0 1px rgba(0,0,0,0.4)`,
+        ...liftVars(1),
+        boxShadow: "var(--sh)",
       }}
     >
       {/* The poster's weave, faint, so the panel is not a flat slab. */}
