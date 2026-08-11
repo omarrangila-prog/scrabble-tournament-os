@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Clock, TrendingUp, Zap } from "lucide-react";
+import { BarChart3, Clock, FileText, TrendingUp, Zap } from "lucide-react";
 import { Badge, Card, CardHeader, PageHeader, Progress, Stat } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { computeStandings } from "@/lib/engine/standings";
@@ -187,6 +187,22 @@ export default function AnalyticsPage() {
           )
         }
         subtitle="Operational reporting: what is slowing the tournament down, where corrections happen, and how the field is performing."
+        actions={
+          /*
+           * The printable report. It exists as a route and nothing linked to it, so the one
+           * document written to be handed to a sponsor could only be reached by typing its
+           * address. It opens in its own tab because it is a document, not a screen.
+           */
+          <a
+            href={`/report/${ACTIVE_EVENT_ID}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-control border border-hairline px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-sunken"
+          >
+            <FileText className="size-4" />
+            Printable report
+          </a>
+        }
       />
 
       <RosterGate access={roster.access} loaded={roster.loaded && games.loaded}>

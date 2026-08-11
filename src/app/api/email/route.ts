@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { certificateEmail, registrationEmail } from "@/lib/email/templates";
-import { isEmailConfigured, sendEmail } from "@/lib/email/send";
+import { checkDeliverability, isEmailConfigured, sendEmail } from "@/lib/email/send";
 
 /**
  * Sending email.
@@ -189,4 +189,19 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: false, message: "Unknown request." }, { status: 400 });
+}
+
+/**
+ * What will happen if mail is sent, without sending any.
+ *
+ * Read by the Certificate Studio so it can say, before the director presses anything,
+ * whether these messages will reach the people they are addressed to.
+ *
+ * No sign-in check: this reveals nothing about anybody. It reports whether a domain is
+ * verified and which address mail comes from, both of which appear in the header of every
+ * message the system already sends.
+ */
+export async function GET() {
+  const status = await checkDeliverability();
+  return NextResponse.json(status, { status: 200 });
 }

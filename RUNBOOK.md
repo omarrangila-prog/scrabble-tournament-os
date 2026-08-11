@@ -90,6 +90,13 @@ can enter scores at the same time without either of you refreshing.
 - An unusual total is flagged, not blocked.
 - **Correct** requires a reason, which is stored with the result against your name.
 - **Undo** reopens a board entered against the wrong game.
+- **Dispute** holds a board that the players disagree about. The score stays as it is and
+  nothing is deleted; the board reads *disputed*, Live Event counts it under Conflicts,
+  and the round will not advance until it is settled. A reason is required, because
+  somebody else may have to settle it.
+- A dispute ends when a person re-enters the score through **Correct**. There is no
+  "resolve" button: the only way a score becomes official is that someone puts their name
+  to it.
 
 ### 4. Next round
 
@@ -101,6 +108,22 @@ it is a separate, explicit action that says what it will delete.
 
 Set the phase to **Completed**. Standings are at **`/app/standings`** and on the venue
 screen at **`/live`**.
+
+### 6. Certificates
+
+At **`/app/certificates`**: **Prepare from standings** writes a certificate for every
+player from the verified results. Each is a draft — nothing is public yet — and each
+carries a line about that person taken from their own games.
+
+Placement certificates stay drafts until the event reaches **Final review** or
+**Completed**, so none can claim a placing that is still open to change. Change the
+phase on `/app/live-event` when the results are settled, then **Issue**.
+
+Issuing is the moment the code printed on a certificate starts to resolve. Anyone can
+check one at **`/verify`**, by typing the code or scanning the QR on the back — no
+account, on any phone.
+
+**Withdraw** voids one and asks for a reason, which is what a checker is then shown.
 
 ---
 
@@ -116,6 +139,7 @@ screen at **`/live`**.
 | `/app/standings` | Standings, computed from verified games |
 | `/app/payments` | Receipts and revenue |
 | `/app/certificates` | Awards and certificates |
+| `/report/<event id>` | The printable report for a sponsor — open it from **Analytics → Printable report** |
 | `/live` | The big screen for the wall |
 | `/live/alphabattle-23-august` | What a participant sees on their phone |
 
@@ -136,8 +160,46 @@ can still be rejected afterwards, and the rejection records who decided.
 not released to a browser that has not signed in, and that is enforced by the database
 rather than by the app — so it holds even if somebody calls the API directly.
 
+**A certificate is only as good as its code.** Issuing writes the certificate to the
+database, and that record is what a scanned QR reads. If the studio ever reports that
+issued certificates *cannot be verified*, they were issued before that record was
+written — press **Publish** on the warning and the codes resolve again.
+
 **If the internet drops**, the pages you already have open keep working and will catch
 up when it returns. Scores entered while offline are not saved; re-enter them.
+
+---
+
+## Credentials
+
+Anything that has been pasted into a chat, an email or a screenshot has to be treated as
+public, whether or not anybody else actually saw it. Rotating is cheap; assuming is not.
+
+**Rotate these:**
+
+| Credential | Where | What breaks until it is replaced |
+| --- | --- | --- |
+| Resend API key | resend.com → API Keys → create, then delete the old one | Email. Update `RESEND_API_KEY` in Vercel and redeploy. |
+| Database password | Supabase → Project Settings → Database → Reset password | `scripts/apply-migrations.sh` only. Update `SUPABASE_DB_URL` and `SUPABASE_DB_POOLER_URL` in `.env.local`. The app does not use it. |
+| Firebase service-account keys | Firebase console → Project settings → Service accounts → delete the old keys | Nothing in this app — it runs on Supabase. Delete rather than replace. |
+
+The publishable (anon) Supabase key is meant to be in the browser and does not need
+rotating. What protects the data is row level security, not that key being secret.
+
+**Before pushing**, run:
+
+```
+scripts/check-secrets.sh
+```
+
+It scans every tracked file *and the whole history* for keys, private keys and connection
+strings, and exits non-zero if it finds one. Deleting a file does not remove a key from
+history — the old commit still carries it — so a finding means rotate, not delete. To have
+it run automatically:
+
+```
+ln -s ../../scripts/check-secrets.sh .git/hooks/pre-push
+```
 
 ---
 

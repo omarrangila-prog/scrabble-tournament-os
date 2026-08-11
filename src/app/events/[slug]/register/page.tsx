@@ -14,6 +14,7 @@ import {
   selectRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
+import { usePublicEvent } from "@/lib/supabase/usePublicEvent";
 import {
   CampaignReduction,
   GameOnRegistration,
@@ -45,7 +46,15 @@ export default function RegisterPage() {
   const slug = decodeURIComponent(params.slug ?? "");
 
   const store = useEventStore();
-  const event = selectEventBySlug(store, slug);
+
+  /*
+   * Built-in definition first, database second. The 23 August event is defined in the
+   * source with its price rules, and that definition is what this form charges from, so
+   * its behaviour is unchanged. An event created through the organizer's form is read
+   * from the database — before this it had no form at all.
+   */
+  const resolved = usePublicEvent(slug);
+  const event = resolved.event;
   const registrations = event ? selectRegistrations(store, event.id) : [];
 
   /*
@@ -82,6 +91,17 @@ export default function RegisterPage() {
    */
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+
+  /* While the lookup is still running, do not tell somebody their link is dead. */
+  if (!event && !resolved.resolved) {
+    return (
+      <div className="mx-auto max-w-2xl px-5 py-20">
+        <Card>
+          <EmptyState title="Opening the form" description="One moment." />
+        </Card>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
@@ -126,6 +146,15 @@ export default function RegisterPage() {
   };
 
   const submit = async (reg: GameOnRegistration) => {
+    /*
+     * Marked as saving before anything else runs, so the button is disabled for the whole
+     * write rather than from partway through it. It used to be set after the local record
+     * was created, and a second tap in that gap produced two registrations for one person
+     * — two check-in codes, and the fee counted twice.
+     */
+    setSaving(true);
+    setSaveError(null);
+
     const quote = quoteFee(reg.membershipStatus, campaign, event.fee, event.currency);
 
     /*
@@ -200,9 +229,6 @@ export default function RegisterPage() {
     const local = useEventStore
       .getState()
       .registrations.find((r) => r.token === token);
-    setSaving(true);
-    setSaveError(null);
-
     if (!local) {
       setSaving(false);
       setSaveError("We could not save your registration. Please try again.");
@@ -364,6 +390,8 @@ export default function RegisterPage() {
           <GameOnForm
             event={event}
             onSubmit={submit}
+            /* So the button cannot be pressed twice while the record is being written. */
+            submitting={saving}
             campaign={campaign}
             onCampaignCode={applyCode}
           />

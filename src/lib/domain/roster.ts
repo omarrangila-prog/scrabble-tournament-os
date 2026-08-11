@@ -186,3 +186,21 @@ export function rosterCounts(players: Player[]): RosterCounts {
     awaitingPayment: players.filter((p) => p.payment === "pending").length,
   };
 }
+
+/**
+ * A registration's standing, in the vocabulary the report is written in.
+ *
+ * The database records a registration as `submitted` and settles the money separately —
+ * there is no approval step in this flow, because verifying the payment is what confirms
+ * an entry. The reporting engine was written against `approved`, so every figure derived
+ * from the confirmed field read zero while the total read the true number: "2
+ * registrations, 0 approved", which is not what happened.
+ *
+ * Rejected and waitlisted keep their own names, because those are real distinctions —
+ * somebody turned away and somebody waiting are not entrants.
+ */
+export function reportStatusFor(registrationStatus: string): string {
+  const status = registrationStatus.trim().toLowerCase();
+  if (status === "rejected" || status === "withdrawn" || status === "waitlisted") return status;
+  return "approved";
+}

@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { boardsForRound, currentPublicRound, type PublicBoard } from "@/lib/supabase/games";
 import { subscribeToBoardChanges } from "@/lib/supabase/realtime";
+import { RoundClock } from "./RoundClock";
 
 /**
  * "Which board am I on?"
@@ -111,6 +112,12 @@ export function BoardList({
 
   return (
     <div>
+      {/*
+        * The same clock the director and the wall are looking at. A player at a board
+        * should not have to ask how long is left.
+        */}
+      <RoundClock eventId={eventId} round={round} className="mb-3" />
+
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <p className="text-[13px] font-bold uppercase tracking-[0.12em] text-black/50">
           Round {round} · {boards.length} {boards.length === 1 ? "board" : "boards"}

@@ -5,6 +5,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Grid3x3, Megaphone, Pause, Play, Timer, Trophy } from "lucide-react";
 import { Avatar, Badge, Button } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useGames } from "@/lib/supabase/useGames";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { RoundClock } from "@/components/public/RoundClock";
+import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { computeStandings } from "@/lib/engine/standings";
 import { cn, signed } from "@/lib/utils";
 
@@ -14,7 +19,7 @@ const PANELS: { id: PanelId; label: string; seconds: number }[] = [
   { id: "standings", label: "Standings", seconds: 12 },
   { id: "pairings", label: "Live pairings", seconds: 12 },
   { id: "announcements", label: "Announcements", seconds: 9 },
-  { id: "countdown", label: "Next round", seconds: 7 },
+  { id: "countdown", label: "Round clock", seconds: 7 },
   { id: "sponsors", label: "Sponsors", seconds: 7 },
 ];
 
@@ -24,7 +29,21 @@ const PANELS: { id: PanelId; label: string; seconds: number }[] = [
  */
 export default function TvDisplayPage() {
   const store = useStore();
-  const { tournament, players, pairings, announcements } = store;
+  const { tournament, announcements } = store;
+
+  /*
+   * The wall reads the same database as everything else.
+   *
+   * It used to read this browser's demo store, so the screen the whole room looks at
+   * would have shown demo players, demo pairings and a division this event does not
+   * have — in front of the people whose real names and real games were in the database
+   * all along.
+   */
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const players = roster.players;
+  const pairings = games.pairings;
+  const round = games.round;
 
   const [index, setIndex] = React.useState(0);
   const [playing, setPlaying] = React.useState(true);
@@ -73,9 +92,25 @@ export default function TvDisplayPage() {
   const nameOf = (id: string | null) =>
     id ? players.find((p) => p.id === id)?.fullName ?? "—" : "Bye";
 
-  const standings = computeStandings(players, pairings, tournament, { division: "masters" }).slice(0, 10);
+  /*
+   * Whichever division actually has players, rather than a hardcoded "masters" that this
+   * event does not have — that panel would have been permanently empty on the wall.
+   */
+  const shownDivision = store.divisions.map((d) => d.id).find((id) => players.some((p) => p.division === id));
+
+  const standings = shownDivision
+    ? computeStandings(players, pairings, tournament, { division: shownDivision }).slice(0, 10)
+    : [];
+  const divisionName = shownDivision
+    ? (store.divisions.find((d) => d.id === shownDivision)?.name ?? shownDivision)
+    : "";
+
+  /* The room's clock, for the header badge as well as the panel. */
+  const roomClock = useRoundTimer(ACTIVE_EVENT_ID, round);
+  const clockPhase = roomClock.phase;
+
   const livePairings = pairings
-    .filter((p) => p.round === tournament.currentRound && p.playerBId)
+    .filter((p) => p.round === round && p.playerBId)
     .sort((a, b) => a.board - b.board)
     .slice(0, 12);
 
@@ -88,14 +123,19 @@ export default function TvDisplayPage() {
             {tournament.name.replace(" — Demo", "")}
           </h1>
           <p className="mt-0.5 text-[15px] text-muted sm:text-[17px]">
-            {tournament.currentRound > 0
-              ? `Round ${tournament.currentRound} of ${tournament.totalRounds}`
+            {round > 0
+              ? `Round ${round} of ${tournament.totalRounds}`
               : "Not started"}
             {store.venue.totalBoards > 0 ? ` · ${store.venue.name}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {tournament.status === "live" ? (
+          {/*
+            * Live when the room is actually playing, taken from the shared clock rather
+            * than from this browser's stored tournament status — which said "Not started"
+            * on the wall while a round was under way.
+            */}
+          {clockPhase === "running" ? (
             <Badge tone="success" dot pulse className="!px-4 !py-2 !text-[15px]">
               Live
             </Badge>
@@ -123,8 +163,19 @@ export default function TvDisplayPage() {
               <div>
                 <h2 className="mb-4 flex items-center gap-3 text-[22px] font-semibold text-ink sm:text-[26px]">
                   <Trophy className="size-6 text-primary" />
-                  Masters standings
+                  {divisionName ? `${divisionName} standings` : "Standings"}
                 </h2>
+                {/*
+                  * An empty grid on a projector reads as a broken screen. Say why there is
+                  * nothing yet instead, in type the room can read from the back.
+                  */}
+                {standings.length === 0 ? (
+                  <p className="text-[19px] text-muted sm:text-[22px]">
+                    {players.length === 0
+                      ? "Waiting for the roster."
+                      : "No results yet — standings appear as soon as the first games are verified."}
+                  </p>
+                ) : null}
                 <div className="grid gap-2 lg:grid-cols-2">
                   {standings.map((r) => {
                     const p = players.find((x) => x.id === r.playerId);
@@ -172,8 +223,15 @@ export default function TvDisplayPage() {
               <div>
                 <h2 className="mb-4 flex items-center gap-3 text-[22px] font-semibold text-ink sm:text-[26px]">
                   <Grid3x3 className="size-6 text-primary" />
-                  Round {tournament.currentRound} pairings
+                  Round {round} pairings
                 </h2>
+                {livePairings.length === 0 ? (
+                  <p className="text-[19px] text-muted sm:text-[22px]">
+                    {round === 0
+                      ? "No round has been published yet."
+                      : "This round has no boards on the sheet yet."}
+                  </p>
+                ) : null}
                 <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
                   {livePairings.map((p) => (
                     <div key={p.id} className="glass rounded-compact px-5 py-3">
@@ -225,14 +283,30 @@ export default function TvDisplayPage() {
               <div className="grid h-full place-items-center">
                 <div className="text-center">
                   <Timer className="mx-auto size-12 text-primary" />
-                  <p className="mt-4 text-[19px] text-muted sm:text-[22px]">
-                    Round {tournament.currentRound + 1} begins in
-                  </p>
-                  <p className="mt-2 text-[72px] font-semibold leading-none tracking-[-0.03em] text-ink num sm:text-[96px]">
-                    18:42
-                  </p>
+                  {/*
+                    * The room's real clock. This read 18:42 — a number typed into the
+                    * page, counting nothing, on the largest screen in the venue. Every
+                    * player who looked up was being told the wrong time.
+                    */}
+                  {round > 0 ? (
+                    <>
+                      <p className="mt-4 text-[19px] text-muted sm:text-[22px]">
+                        Round {round}
+                      </p>
+                      <RoundClock
+                        eventId={ACTIVE_EVENT_ID}
+                        round={round}
+                        size="large"
+                        className="mt-2 bg-transparent"
+                      />
+                    </>
+                  ) : (
+                    <p className="mt-4 text-[19px] text-muted sm:text-[22px]">
+                      Waiting for the first round to be published.
+                    </p>
+                  )}
                   <p className="mt-4 text-[17px] text-muted sm:text-[19px]">
-                    Please return to your boards five minutes before the start.
+                    Please stay at your board until your result has been recorded.
                   </p>
                 </div>
               </div>

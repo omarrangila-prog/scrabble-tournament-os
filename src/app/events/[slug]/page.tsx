@@ -21,10 +21,10 @@ import {
 } from "@/lib/domain/identity";
 import {
   registrationStatusOf,
-  selectEventBySlug,
   selectRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
+import { usePublicEvent } from "@/lib/supabase/usePublicEvent";
 import { ParticipationTrack } from "@/lib/firebase/schema";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -144,8 +144,26 @@ export default function PublicEventPage() {
   const slug = decodeURIComponent(params.slug ?? "");
 
   const store = useEventStore();
-  const event = selectEventBySlug(store, slug);
+
+  /*
+   * Built-in definition first, database second. That is what gives an event created
+   * through the organizer's form a public page — it had a row and a link that went
+   * nowhere.
+   */
+  const resolved = usePublicEvent(slug);
+  const event = resolved.event;
   const registrations = event ? selectRegistrations(store, event.id) : [];
+
+  /* Say nothing while the answer is still being fetched, rather than "not found". */
+  if (!event && !resolved.resolved) {
+    return (
+      <div className="mx-auto max-w-2xl px-5 py-20">
+        <Card>
+          <EmptyState icon={<Dices className="size-5" />} title="Loading the event" description="One moment." />
+        </Card>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
@@ -160,6 +178,21 @@ export default function PublicEventPage() {
       </div>
     );
   }
+
+  /*
+   * The food line, taken from what the event says it includes rather than assumed.
+   * `includedBenefits` is the organizer's own wording, so it is preferred over ours.
+   */
+  const foodBenefit = (event.includedBenefits ?? []).find((b) =>
+    /lunch|tea|refreshment|food|snack/i.test(b),
+  );
+  const foodIncluded = foodBenefit
+    ? `${foodBenefit} included`
+    : event.highTeaIncluded
+      ? "High tea included"
+      : event.complimentaryFood
+        ? "Refreshments included"
+        : "";
 
   const status = registrationStatusOf(event, registrations.length);
   const tracks = event.participationTracks ?? [];
@@ -299,14 +332,21 @@ export default function PublicEventPage() {
         </div>
 
         {/* ---- About ---------------------------------------------------- */}
-        <section className="mt-12">
-          <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
-            About {event.name}
-          </h2>
-          <p className="mt-2 text-[14.5px] leading-relaxed" style={{ color: `${BROWN}CC` }}>
-            {event.description}
-          </p>
-        </section>
+        {/*
+          * Only where there is something to say. An event whose organizer has written no
+          * description showed the heading "About <event>" above an empty paragraph, which
+          * reads as a page that failed to load rather than one with nothing to add.
+          */}
+        {event.description.trim() ? (
+          <section className="mt-12">
+            <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+              About {event.name}
+            </h2>
+            <p className="mt-2 text-[14.5px] leading-relaxed" style={{ color: `${BROWN}CC` }}>
+              {event.description}
+            </p>
+          </section>
+        ) : null}
 
         {/*
           * Choose your experience — only where there is a genuine choice.
@@ -389,14 +429,24 @@ export default function PublicEventPage() {
               </span>
             </div>
 
-            {/* What the fee covers, so nobody budgets for lunch separately. */}
-            <p
-              className="mt-2 flex items-center gap-1.5 text-[12.5px] font-semibold"
-              style={{ color: FOREST }}
-            >
-              <Utensils className="size-3.5" />
-              Lunch and tea included
-            </p>
+            {/*
+              * What the fee covers, so nobody budgets for lunch separately — but only
+              * where the organizer has said it does.
+              *
+              * This was printed on every event page unconditionally. On the 23 August
+              * event it is true and stated in `includedBenefits`. On any other event it
+              * was a promise of food nobody had agreed to provide, made to the person
+              * paying, by a page they had every reason to believe.
+              */}
+            {foodIncluded ? (
+              <p
+                className="mt-2 flex items-center gap-1.5 text-[12.5px] font-semibold"
+                style={{ color: FOREST }}
+              >
+                <Utensils className="size-3.5" />
+                {foodIncluded}
+              </p>
+            ) : null}
 
             {/*
               * Every price a person can actually be charged, read from the same

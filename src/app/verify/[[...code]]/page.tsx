@@ -6,8 +6,7 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { BadgeCheck, CircleHelp, Search, ShieldOff } from "lucide-react";
 import { Button, Card, Field, Input } from "@/components/ui";
-import { useCertificateStore } from "@/lib/store/useCertificateStore";
-import { useEventStore } from "@/lib/store/useEventStore";
+import { verifyCertificate, type VerifiedCertificate } from "@/lib/supabase/certificates";
 import {
   CERTIFICATE_KIND_LABEL,
   normaliseCode,
@@ -64,17 +63,72 @@ export default function VerifyPage() {
   const last = segments[segments.length - 1];
   const fromUrl = last && last !== "certificate" ? decodeURIComponent(last) : "";
 
-  const certs = useCertificateStore();
-  const events = useEventStore();
-
   const [input, setInput] = React.useState(fromUrl);
   const [submitted, setSubmitted] = React.useState(fromUrl);
 
-  const result = submitted.trim() ? certs.verify(submitted) : null;
-  const certificate = result?.certificate;
-  const event = certificate ? events.events.find((e) => e.id === certificate.eventId) : undefined;
+  /*
+   * The lookup goes to the database.
+   *
+   * It used to read the certificate store, which lives in browser storage — so this page
+   * could only confirm certificates issued in the very browser it was opened in. Everybody
+   * scanning the QR on their own certificate was told the code was unknown, which is worse
+   * than having no verification at all: it says the document is fake.
+   */
+  const [certificate, setCertificate] = React.useState<VerifiedCertificate | null>(null);
+  const [looking, setLooking] = React.useState(Boolean(fromUrl.trim()));
 
-  const style = result ? OUTCOME[result.outcome] : null;
+  /*
+   * Tracks which code the current result belongs to. Comparing it against `submitted`
+   * during render is how the page knows a fresh lookup is outstanding, instead of
+   * setting a flag from an effect.
+   */
+  const [answeredFor, setAnsweredFor] = React.useState(fromUrl);
+  if (answeredFor !== submitted) {
+    setAnsweredFor(submitted);
+    setLooking(Boolean(submitted.trim()));
+  }
+
+  React.useEffect(() => {
+    const code = submitted.trim();
+    let live = true;
+
+    /*
+     * Every write happens in the async continuation. Setting state synchronously from an
+     * effect is refused by the React Compiler, and the empty-code case is derived below
+     * rather than stored, which removes the need to.
+     */
+    (async () => {
+      const found = code ? await verifyCertificate(code) : null;
+      if (!live) return;
+      setCertificate(found);
+      setLooking(false);
+    })();
+
+    return () => {
+      live = false;
+    };
+  }, [submitted]);
+
+  /*
+   * Three answers, and they are deliberately different. "Withdrawn" is not "unknown": one
+   * says this certificate was real and has been voided, the other says nothing matches.
+   */
+  const outcome = !submitted.trim()
+    ? null
+    : looking
+      ? null
+      : !certificate
+        ? "unknown"
+        : certificate.status === "revoked"
+          ? "revoked"
+          : "valid";
+
+  const result = outcome ? { outcome } : null;
+  const event = certificate
+    ? { name: certificate.eventName, startDate: certificate.eventDate ?? "" }
+    : undefined;
+
+  const style = outcome ? OUTCOME[outcome as keyof typeof OUTCOME] : null;
 
   return (
     <main className="board-motif min-h-dvh px-4 py-12">
@@ -130,14 +184,27 @@ export default function VerifyPage() {
               <div className="p-6 text-center">
                 <span className={cn("inline-flex", style.tone)}>{style.icon}</span>
                 <p className={cn("mt-2 text-[19px] font-extrabold", style.tone)}>{style.heading}</p>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink">{result.message}</p>
+                {/*
+                  * The sentence belongs to the outcome, not to a store record. Withdrawn
+                  * certificates say why, because "this is void" without a reason leaves
+                  * whoever is holding it with nothing to act on.
+                  */}
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink">
+                  {outcome === "valid"
+                    ? "This certificate is genuine and stands on the tournament's records."
+                    : outcome === "revoked"
+                      ? certificate?.revokedReason
+                        ? `This certificate has been withdrawn: ${certificate.revokedReason}`
+                        : "This certificate has been withdrawn."
+                      : "No certificate matches that code. Check the characters, or ask the organizer."}
+                </p>
 
                 {certificate && result.outcome !== "unknown" ? (
                   <dl className="mt-5 space-y-2.5 text-left">
                     {[
                       ["Recipient", certificate.recipientName],
                       ["Achievement", certificate.statement],
-                      ["Type", CERTIFICATE_KIND_LABEL[certificate.kind]],
+                      ["Type", CERTIFICATE_KIND_LABEL[certificate.kind as keyof typeof CERTIFICATE_KIND_LABEL] ?? certificate.kind],
                       certificate.division ? ["Division", certificate.division] : null,
                       certificate.detail ? ["Detail", certificate.detail] : null,
                       event ? ["Event", event.name] : null,
@@ -148,13 +215,13 @@ export default function VerifyPage() {
                        * not when the thing was won — reissue one in September and the
                        * only date on the page would say September.
                        */
-                      event ? ["Date", formatDate(event.startDate)] : null,
+                      event?.startDate ? ["Date", formatDate(event.startDate)] : null,
                       certificate.issuedAt
                         ? ["Issued", formatDate(certificate.issuedAt)]
                         : null,
                       certificate.issuedBy ? ["Issued by", certificate.issuedBy] : null,
-                      certificate.revokedAt
-                        ? ["Withdrawn", formatDate(certificate.revokedAt)]
+                      certificate.revokedReason
+                        ? ["Withdrawn", certificate.revokedReason]
                         : null,
                     ]
                       .filter(Boolean)

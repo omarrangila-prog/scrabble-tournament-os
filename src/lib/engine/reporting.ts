@@ -224,12 +224,22 @@ export function buildReport(input: ReportInput): ReportSection[] {
   const executive: ReportSection = {
     page: "executive",
     title: "Executive Overview",
-    summary: `${input.eventName} drew ${regs.length} registrations against ${input.capacity} places, with ${input.attendance.checkedIn} players attending. ${money(input.fees.collected, input.currency)} was collected against ${money(input.expenses.paid, input.currency)} paid out, leaving ${money(input.position.cashInHand, input.currency)} in hand.`,
+    /*
+     * An event with no cap is described as having none, rather than as having nought.
+     * Capacity is optional here — this event runs to whoever registers — and "2
+     * registrations against 0 places" reads as a failure rather than as no limit.
+     */
+    summary: `${input.eventName} drew ${regs.length} registrations${
+      input.capacity > 0 ? ` against ${input.capacity} places` : ""
+    }, with ${input.attendance.checkedIn} players attending. ${money(input.fees.collected, input.currency)} was collected against ${money(input.expenses.paid, input.currency)} paid out, leaving ${money(input.position.cashInHand, input.currency)} in hand.`,
     metrics: [
       {
         label: "Registrations",
         value: String(regs.length),
-        sub: `${pct(regs.length, input.capacity)} of ${input.capacity} places`,
+        sub:
+          input.capacity > 0
+            ? `${pct(regs.length, input.capacity)} of ${input.capacity} places`
+            : "no capacity limit set",
       },
       {
         label: "Attended",

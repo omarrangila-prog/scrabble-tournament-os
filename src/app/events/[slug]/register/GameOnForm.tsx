@@ -97,12 +97,22 @@ const TRACK_BLURB: Record<ParticipationTrack, string> = {
 export function GameOnForm({
   event,
   onSubmit,
+  submitting = false,
   campaign,
   onCampaignCode,
   otherEvents = [],
 }: {
   event: PublicEvent;
   onSubmit: (registration: GameOnRegistration) => void;
+  /**
+   * True while a submission is being saved.
+   *
+   * Without this the button stayed live through the write, and a second tap registered
+   * the same person twice — two entrants, two check-in codes, and the fee counted twice
+   * in the organizer's revenue. On a phone on venue wifi, a double tap is the normal
+   * response to a button that has not visibly done anything yet.
+   */
+  submitting?: boolean;
   campaign?: CampaignReduction;
   onCampaignCode?: (code: string) => void;
   /** Other events on offer, for the multi-event bundle. */
@@ -335,9 +345,32 @@ export function GameOnForm({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  /*
+   * A ref, not state, and this is the whole point of the guard.
+   *
+   * Three taps dispatched in one task all read the same stale value of a state variable —
+   * `setSubmitted(true)` does not take effect until React re-renders, which is after every
+   * handler in that task has already run. Measured: a triple tap produced three
+   * registrations one millisecond apart, three check-in codes, one person.
+   *
+   * A ref is written and read synchronously, so the second tap sees the first.
+   */
+  const submittedRef = React.useRef(false);
+  const [submitted, setSubmitted] = React.useState(false);
+
   const submit = () => {
+    if (submittedRef.current || submitting) return;
+    submittedRef.current = true;
+    setSubmitted(true);
+
     const problems = validateRegistration(reg, { requireReceipt });
     if (problems.length) {
+      /*
+       * Released, because nothing was submitted. Leaving it latched would disable the
+       * button permanently over a missing field — the person fixes it and can never send.
+       */
+      submittedRef.current = false;
+      setSubmitted(false);
       setErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])));
       // Send them back to the earliest step that still has a problem.
       const firstBad = STEPS.findIndex((s) =>
@@ -742,7 +775,7 @@ export function GameOnForm({
                     </Select>
                   </Field>
 
-                  <Field label="Have you attended a previous AlphaBattle event?">
+                  <Field label={`Have you attended a previous ${event.name} event?`}>
                     <Select
                       value={reg.attendedPreviousEvent === undefined ? "" : String(reg.attendedPreviousEvent)}
                       onChange={(e) => set("attendedPreviousEvent", e.target.value === "true")}
@@ -1197,10 +1230,11 @@ export function GameOnForm({
               size="lg"
               className="border-0"
               style={{ background: "#2F5D3A", color: "white" }}
+              disabled={submitting || submitted}
               onClick={submit}
             >
-              Submit registration
-              <ArrowRight className="size-4" />
+              {submitting ? "Saving your registration…" : "Submit registration"}
+              {submitting ? null : <ArrowRight className="size-4" />}
             </Button>
           ) : (
             <Button

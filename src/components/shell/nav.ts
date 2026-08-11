@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarDays,
   CircleHelp,
   Gauge,
   IdCard,
@@ -37,6 +38,12 @@ export interface NavItem {
  */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/app", label: "Command Centre", icon: Gauge },
+  /*
+   * Creating an event, and putting it on the public site, was reachable only through
+   * search — so the screen that makes a new tournament possible was effectively hidden
+   * behind knowing it existed.
+   */
+  { href: "/app/events", label: "Tournaments", icon: CalendarDays },
   /*
    * The database-backed list, now inside the dashboard shell rather than on its own
    * page. One set of navigation, so no screen is a dead end.

@@ -115,3 +115,72 @@ export async function sendEmail(email: Email): Promise<SendResult> {
 
   return { ok: true, id: body.id };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Deliverability                                                             */
+/* -------------------------------------------------------------------------- */
+
+export interface Deliverability {
+  configured: boolean;
+  /** The address mail is sent from. */
+  from: string;
+  /** Domains on the account, with whatever the provider says about each. */
+  domains: { name: string; status: string }[];
+  /** True when a verified domain exists, which is what allows sending to anybody. */
+  canReachAnyone: boolean;
+  /** Set when something prevented the check itself. */
+  problem?: string;
+}
+
+/**
+ * Whether mail will actually arrive, asked before anybody tries to send forty of them.
+ *
+ * Resend accepts a send request and refuses delivery to addresses other than the account
+ * owner's until a domain is verified. Discovering that one refusal at a time, forty times,
+ * on the day certificates go out, is the wrong moment: the director needs to know before
+ * they start that "Email all" will reach one person.
+ *
+ * A failure to check is reported as unknown rather than as "fine". An unverified guess in
+ * the optimistic direction is exactly what this exists to prevent.
+ */
+export async function checkDeliverability(): Promise<Deliverability> {
+  const key = apiKey();
+  const base: Deliverability = {
+    configured: !!key,
+    from: from(),
+    domains: [],
+    canReachAnyone: false,
+  };
+
+  if (!key) return base;
+
+  let response: Response;
+  try {
+    response = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+  } catch {
+    return { ...base, problem: "Could not reach the email provider to check delivery." };
+  }
+
+  if (!response.ok) {
+    return {
+      ...base,
+      problem: `The email provider would not report its domains (${response.status}).`,
+    };
+  }
+
+  const body = (await response.json().catch(() => null)) as
+    | { data?: { name?: string; status?: string }[] }
+    | null;
+
+  const domains = (body?.data ?? []).flatMap((d) =>
+    d?.name ? [{ name: String(d.name), status: String(d.status ?? "unknown") }] : [],
+  );
+
+  return {
+    ...base,
+    domains,
+    canReachAnyone: domains.some((d) => d.status.toLowerCase() === "verified"),
+  };
+}

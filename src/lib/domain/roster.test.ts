@@ -1,15 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  checkInFor,
-  divisionFor,
-  hueFor,
-  initialsFor,
-  paymentFor,
-  rosterCounts,
-  rosterFromRegistrations,
-  type RosterSource,
-} from "./roster";
+import { checkInFor, divisionFor, hueFor, initialsFor, paymentFor, reportStatusFor, rosterCounts, rosterFromRegistrations, type RosterSource } from "./roster";
 
 function source(over: Partial<RosterSource> = {}): RosterSource {
   return {
@@ -240,5 +231,32 @@ describe("rosterCounts", () => {
 
   it("is all zeroes for an empty roster", () => {
     expect(rosterCounts([])).toEqual({ total: 0, checkedIn: 0, paid: 0, awaitingPayment: 0 });
+  });
+});
+
+describe("reportStatusFor", () => {
+  it("counts a submitted registration as a confirmed entry", () => {
+    /*
+     * The precondition: 'submitted' is what the database actually stores. A test using
+     * 'approved' here would pass while the real value went on reading zero.
+     */
+    expect(reportStatusFor("submitted")).toBe("approved");
+  });
+
+  it("keeps the standings that are real distinctions", () => {
+    expect(reportStatusFor("rejected")).toBe("rejected");
+    expect(reportStatusFor("waitlisted")).toBe("waitlisted");
+    expect(reportStatusFor("withdrawn")).toBe("withdrawn");
+  });
+
+  it("is not fooled by case or spacing", () => {
+    expect(reportStatusFor(" Rejected ")).toBe("rejected");
+    expect(reportStatusFor("SUBMITTED")).toBe("approved");
+  });
+
+  it("treats an unrecognised value as an entry rather than losing the person", () => {
+    // Same reasoning as divisionFor: a person who registered must still be counted.
+    expect(reportStatusFor("active")).toBe("approved");
+    expect(reportStatusFor("")).toBe("approved");
   });
 });

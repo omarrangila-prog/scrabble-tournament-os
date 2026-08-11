@@ -128,3 +128,30 @@ export async function setEventVisibility(
 
   return { ok: true };
 }
+
+/**
+ * One published event, by the slug in its URL. No sign-in.
+ *
+ * Returns null for a draft and for an event that does not exist. The public pages need
+ * exactly this: the details of something somebody was given a link to.
+ */
+export async function readPublicEvent(slug: string): Promise<StoredEvent | null> {
+  const db = supabase();
+  if (!db) return null;
+
+  const { data, error } = await db.rpc("public_event_by_slug", { p_slug: slug });
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+
+  const r = data[0] as Record<string, unknown>;
+  return {
+    id: String(r.out_id ?? ""),
+    slug: String(r.out_slug ?? ""),
+    name: String(r.out_name ?? ""),
+    subtitle: (r.out_subtitle as string | null) ?? null,
+    state: String(r.out_state ?? "draft"),
+    visibility: "public",
+    status: "active",
+    details: (r.out_data ?? {}) as EventDetails,
+    createdAt: "",
+  };
+}

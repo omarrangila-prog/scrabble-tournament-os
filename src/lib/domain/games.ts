@@ -10,6 +10,11 @@
  * verified games on demand.
  */
 
+import {
+  roundProgress as engineRoundProgress,
+  type RoundProgress as EngineRoundProgress,
+} from "@/lib/engine/roundTimer";
+
 import type { DivisionId, Pairing, PairingStatus } from "./types";
 
 /** A game as the database holds it. */
@@ -128,6 +133,39 @@ export function roundProgress(rows: GameRow[], round: number): RoundProgress {
     // No boards means no progress to report, not complete.
     percentComplete: boards.length ? Math.round((verified / boards.length) * 100) : 0,
   };
+}
+
+
+/**
+ * The full progress of a round, counted from the game statuses the database holds.
+ *
+ * `roundProgress` above answers "how many boards are in?", which is what the board counters
+ * need. This answers the question the round-readiness check asks — are any results
+ * disputed, is anything waiting on an opponent — and those counts only exist in the status
+ * column.
+ *
+ * The Live Event screen was reading them from browser storage instead, which nothing has
+ * filled since scores moved to Postgres. So "Conflicts" was always 0 whether or not a board
+ * was disputed, and the line telling the director whether the round could be closed was
+ * computed from an empty list.
+ */
+export function fullRoundProgress(rows: GameRow[], round: number): EngineRoundProgress {
+  const boards = rows.filter((r) => r.round === round);
+
+  const verified = boards.filter((r) => r.status === "verified").length;
+  const awaitingConfirmation = boards.filter((r) => r.status === "awaiting-verification").length;
+  const conflicts = boards.filter((r) => r.status === "disputed").length;
+
+  /* Submitted means a score exists at all, whatever is still to happen to it. */
+  const submitted = boards.filter((r) => r.scoreA !== null).length;
+
+  return engineRoundProgress({
+    totalBoards: boards.length,
+    submitted,
+    verified,
+    awaitingConfirmation,
+    conflicts,
+  });
 }
 
 /**

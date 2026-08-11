@@ -42,20 +42,20 @@ import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useStore } from "@/lib/store/useStore";
 import { staffCheckIn, staffUndoCheckIn } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useRoundTimerControls } from "@/lib/supabase/useRoundTimer";
 import { useGames } from "@/lib/supabase/useGames";
 import { clearRound, publishRound } from "@/lib/supabase/games";
 import { setEventPhase, useEventState } from "@/lib/supabase/useEventState";
 import { announceBoardsChanged } from "@/lib/supabase/realtime";
 import { RosterGate } from "@/components/organizer/RosterGate";
+import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
 import { generateRound } from "@/lib/engine/pairing";
-import { validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
+import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Player } from "@/lib/domain/types";
 import {
   canAdvanceRound,
   formatClock,
-  phaseOf,
-  remainingMs,
 } from "@/lib/engine/roundTimer";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { cn, formatTime } from "@/lib/utils";
@@ -115,6 +115,24 @@ export default function LiveEventPage() {
 
   const [extendOpen, setExtendOpen] = React.useState(false);
 
+  /*
+   * The round is whichever one has boards, rather than a counter kept in this
+   * browser. A counter can disagree with the games that exist — and did, showing
+   * "round 1 of 5" while nothing was paired at all.
+   */
+  const round = Math.max(1, games.round);
+
+  /*
+   * The clock comes from the database, so the wall display and every player's phone are
+   * counting the same round. It used to live in this browser's local storage, which meant
+   * the only screen that knew how long was left was the one that started it.
+   */
+  const clock = useRoundTimerControls(
+    ACTIVE_EVENT_ID,
+    round,
+    app.currentUser?.name ?? "Director",
+  );
+
   // Tick once a second so the clock stays live.
   const [, tick] = React.useState(0);
   React.useEffect(() => {
@@ -130,15 +148,9 @@ export default function LiveEventPage() {
     );
   }
 
-  /*
-   * The round is whichever one has boards, rather than a counter kept in this
-   * browser. A counter can disagree with the games that exist — and did, showing
-   * "round 1 of 5" while nothing was paired at all.
-   */
-  const round = Math.max(1, games.round);
-  const timer = live.timerFor(event.id, round);
-  const phase = timer ? phaseOf(timer) : "not-started";
-  const remaining = timer ? remainingMs(timer) : event.roundMinutes * 60_000;
+  const timer = clock.timer;
+  const phase = clock.phase;
+  const remaining = timer ? clock.remaining : event.roundMinutes * 60_000;
 
   /*
    * Arrivals are counted from the database, so the number agrees with the one the
@@ -147,7 +159,15 @@ export default function LiveEventPage() {
    */
   const attending = roster.players.filter((p) => p.checkIn !== "withdrawn");
   const checkedIn = attending.filter((p) => p.checkIn === "checked-in").length;
-  const progress = live.progressFor(event.id, round);
+  /*
+   * Counted from the games in the database, not from this browser.
+   *
+   * This read `live.progressFor(...)` — browser storage that nothing has filled since
+   * scores moved to Postgres. The Conflicts stat therefore read 0 whether or not a board
+   * was disputed, and the round-readiness line below it was computed from an empty list,
+   * telling the director a round was ready to close on the strength of no information.
+   */
+  const progress = fullRoundProgress(games.games, round);
   const advance = canAdvanceRound(progress);
   const boards = games.progress;
 
@@ -190,6 +210,21 @@ export default function LiveEventPage() {
     if (next === "round-active") {
       live.ensureTimer(event.id, round, event.roundMinutes);
       live.start(event.id, round);
+
+      /*
+       * Start the room's clock, not just this laptop's. If this write fails the round is
+       * still live — the phase has already changed — so the failure is reported as what
+       * it is rather than being allowed to look like a clock nobody can see.
+       */
+      const started = await clock.start(event.roundMinutes);
+      if (!started) {
+        app.toast({
+          title: "Clock not shared",
+          description:
+            "The round has started, but the countdown is only on this screen. Press Start again to retry.",
+          tone: "critical",
+        });
+      }
     }
 
     /*
@@ -343,6 +378,40 @@ export default function LiveEventPage() {
         <Stat label="Conflicts" value={progress.conflicts} sub={progress.conflicts ? "need a ruling" : "none"} icon={<AlertTriangle className="size-5" />} tone={progress.conflicts ? "critical" : "success"} />
       </div>
 
+      {/*
+        * What to do next, from the phase table that has always defined it. This was
+        * computed and tested but never rendered, leaving the phase dropdown as the only
+        * guide — nine state names, no indication of which applied or what it would change.
+        */}
+      <div className="mt-4">
+        <PhaseGuidance
+          state={eventState}
+          busy={publishing}
+          onTransition={(to) => void setState(to)}
+          onHandler={{
+            /* Copies the registration link, which is what "Share registration" means. */
+            share: () => {
+              const url = origin ? `${origin}/events/${event.slug}/register` : "";
+              if (!url) return;
+              void navigator.clipboard?.writeText(url).then(
+                () =>
+                  app.toast({
+                    title: "Registration link copied",
+                    description: url,
+                    tone: "success",
+                  }),
+                () =>
+                  app.toast({
+                    title: "Could not copy",
+                    description: url,
+                    tone: "warning",
+                  }),
+              );
+            },
+          }}
+        />
+      </div>
+
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
         {/* Timer -------------------------------------------------------- */}
         <Card className="xl:col-span-5">
@@ -387,17 +456,17 @@ export default function LiveEventPage() {
                 </Button>
               ) : null}
               {phase === "running" ? (
-                <Button variant="secondary" icon={<Pause className="size-4" />} onClick={() => live.pause(event.id, round)}>
+                <Button variant="secondary" icon={<Pause className="size-4" />} onClick={() => { void clock.pause(); live.pause(event.id, round); }}>
                   Pause
                 </Button>
               ) : null}
               {phase === "paused" ? (
-                <Button variant="success" icon={<Play className="size-4" />} onClick={() => live.resume(event.id, round)}>
+                <Button variant="success" icon={<Play className="size-4" />} onClick={() => { void clock.resume(); live.resume(event.id, round); }}>
                   Resume
                 </Button>
               ) : null}
               {phase === "running" || phase === "paused" ? (
-                <Button variant="danger" icon={<Square className="size-4" />} onClick={() => { live.end(event.id, round); void setState("result-entry"); }}>
+                <Button variant="danger" icon={<Square className="size-4" />} onClick={() => { void clock.end(); live.end(event.id, round); void setState("result-entry"); }}>
                   End round
                 </Button>
               ) : null}
@@ -458,6 +527,7 @@ export default function LiveEventPage() {
               </Select>
             </Field>
 
+
             <div className="space-y-2">
               {eventState === "registration-closed" || eventState === "preparing" ? (
                 <Button variant="primary" className="w-full" icon={<UserCheck className="size-4" />} onClick={() => void setState("check-in-open")}>
@@ -509,6 +579,7 @@ export default function LiveEventPage() {
                   {round >= event.rounds ? "Final round complete" : `Prepare round ${round + 1}`}
                 </Button>
               ) : null}
+
             </div>
 
             <div>
@@ -553,13 +624,21 @@ export default function LiveEventPage() {
         open={extendOpen}
         onClose={() => setExtendOpen(false)}
         onExtend={(minutes, reason) => {
-          live.extend(event.id, round, minutes, reason, app.currentUser?.name ?? "Director");
-          app.toast({
-            title: `Round extended by ${minutes} minutes`,
-            description: reason,
-            tone: "success",
-          });
+          const by = app.currentUser?.name ?? "Director";
+          live.extend(event.id, round, minutes, reason, by);
           setExtendOpen(false);
+
+          void clock.extend(minutes, reason, by).then((ok) => {
+            app.toast({
+              title: ok
+                ? `Round extended by ${minutes} minutes`
+                : "Extension not shared",
+              description: ok
+                ? `${reason} — every screen in the room now shows the new time.`
+                : "The extra time shows here but not on the display or anybody's phone.",
+              tone: ok ? "success" : "critical",
+            });
+          });
         }}
       />
     </div>

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { canAdvanceRound } from "../engine/roundTimer";
 import {
+  fullRoundProgress,
   latestRound,
   pairingsFromGames,
   roundComplete,
@@ -222,5 +224,68 @@ describe("validateBoardPlan", () => {
       { board: 2, division: "advanced", playerA: "y", playerB: null },
     ]);
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("fullRoundProgress", () => {
+  it("counts disputes, which is what blocks the round from closing", () => {
+    const rows = [
+      game({ id: "1", board: 1, status: "verified", scoreA: 400, scoreB: 350 }),
+      game({ id: "2", board: 2, status: "disputed", scoreA: 380, scoreB: 380 }),
+      game({ id: "3", board: 3, status: "awaiting-verification", scoreA: 410, scoreB: 300 }),
+      game({ id: "4", board: 4, status: "scheduled" }),
+    ];
+
+    const p = fullRoundProgress(rows, 1);
+    expect(p.totalBoards).toBe(4);
+    expect(p.verified).toBe(1);
+    expect(p.conflicts).toBe(1);
+    expect(p.awaitingConfirmation).toBe(1);
+    /* Three boards have a score; only one of them is settled. */
+    expect(p.submitted).toBe(3);
+    expect(p.outstanding).toBe(1);
+    expect(p.complete).toBe(false);
+  });
+
+  it("refuses to advance while a board is disputed", () => {
+    const rows = [
+      game({ id: "1", board: 1, status: "verified", scoreA: 400, scoreB: 350 }),
+      game({ id: "2", board: 2, status: "disputed", scoreA: 380, scoreB: 380 }),
+    ];
+
+    const p = fullRoundProgress(rows, 1);
+    // The precondition the old browser-storage read could never see.
+    expect(p.conflicts).toBe(1);
+    expect(canAdvanceRound(p).ready).toBe(false);
+    expect(canAdvanceRound(p).reason).toMatch(/conflict/i);
+  });
+
+  it("is complete, and advanceable, once every board is verified", () => {
+    const rows = [
+      game({ id: "1", board: 1, status: "verified", scoreA: 400, scoreB: 350 }),
+      game({ id: "2", board: 2, status: "verified", scoreA: 300, scoreB: 290 }),
+    ];
+
+    const p = fullRoundProgress(rows, 1);
+    expect(p.complete).toBe(true);
+    expect(p.percentComplete).toBe(100);
+    expect(canAdvanceRound(p).ready).toBe(true);
+  });
+
+  it("counts only the round asked for", () => {
+    const rows = [
+      game({ id: "1", round: 1, status: "verified", scoreA: 1, scoreB: 2 }),
+      game({ id: "2", round: 2, status: "disputed", scoreA: 3, scoreB: 3 }),
+    ];
+
+    expect(fullRoundProgress(rows, 1).conflicts).toBe(0);
+    expect(fullRoundProgress(rows, 2).conflicts).toBe(1);
+  });
+
+  it("reports no progress, and not completion, for a round with no boards", () => {
+    const p = fullRoundProgress([], 1);
+    expect(p.totalBoards).toBe(0);
+    expect(p.percentComplete).toBe(0);
+    expect(p.complete).toBe(false);
   });
 });

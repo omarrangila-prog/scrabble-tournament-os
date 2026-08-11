@@ -22,7 +22,7 @@ import {
 import { RosterGate } from "@/components/organizer/RosterGate";
 import type { GameRow } from "@/lib/domain/games";
 import { useStore } from "@/lib/store/useStore";
-import { clearResult, recordResult } from "@/lib/supabase/games";
+import { clearResult, flagResult, recordResult } from "@/lib/supabase/games";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { cn, formatTime } from "@/lib/utils";
@@ -48,6 +48,7 @@ export default function ScoreEntryPage() {
 
   const [query, setQuery] = React.useState("");
   const [correcting, setCorrecting] = React.useState<GameRow | null>(null);
+  const [disputing, setDisputing] = React.useState<GameRow | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [draft, setDraft] = React.useState<Record<string, { a: string; b: string }>>({});
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -278,7 +279,16 @@ export default function ScoreEntryPage() {
                             <Td>
                               {recorded ? (
                                 <span className="block">
-                                  <Badge tone="success">recorded</Badge>
+                                  {/*
+                                    A disputed board says so. It reads "recorded" only when
+                                    nobody has questioned it — the whole point of the flag is
+                                    that this cell stops agreeing.
+                                  */}
+                                  {g.status === "disputed" ? (
+                                    <Badge tone="critical">disputed</Badge>
+                                  ) : (
+                                    <Badge tone="success">recorded</Badge>
+                                  )}
                                   {g.verifiedBy ? (
                                     <span className="mt-1 block truncate text-[11px] text-muted">
                                       {g.verifiedBy}
@@ -306,6 +316,16 @@ export default function ScoreEntryPage() {
                                   >
                                     Correct
                                   </Button>
+                                  {g.status === "disputed" ? null : (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={working}
+                                      onClick={() => setDisputing(g)}
+                                    >
+                                      Dispute
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -337,6 +357,18 @@ export default function ScoreEntryPage() {
           </>
         )}
       </RosterGate>
+
+      <DisputeModal
+        game={disputing}
+        nameA={disputing ? nameOf(disputing.playerA) : ""}
+        nameB={disputing ? nameOf(disputing.playerB) : ""}
+        onClose={() => setDisputing(null)}
+        onSaved={() => {
+          games.reload();
+          setDisputing(null);
+        }}
+        by={whoAmI(store.currentUser?.name, roster.signedInAs)}
+      />
 
       <CorrectionModal
         game={correcting}
@@ -393,6 +425,111 @@ function MiniStat({
  * is how a correction becomes an argument nobody can settle: the useful question
  * afterwards is always who changed it and why.
  */
+/**
+ * Puts a board's result into dispute.
+ *
+ * The score is not changed and not cleared — a disputed board is a score somebody has
+ * questioned, not a score known to be wrong. Once flagged, the round cannot advance and
+ * Live Event counts it under Conflicts, so the disagreement is held by the system rather
+ * than by whoever remembers it.
+ *
+ * There is no "resolve" button on purpose. A dispute ends when a person re-enters the
+ * score through Correct, which records who decided it.
+ */
+function DisputeModal({
+  game,
+  nameA,
+  nameB,
+  onClose,
+  onSaved,
+  by,
+}: {
+  game: GameRow | null;
+  nameA: string;
+  nameB: string;
+  onClose: () => void;
+  onSaved: () => void;
+  by: string;
+}) {
+  const store = useStore();
+  const [reason, setReason] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const [openedFor, setOpenedFor] = React.useState<string | null>(null);
+  if (game && openedFor !== game.id) {
+    setOpenedFor(game.id);
+    setReason("");
+    setError(null);
+  }
+
+  if (!game) return null;
+
+  const bye = game.playerB === null;
+
+  const submit = async () => {
+    if (!reason.trim()) return setError("Give a reason. Whoever settles this will read it.");
+
+    setBusy(true);
+    const result = await flagResult(game.id, by, reason.trim(), ACTIVE_EVENT_ID);
+    setBusy(false);
+
+    if (!result.ok) return setError(result.message);
+
+    store.toast({
+      title: result.already
+        ? `Board ${game.board} was already disputed`
+        : `Board ${game.board} is disputed`,
+      description: result.already
+        ? "The existing reason has been kept."
+        : "The round cannot advance until somebody re-enters the score.",
+      tone: "warning",
+    });
+    onSaved();
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Dispute board ${game.board}`}
+      subtitle={bye ? nameA : `${nameA} v ${nameB}`}
+      size="sm"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={submit} disabled={busy}>
+            {busy ? "Saving…" : "Mark disputed"}
+          </Button>
+        </div>
+      }
+    >
+      {error ? (
+        <p className="mb-3 flex items-start gap-1.5 rounded-input bg-critical-050 px-3 py-2 text-[13px] font-medium text-critical">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          {error}
+        </p>
+      ) : null}
+
+      <p className="mb-3 text-[13px] leading-relaxed text-muted">
+        The score stays as it is — {game.scoreA}
+        {bye ? "" : `–${game.scoreB}`}. Nothing is deleted.
+      </p>
+
+      <Field label="What is in dispute" required hint="Stored on the board, against your name.">
+        <Textarea
+          rows={2}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Both players signed different totals."
+        />
+      </Field>
+    </Modal>
+  );
+}
+
 function CorrectionModal({
   game,
   nameA,

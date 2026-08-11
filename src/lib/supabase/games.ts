@@ -164,6 +164,42 @@ export async function recordResult(
   return { ok: true };
 }
 
+/**
+ * Puts a board's result into dispute, with the reason.
+ *
+ * The score stays as it is. A disputed board is not a wrong score, it is a score somebody
+ * has questioned — and until a person settles it, the round cannot advance and the
+ * Conflicts figure on Live Event counts it.
+ *
+ * Resolving it is not a separate action: re-entering the score verifies the board and
+ * records who typed it. There is one path by which a score becomes official, and a person
+ * is always on it.
+ */
+export async function flagResult(
+  gameId: string,
+  by: string,
+  reason: string,
+  eventId?: string,
+): Promise<ResultOutcome & { already?: boolean }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_flag_result", {
+    p_game_id: gameId,
+    p_by: by,
+    p_reason: reason,
+  });
+
+  if (error) {
+    if (missingFunction(error.message))
+      return { ok: false, message: "Flagging a score needs migration 0026 applied." };
+    return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
+  }
+
+  if (eventId) announceBoardsChanged(eventId);
+  return { ok: true, already: data === "already-disputed" };
+}
+
 /** Reopens a board whose score was entered by mistake. */
 export async function clearResult(gameId: string, eventId?: string): Promise<boolean> {
   const db = supabase();

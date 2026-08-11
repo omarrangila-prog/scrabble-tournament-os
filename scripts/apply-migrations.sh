@@ -24,9 +24,13 @@ fi
 # shellcheck disable=SC1091
 set -a; . ./.env.local; set +a
 
-if [ -z "${SUPABASE_DB_URL:-}" ]; then
+# The direct host is IPv6-only. On a network without IPv6 routing it fails with
+# "Network is unreachable", so the IPv4 pooler is preferred when one is configured.
+CONNECTION="${SUPABASE_DB_POOLER_URL:-${SUPABASE_DB_URL:-}}"
+
+if [ -z "$CONNECTION" ]; then
   cat >&2 <<'MSG'
-SUPABASE_DB_URL is not set in .env.local.
+No database connection is configured in .env.local.
 
 Get the URI from the Supabase dashboard:
   Project Settings -> Database -> Connection string -> URI
@@ -39,7 +43,7 @@ fi
 
 # ON_ERROR_STOP makes psql exit non-zero on the first failure rather than
 # carrying on and reporting success at the end.
-PSQL=(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --no-psqlrc)
+PSQL=(psql "$CONNECTION" -v ON_ERROR_STOP=1 --no-psqlrc)
 
 echo "== Connection"
 "${PSQL[@]}" -tAc "select 'connected to ' || current_database() || ' as ' || current_user"

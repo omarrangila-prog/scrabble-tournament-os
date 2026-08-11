@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Eye, EyeOff, Plus, RefreshCw } from "lucide-react";
+import { CalendarPlus, DoorOpen, Eye, EyeOff, Plus, RefreshCw } from "lucide-react";
 
 import {
   Badge,
@@ -18,6 +18,7 @@ import { RosterGate } from "@/components/organizer/RosterGate";
 import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { listEvents, setEventVisibility, type StoredEvent } from "@/lib/supabase/events";
+import { setEventPhase } from "@/lib/supabase/useEventState";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
 import { formatDate } from "@/lib/utils";
@@ -98,6 +99,48 @@ export default function EventsPage() {
           ? `Live at /events/${event.slug}.`
           : "It no longer appears on the public site.",
       tone: next === "public" ? "success" : "info",
+    });
+  };
+
+  /**
+   * Opens registration for an event.
+   *
+   * Publishing puts the page on the internet; this is what lets somebody enter. They are
+   * separate because they are separate decisions — an organizer announces an event before
+   * the fee and payment details are settled, and the database refuses a registration for
+   * an event that is not open, so a form left unopened silently collects nothing.
+   */
+  const openRegistration = async (event: StoredEvent) => {
+    if (
+      !window.confirm(
+        `Open registration for "${event.name}"?\n\n` +
+          `Anyone with the link to /events/${event.slug}/register will be able to enter, ` +
+          `and will be charged the fee on that page.`,
+      )
+    ) {
+      return;
+    }
+
+    setBusy(event.id);
+    const written = await setEventPhase(event.id, "registration-open");
+    setBusy(null);
+
+    if (!written.ok) {
+      app.toast({
+        title: "Registration not opened",
+        description: written.message ?? "Please try again.",
+        tone: "critical",
+      });
+      return;
+    }
+
+    setReloads((n) => n + 1);
+    app.toast({
+      title: `${event.name} is taking registrations`,
+      description: event.visibility === "public"
+        ? `Share /events/${event.slug}/register.`
+        : "Publish it as well, or the link will not resolve for anybody.",
+      tone: event.visibility === "public" ? "success" : "warning",
     });
   };
 
@@ -211,6 +254,23 @@ export default function EventsPage() {
                             View page
                           </Button>
                         </Link>
+                      ) : null}
+
+                      {/*
+                        * Offered only while registration is not open, and never for an
+                        * archived event. A control that would refuse is worse than one
+                        * that is absent.
+                        */}
+                      {event.state !== "registration-open" && event.status !== "archived" ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          icon={<DoorOpen className="size-3.5" />}
+                          disabled={busy === event.id}
+                          onClick={() => void openRegistration(event)}
+                        >
+                          Open registration
+                        </Button>
                       ) : null}
 
                       <Button
