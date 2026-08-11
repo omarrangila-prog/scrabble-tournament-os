@@ -313,7 +313,7 @@ export default function AwardsPage() {
         `Email ${withAddress.length} certificate${withAddress.length === 1 ? "" : "s"}?` +
           (missing ? `\n\n${missing} have no email address and will be skipped.` : "") +
           (delivery.status && !delivery.status.canReachAnyone
-            ? "\n\nNo sending domain is verified, so these will probably only reach the account owner."
+            ? "\n\nThe sending address is not verified, so these will probably only reach the account owner."
             : ""),
       )
     ) {
@@ -488,17 +488,22 @@ export default function AwardsPage() {
             <p className="text-[13px] leading-relaxed text-[#a76d16]">
               <strong className="font-semibold">Email is not set up.</strong> Certificates can
               still be printed, and sent on WhatsApp from each one. To email them, add
-              RESEND_API_KEY and EMAIL_FROM to the hosting project and redeploy.
+              BREVO_API_KEY and EMAIL_FROM to the hosting project and redeploy.
             </p>
           </div>
         ) : !delivery.status.canReachAnyone ? (
           <div className="mt-3 flex items-start gap-3 rounded-feature bg-warning-050 px-4 py-3">
             <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-[#a76d16]" />
             <p className="text-[13px] leading-relaxed text-[#a76d16]">
-              <strong className="font-semibold">No sending domain is verified yet.</strong>{" "}
-              Email will reach the address that owns the Resend account and nobody else, so
-              participants would get nothing. Verify a domain at resend.com/domains, or send
-              each certificate on WhatsApp — that works now.
+              {/*
+                The provider says what is wrong with its own setup. This used to name
+                Resend and its domain page regardless of which provider was configured,
+                which sent the director to fix something they were not using.
+              */}
+              <strong className="font-semibold">Email cannot reach participants yet.</strong>{" "}
+              {delivery.status.fix ??
+                "The sending address is not verified, so mail would reach nobody but the account owner."}{" "}
+              Certificates can be sent on WhatsApp meanwhile — that works now.
             </p>
           </div>
         ) : null
