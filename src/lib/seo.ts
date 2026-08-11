@@ -73,7 +73,12 @@ export function eventJsonLd(event: PublicEvent, now = new Date()) {
         : "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     description: event.seoDescription || event.shortDescription || event.description,
-    ...(event.bannerImage ? { image: [`${SITE_URL}${event.bannerImage}`] } : {}),
+    /*
+     * The generated share card, when the event has no image of its own. An Event without
+     * an `image` is ineligible for Google's event rich results, so this is the difference
+     * between a listing with a picture and a line of blue text.
+     */
+    image: [event.bannerImage ? `${SITE_URL}${event.bannerImage}` : `${SITE_URL}/opengraph-image`],
     location: {
       "@type": "Place",
       name: event.venueName,

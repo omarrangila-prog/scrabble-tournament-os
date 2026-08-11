@@ -259,6 +259,14 @@ const DISCOUNTS: Discount[] = [
   },
 ];
 
+/**
+ * The event itself, for anything that needs its facts outside the store.
+ *
+ * The share card draws the date, venue and city from here, so a change to the event
+ * changes the image every person forwarding the link sees.
+ */
+export const ACTIVE_EVENT = ALPHABATTLE;
+
 export function buildEventSeed(): {
   events: PublicEvent[];
   forms: RegistrationForm[];

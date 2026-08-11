@@ -61,10 +61,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F8FD" },
-    { media: "(prefers-color-scheme: dark)", color: "#090B1A" },
-  ],
+  /*
+   * The browser chrome on a phone takes this colour. It still named the old light theme,
+   * so the address bar sat as a pale bar above a near-black page — the one seam a visitor
+   * sees before the page has even rendered.
+   */
+  themeColor: "#060F0A",
 };
 
 export default function RootLayout({

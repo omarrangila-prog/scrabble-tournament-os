@@ -25,7 +25,7 @@ import {
   NIGHT_DEEP,
   raised,
 } from "@/lib/design/palette";
-import { lowestPrice } from "@/lib/seo";
+import { eventJsonLd, lowestPrice, organizationJsonLd, SITE_URL } from "@/lib/seo";
 import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
 
 /*
@@ -88,6 +88,32 @@ export default function HomePage() {
     >
       <Texture />
       <Header hasPast={past.length > 0} />
+
+      {/*
+        Structured data for the page as a whole.
+        
+        The homepage carried none: search engines could read the words but had nothing
+        machine-readable saying this is an organization in Karachi running an event on a
+        given date at a given price. The Event block is what makes a listing eligible for
+        an event rich result rather than a plain blue link, and every field in it comes
+        from the same record the page renders — so the markup cannot say one date while
+        the page says another.
+      */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            organizationJsonLd(),
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Blufy's AlphaBattle",
+              url: SITE_URL,
+            },
+            ...upcoming.map((e) => eventJsonLd(e)),
+          ]),
+        }}
+      />
 
       <main className="relative mx-auto w-full max-w-[1120px] px-5 pb-20 sm:px-8">
         <section className="grid items-center gap-10 pt-4 sm:pt-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:pt-12">

@@ -234,7 +234,7 @@ export function TileWord({
 
   return (
     <span
-      className={className}
+      className={["lp-rack", className].filter(Boolean).join(" ")}
       role="img"
       aria-label={word}
       style={{ display: "inline-flex", flexWrap: "wrap", gap, fontSize: size }}
@@ -303,6 +303,7 @@ export function TileRack({
       <span
         role="img"
         aria-label={word}
+        className="lp-rack"
         style={{
           display: "inline-flex",
           /* Never wraps: the size above is solved so the whole word fits on one line. */
