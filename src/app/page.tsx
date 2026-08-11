@@ -6,6 +6,8 @@ import { ArrowRight, Camera, Mail } from "lucide-react";
 import { EventCard } from "@/components/public/EventCard";
 import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
 import { FeaturedEvent } from "@/components/public/FeaturedEvent";
+import { ScrabbleTile, TileRack } from "@/components/public/ScrabbleTile";
+import { LINEN_GRAIN, PAPER_GRAIN, ScrabbleBoard } from "@/components/public/ScrabbleBoard";
 import { lowestPrice } from "@/lib/seo";
 import { selectRegistrations, useEventStore } from "@/lib/store/useEventStore";
 
@@ -48,8 +50,14 @@ export default function HomePage() {
   const store = useEventStore();
   const { upcoming, past } = splitEventsForPublic(store.events);
 
+  /*
+   * `relative` on the wrapper below is load-bearing, not decoration. The board in
+   * `Texture` is positioned off the right edge; with no positioned ancestor it resolves
+   * against the viewport, and `overflow-x-hidden` then does not clip it — the whole page
+   * scrolls sideways by the width of the board.
+   */
   return (
-    <div className="min-h-dvh overflow-x-hidden" style={{ background: CREAM }}>
+    <div className="relative min-h-dvh overflow-x-hidden" style={{ background: CREAM }}>
       <Texture />
       <Header hasPast={past.length > 0} />
 
@@ -133,22 +141,86 @@ function FeaturedFor({ event }: { event: PublicEvent }) {
 
 /* -------------------------------------------------------------------------- */
 
-/** The poster's weave, plus a wash behind the hero. */
+/**
+ * The surface the page sits on.
+ *
+ * Four layers, bottom to top: the felt of a table, a board laid on it behind the hero,
+ * paper grain over everything, and a vignette that darkens the edges the way light falls
+ * off across a real table.
+ *
+ * The grain is fixed rather than scrolling. Texture that scrolls with the content reads as
+ * a pattern printed on the page; texture that stays still reads as the surface the page is
+ * lying on, which is the whole point.
+ */
 function Texture() {
   return (
     <>
+      {/* Felt: a warm weave, darker towards the edges. */}
       <div
-        className="pointer-events-none fixed inset-0 opacity-[0.32]"
+        className="pointer-events-none fixed inset-0"
         style={{
-          backgroundImage: `repeating-linear-gradient(45deg, ${BROWN}0A 0 1px, transparent 1px 24px),
-                            repeating-linear-gradient(-45deg, ${BROWN}0A 0 1px, transparent 1px 24px)`,
+          backgroundImage: LINEN_GRAIN,
+          backgroundSize: "260px 260px",
+          mixBlendMode: "multiply",
+          opacity: 0.09,
+        }}
+        aria-hidden
+      />
+
+      {/*
+        A board on the table behind the hero. Off the right edge and rotated, because a
+        board squared up to the viewport reads as a diagram — one at an angle, partly out
+        of frame, reads as an object someone put down.
+
+        Hidden below `lg`: on a phone it would sit under the headline and fight it.
+      */}
+      <div
+        className="pointer-events-none absolute right-[-14%] top-[2%] hidden lg:block"
+        style={{ transform: "rotate(-11deg)", opacity: 0.2 }}
+        aria-hidden
+      >
+        <ScrabbleBoard size="min(52vw, 640px)" />
+      </div>
+
+      {/*
+        A few tiles left on the table, below the board.
+
+        Loose pieces at odd angles are what stops a page reading as a diagram of a game and
+        starts it reading as a game somebody is in the middle of. Deliberately few, and
+        deliberately out at the edges where there is no text.
+
+        Desktop only: on a narrow screen there is no margin to leave them in.
+      */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-[760px] lg:block" aria-hidden>
+        <ScrabbleTile letter="Q" size={44} rotate={-14} style={{ position: "absolute", left: "3%", top: "58%", opacity: 0.9 }} />
+        <ScrabbleTile letter="I" size={38} rotate={9} style={{ position: "absolute", left: "8.5%", top: "66%", opacity: 0.85 }} />
+        <ScrabbleTile letter="Z" size={40} rotate={22} style={{ position: "absolute", left: "1.5%", top: "72%", opacity: 0.8 }} />
+      </div>
+
+      {/* Paper grain, over everything. */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        style={{
+          backgroundImage: PAPER_GRAIN,
+          backgroundSize: "180px 180px",
+          mixBlendMode: "multiply",
+          opacity: 0.055,
+        }}
+        aria-hidden
+      />
+
+      {/* Light falling off towards the edges, and a warm pool behind the hero. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[720px]"
+        style={{
+          background: `radial-gradient(68% 100% at 44% -10%, ${FOREST}1A, transparent 64%)`,
         }}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[620px]"
+        className="pointer-events-none fixed inset-0"
         style={{
-          background: `radial-gradient(72% 100% at 50% -12%, ${FOREST}1F, transparent 66%)`,
+          background: `radial-gradient(120% 88% at 50% 42%, transparent 52%, ${BROWN}1C 100%)`,
         }}
         aria-hidden
       />
@@ -207,14 +279,28 @@ function Hero({ hasEvents, hasPast }: { hasEvents: boolean; hasPast: boolean }) 
         Karachi&rsquo;s social game experiences
       </p>
 
+      {/*
+        The word itself, in tiles on a rack.
+
+        The headline said "Scrabble nights" in a serif; a page about Scrabble can show the
+        thing rather than name it. The sentence continues underneath, so the tiles carry
+        the word and the type carries the meaning — and the accessible name on the rack is
+        the word, so a screen reader hears the sentence in full.
+
+        Sized in `clamp` against the viewport, so it fills the column on a desktop and sits
+        on two rows on a phone without a media query.
+      */}
       <h1
-        className="font-display mt-4 text-[42px] leading-[1.02] tracking-[-0.02em] sm:text-[56px] lg:text-[64px]"
+        className="font-display mt-5 leading-[1.05] tracking-[-0.02em]"
         style={{ color: BROWN, fontWeight: 600 }}
       >
-        Scrabble nights
-        <br />
-        worth turning up for
-        <span style={{ color: GOLD }}>.</span>
+        <TileRack word="SCRABBLE" maxTile={62} className="block max-w-full" />
+        <span className="mt-6 block text-[34px] sm:mt-7 sm:text-[46px] lg:text-[54px]">
+          nights worth
+          <br />
+          turning up for
+          <span style={{ color: GOLD }}>.</span>
+        </span>
       </h1>
 
       <p
@@ -319,10 +405,25 @@ function Community() {
 
   return (
     <section id="community" className="scroll-mt-8 pt-16 sm:pt-24">
+      {/*
+        The panel is a surface, so it gets the weave of one. A flat wash of colour sitting
+        beside wooden tiles reads as a different material from everything around it.
+      */}
       <div
-        className="rounded-[20px] px-6 py-11 sm:px-11 sm:py-14"
+        className="relative overflow-hidden rounded-[20px] px-6 py-11 sm:px-11 sm:py-14"
         style={{ background: `${GOLD}1F` }}
       >
+        <span
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: LINEN_GRAIN,
+            backgroundSize: "200px 200px",
+            mixBlendMode: "multiply",
+            opacity: 0.14,
+          }}
+          aria-hidden
+        />
+        <span className="relative block">
         <h2
           className="font-display text-[28px] leading-[1.08] tracking-[-0.02em] sm:text-[38px]"
           style={{ color: BROWN, fontWeight: 600 }}
@@ -352,6 +453,7 @@ function Community() {
             </div>
           ))}
         </div>
+        </span>
       </div>
     </section>
   );
@@ -451,7 +553,18 @@ function About() {
 function Footer({ hasPast }: { hasPast: boolean }) {
   const nav = navFor(hasPast);
   return (
-    <footer className="relative mt-4" style={{ background: BROWN }}>
+    <footer className="relative mt-4 overflow-hidden" style={{ background: BROWN }}>
+      {/* Grain, so the darkest block on the page reads as timber rather than as a bar. */}
+      <span
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: LINEN_GRAIN,
+          backgroundSize: "220px 220px",
+          mixBlendMode: "overlay",
+          opacity: 0.22,
+        }}
+        aria-hidden
+      />
       <div className="mx-auto w-full max-w-[1120px] px-5 py-12 sm:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
