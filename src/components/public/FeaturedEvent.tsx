@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Clock, MapPin, Ticket } from "lucide-react";
 import { badgesFor } from "@/components/public/EventCard";
+import { Countdown } from "@/components/public/Countdown";
 import { PublicEvent, registrationStatusOf } from "@/lib/domain/events";
 
 import {
@@ -114,6 +115,14 @@ export function FeaturedEvent({
               >
                 {MONTHS[day.getMonth()]} {day.getFullYear()}
               </span>
+
+              {/* The one figure on the card that moves. */}
+              <Countdown
+                startDate={event.startDate}
+                startTime={event.startTime}
+                className="ml-auto text-[12px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "rgba(244,235,217,0.62)" }}
+              />
             </div>
           ) : null}
 

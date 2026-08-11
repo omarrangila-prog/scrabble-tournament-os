@@ -6,6 +6,7 @@ import { ArrowRight, Camera, Mail } from "lucide-react";
 import { EventCard } from "@/components/public/EventCard";
 import { PublicEvent, splitEventsForPublic } from "@/lib/domain/events";
 import { FeaturedEvent } from "@/components/public/FeaturedEvent";
+import { WordScorer } from "@/components/public/WordScorer";
 import { ScrabbleTile, TileRack, TileWord, wordScore } from "@/components/public/ScrabbleTile";
 import { LINEN_GRAIN, PAPER_GRAIN, ScrabbleBoard } from "@/components/public/ScrabbleBoard";
 import {
@@ -115,6 +116,7 @@ export default function HomePage() {
         ) : null}
 
         <Community />
+        <WordScorer />
 
         {past.length ? (
           <Section
