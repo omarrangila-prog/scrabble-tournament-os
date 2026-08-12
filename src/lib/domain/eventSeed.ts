@@ -185,6 +185,20 @@ const ALPHABATTLE: PublicEvent = {
          */
         availableUntil: ALPHABATTLE_PRICES.earlyBirdUntil,
       },
+      /*
+       * PSA, as a code as well as a question.
+       *
+       * The form asks "Are you a PSA member?", and answering yes has always given the
+       * member rate. But members were also typing PSA into the promotion box — the
+       * obvious thing to try — and being told the code was not recognised while the fee
+       * stayed at the regular price. Two ways of claiming the same rate, one of which
+       * silently refused.
+       *
+       * Deliberately no `availableUntil`: PSA membership does not expire on a date, so
+       * neither does the rate. It is the same PKR 950 the membership question gives, so
+       * the two routes cannot disagree.
+       */
+      { code: "PSA", label: "PSA Member", price: ALPHABATTLE_PRICES.psaMember },
       { code: "HHS", label: "HHS Promotional Rate", price: ALPHABATTLE_PRICES.hhs },
     ],
     currency: ALPHABATTLE_PRICES.currency,

@@ -10,6 +10,7 @@ import {
   PriceRules,
   resolvePrice,
 } from "./pricing";
+import { ACTIVE_EVENT } from "./eventSeed";
 
 /** The rates the August event actually offers. */
 const RATES: Rate[] = [
@@ -354,5 +355,48 @@ describe("the stored figures reconcile", () => {
     expect(priced.final).toBe(1250);
     expect(priced.saving).toBe(0);
     expect(priced.regular - priced.saving).toBe(priced.final);
+  });
+});
+
+describe("the PSA rate", () => {
+  /*
+   * Both routes to the member price, and the fact that neither one expires.
+   *
+   * A member has two ways to claim it — answering the membership question, or typing PSA
+   * into the promotion box — and before this the second was refused as an unknown code
+   * while the fee stayed at the full price.
+   */
+  const rules = ACTIVE_EVENT.priceRules!;
+
+  it("gives 950 to somebody who types PSA", () => {
+    const priced = resolvePrice(rules, { isMember: false, code: "PSA", at: "2026-08-20T10:00:00+05:00" });
+    expect(priced.final).toBe(950);
+    expect(priced.coupon.status).toBe("accepted");
+  });
+
+  it("gives 950 to somebody who answers the membership question", () => {
+    const priced = resolvePrice(rules, { isMember: true, at: "2026-08-20T10:00:00+05:00" });
+    expect(priced.final).toBe(950);
+  });
+
+  it("never expires, unlike the early bird", () => {
+    // Years out. The precondition: the early bird is definitely gone by now.
+    const at = "2031-01-01T00:00:00+05:00";
+    expect(resolvePrice(rules, { isMember: false, code: "EARLYBIRD", at }).coupon.status).toBe(
+      "expired",
+    );
+    expect(resolvePrice(rules, { isMember: false, code: "PSA", at }).final).toBe(950);
+  });
+
+  it("is accepted however it is typed", () => {
+    for (const code of ["psa", " PSA ", "Psa"]) {
+      expect(resolvePrice(rules, { isMember: false, code, at: "2026-08-20T10:00:00+05:00" }).final).toBe(950);
+    }
+  });
+
+  it("agrees with the membership question rather than undercutting it", () => {
+    const byCode = resolvePrice(rules, { isMember: false, code: "PSA", at: "2026-08-20T10:00:00+05:00" });
+    const byAnswer = resolvePrice(rules, { isMember: true, at: "2026-08-20T10:00:00+05:00" });
+    expect(byCode.final).toBe(byAnswer.final);
   });
 });

@@ -127,6 +127,24 @@ export default function RegisterPage() {
      * read `active` and the redemption count but never `expiresAt`, so a dated
      * code stayed usable for ever — an early bird the organizer could not close.
      */
+    /*
+     * When the event prices itself, its own coupons are the authority.
+     *
+     * Two code systems were running at once: the event's price rules, which set the fee,
+     * and this older campaign list, which set the message. A code in the first but not the
+     * second reduced the price and was called invalid in the same breath — HHS showed
+     * "PKR 1,000" above "That code is not recognised." Refusing here is only correct for
+     * codes the price rules have never heard of.
+     */
+    const pricedCoupon = event.priceRules?.coupons.some(
+      (c) => c.code.toUpperCase() === code,
+    );
+    if (pricedCoupon) {
+      setCodeError(null);
+      setCampaign(undefined);
+      return;
+    }
+
     const outcome = redeemDiscount(store.discounts, code, event.id);
     if ("refusal" in outcome) {
       setCodeError(outcome.message);

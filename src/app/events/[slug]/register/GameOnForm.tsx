@@ -334,6 +334,34 @@ export function GameOnForm({
     const problems = validateRegistration(reg, { requireReceipt }).filter((p) => relevant.includes(p.field));
     if (problems.length) {
       setErrors(Object.fromEntries(problems.map((p) => [p.field, p.message])));
+
+      /*
+       * Take the person to the problem.
+       *
+       * Without this, pressing Continue on a long step did nothing visible: the message
+       * was rendered, but above the fold, and the button that had just been pressed was
+       * at the bottom of the screen. On the payment step — the longest one, with the
+       * bank details and the upload on it — that reads as a form that refuses to submit
+       * for no reason. Several people concluded the site was broken.
+       *
+       * Focus rather than only scroll, so a screen reader announces the message too.
+       */
+      /*
+       * `aria-invalid` is the anchor, because the inputs already carry it — no new prop,
+       * and it cannot drift out of step with the error being displayed. After the next
+       * frame, so the attribute exists before it is looked for.
+       *
+       * The receipt problem has no input of its own; the whole upload block is scrolled to
+       * instead, which is where the message sits.
+       */
+      requestAnimationFrame(() => {
+        const target =
+          document.querySelector<HTMLElement>("[aria-invalid='true']") ??
+          document.querySelector<HTMLElement>("input[type='file']");
+
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+        target?.focus?.({ preventScroll: true });
+      });
       return;
     }
     setStep((s) => Math.min(STEPS.length - 1, s + 1));
