@@ -31,9 +31,17 @@ import {
   answer,
   decidePayment,
   field,
+  importField,
+  numberField,
   type PaymentDecision,
 } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
+import {
+  BUCKET_LABEL,
+  bucketFor,
+  bucketTotals,
+  type PaymentBucket,
+} from "@/lib/domain/paymentBuckets";
 import { activeEvent } from "@/lib/domain/scope";
 import {
   Flag,
@@ -78,6 +86,13 @@ export default function PaymentsPage() {
   const app = useStore();
 
   const [reviewing, setReviewing] = React.useState<QueueEntry | null>(null);
+
+  /*
+   * Which money bucket the list is narrowed to. Pressing a tile filters to it and pressing
+   * it again clears — the tiles are the filter, so there is no second row of controls
+   * saying the same thing.
+   */
+  const [bucket, setBucket] = React.useState<PaymentBucket | "all">("all");
 
   const event = activeEvent(store.events, {
     organizationId: store.activeOrganizationId,
@@ -127,6 +142,30 @@ export default function PaymentsPage() {
         : undefined,
     };
   });
+
+  /*
+   * Derived from the stored payment state and amount, not held as its own field. A separate
+   * "bucket" column would be one more thing to keep in step with the payment it describes.
+   */
+  const bucketSources = registrations.map((r) => ({
+    paymentStatus: r.paymentStatus,
+    /*
+     * Read from the raw document, because the mapped `amountDue` turns a missing value into
+     * 0 — and "nothing owed" is a different fact from "nobody has worked it out yet".
+     */
+    amountDue: numberField(r, "amountDue"),
+  }));
+
+  const buckets = bucketTotals(bucketSources);
+
+  const inBucket = (r: (typeof registrations)[number]) =>
+    bucket === "all" ||
+    bucketFor({
+      paymentStatus: r.paymentStatus,
+      amountDue: numberField(r, "amountDue"),
+    }) === bucket;
+
+  const entryList = registrations.filter(inBucket);
 
   const totals = paymentTotals(submissions);
   const queue = reviewQueue(submissions, {
@@ -210,6 +249,51 @@ export default function PaymentsPage() {
         */}
       <RosterGate access={roster.access} loaded={roster.loaded}>
 
+      {/*
+        Where the money stands, separated.
+        
+        The entry list mixes people who have paid online, people bringing cash to the door,
+        amounts nobody has confirmed, two on a promotion, and one whose amount has never been
+        established. One total across those would report every rupee recorded as money in hand,
+        which for this event overstates it by nearly double.
+      */}
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {buckets.map((b) => (
+          <button
+            key={b.bucket}
+            type="button"
+            onClick={() => setBucket(bucket === b.bucket ? "all" : b.bucket)}
+            className={cn(
+              "rounded-feature text-left transition-shadow",
+              bucket === b.bucket ? "ring-2 ring-primary-400" : "",
+            )}
+            aria-pressed={bucket === b.bucket}
+            title={`Show only ${b.label.toLowerCase()}`}
+          >
+            <Stat
+              label={b.label}
+              value={b.people}
+              sub={
+                b.bucket === "unknown"
+                  ? b.people
+                    ? "no amount established"
+                    : "none"
+                  : money(b.amount, event.currency)
+              }
+              tone={
+                b.bucket === "paid"
+                  ? "success"
+                  : b.bucket === "promo"
+                    ? "primary"
+                    : b.people
+                      ? "warning"
+                      : "neutral"
+              }
+            />
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
           label="Received"
@@ -249,6 +333,78 @@ export default function PaymentsPage() {
           payment provider confirming the transaction directly could do that automatically.
         </p>
       </div>
+
+      {/* Entry list by payment --------------------------------------------- */}
+      <Card className="mt-4">
+        <CardHeader
+          title="Every entrant, by payment"
+          subtitle={
+            bucket === "all"
+              ? `${entryList.length} registered`
+              : `${entryList.length} in ${BUCKET_LABEL[bucket].toLowerCase()} — press the tile again to clear`
+          }
+          action={
+            bucket === "all" ? null : (
+              <Button variant="secondary" onClick={() => setBucket("all")}>
+                Show all
+              </Button>
+            )
+          }
+        />
+        <div className="space-y-2 px-4 pb-4">
+          {entryList.length === 0 ? (
+            <EmptyState
+              title="Nobody in this group"
+              description="Press the tile again, or Show all, to see the whole entry list."
+            />
+          ) : (
+            entryList.map((r) => {
+              const amount = numberField(r, "amountDue");
+              const pricing = importField(r, "pricingType");
+              const method = field(r, "paymentMethod");
+              const state = bucketFor({ paymentStatus: r.paymentStatus, amountDue: amount });
+
+              return (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-3 rounded-feature border border-line bg-[rgb(var(--c-surface-soft))] p-3.5"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold text-ink">
+                      {r.fullName}
+                    </span>
+                    <span className="block truncate text-[11.5px] text-muted">
+                      {[pricing, method].filter(Boolean).join(" · ") || "No pricing recorded"}
+                    </span>
+                  </span>
+
+                  {/*
+                    An amount nobody has established says so. Rendering it as PKR 0 would
+                    claim this person owes nothing, which is the one thing we do not know.
+                  */}
+                  <span className="num shrink-0 text-[12.5px] text-muted">
+                    {amount === null ? "Amount not set" : money(amount, event.currency)}
+                  </span>
+
+                  <Badge
+                    tone={
+                      state === "paid"
+                        ? "success"
+                        : state === "promo"
+                          ? "primary"
+                          : state === "unknown"
+                            ? "critical"
+                            : "warning"
+                    }
+                  >
+                    {BUCKET_LABEL[state]}
+                  </Badge>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Card>
 
       {/* Discount claims --------------------------------------------------- */}
       {discountClaims.length ? (

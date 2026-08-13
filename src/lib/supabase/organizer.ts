@@ -43,6 +43,43 @@ export function field(reg: OrganizerRegistration, key: string): string | undefin
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
+/**
+ * Reads a numeric field, distinguishing "not set" from zero.
+ *
+ * `field` above returns undefined for anything that is not a string, so asking it for an
+ * amount always answered "missing" — which classified every registration as having no amount
+ * established. A number needs its own reader, and the null has to survive: an imported
+ * registration whose fee nobody has worked out yet is not a registration that owes nothing.
+ */
+export function numberField(reg: OrganizerRegistration, key: string): number | null {
+  const value = reg.data[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  /* Stored as text by some writers; "" and null both mean nobody set it. */
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+/**
+ * Reads a field out of the import block, for registrations that came from the Excel sheet.
+ *
+ * Those people carry the organizer's own vocabulary — "Early Bird", "Cash on Site" — beside
+ * the application's payment state rather than instead of it, so nothing was reinterpreted on
+ * the way in. Returns undefined for anybody who registered on the website, which is what lets
+ * a screen show the label only where one exists.
+ */
+export function importField(reg: OrganizerRegistration, key: string): string | undefined {
+  const block = reg.data.import;
+  if (!block || typeof block !== "object") return undefined;
+
+  const value = (block as Record<string, unknown>)[key];
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
 /** Reads a string field out of the form answers. */
 export function answer(reg: OrganizerRegistration, key: string): string | undefined {
   const answers = reg.data.answers;

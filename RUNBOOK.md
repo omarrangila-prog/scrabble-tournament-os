@@ -151,6 +151,16 @@ account, on any phone.
 are shown, so they cannot drift from the results. The same is true of arrival counts
 and revenue.
 
+**Twenty-one entrants came from the Excel sheet.** They are marked "Legacy Excel Import" and
+behave exactly like a web registration — they have check-in codes, they pair, they appear in
+standings and certificates. Do not ask them to register again. One of them, Muhammad Yadaan,
+also registered on the website; he is one record, not two.
+
+**Money is shown in four separate figures, not one.** Paid online is the only one that is
+revenue. Cash at venue is promised, not collected. Needs review is recorded but unconfirmed.
+Unpaid / unknown is one entrant whose amount has never been established — that is not the same
+as owing nothing. Press any tile on Payments to see just those people.
+
 **A receipt counts as paid the moment it is uploaded.** This was chosen deliberately:
 no receipt-checking work on the day, in exchange for revenue figures that include
 money nobody has confirmed. The payments queue will therefore look empty. A receipt
