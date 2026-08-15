@@ -5,12 +5,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Grid3x3, Megaphone, Pause, Play, Timer, Trophy } from "lucide-react";
 import { Avatar, Badge, Button } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { RoundClock } from "@/components/public/RoundClock";
 import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { computeStandings } from "@/lib/engine/standings";
+import { qrToDataUri } from "@/lib/qr/qrcode";
 import { cn, signed } from "@/lib/utils";
 
 type PanelId = "standings" | "pairings" | "announcements" | "sponsors" | "countdown";
@@ -108,6 +109,19 @@ export default function TvDisplayPage() {
   /* The room's clock, for the header badge as well as the panel. */
   const roomClock = useRoundTimer(ACTIVE_EVENT_ID, round);
   const clockPhase = roomClock.phase;
+
+  const origin = React.useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => "",
+  );
+
+  /*
+   * Built from the origin this screen is actually being served from, so the QR works on a
+   * laptop at the venue as well as on the deployed site. Empty on the server, where there is
+   * no origin — the block is simply absent until it renders in a browser.
+   */
+  const submitUrl = origin ? `${origin}/events/${ACTIVE_EVENT.slug}/submit-score` : "";
 
   const livePairings = pairings
     .filter((p) => p.round === round && p.playerBId)
@@ -331,6 +345,39 @@ export default function TvDisplayPage() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/*
+        The result QR, always on the wall once a round is up.
+
+        Pinned rather than given a slot in the rotation: somebody who has just finished a game
+        should not have to stand and wait for the right panel to come round. It is small
+        because it is not the point of the screen — but a phone camera reads it from across a
+        room at this size.
+      */}
+      {round > 0 && submitUrl ? (
+        <div className="flex items-center justify-center gap-4 px-6 pb-2 sm:px-10">
+          {/*
+            A plain <img>. The source is a data URI generated in the browser, so there is
+            nothing for the image optimiser to fetch, resize or cache — routing it through
+            next/image would add work and change nothing.
+          */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrToDataUri(submitUrl, { size: 280 })}
+            alt=""
+            aria-hidden
+            className="size-[92px] rounded-compact bg-white p-1.5 sm:size-[104px]"
+          />
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold text-ink sm:text-[17px]">
+              Finished your game? Scan to enter your result.
+            </p>
+            <p className="mt-0.5 text-[13px] text-muted sm:text-[15px]">
+              One player per board. You will need your check-in code.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Rotation progress */}
       <div className="flex gap-1 px-6 pb-1 sm:px-10">
