@@ -51,6 +51,13 @@ import { RosterGate } from "@/components/organizer/RosterGate";
 import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
 import { generateRound } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
+import {
+  assignTables,
+  formatTableSpec,
+  overlappingTables,
+  parseTableSpec,
+} from "@/lib/domain/tables";
+import { useTablePlan, writeTablePlan } from "@/lib/supabase/useTablePlan";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Player } from "@/lib/domain/types";
 import {
@@ -93,6 +100,7 @@ export default function LiveEventPage() {
    * "publish pairings" could never find two players to pair.
    */
   const roster = useRoster(ACTIVE_EVENT_ID);
+  const tablePlan = useTablePlan(ACTIVE_EVENT_ID);
 
   /*
    * Games come from the database too, so the round number, the board count and the
@@ -114,6 +122,25 @@ export default function LiveEventPage() {
   );
 
   const [extendOpen, setExtendOpen] = React.useState(false);
+
+  /*
+   * The table plan as typed, kept apart from the saved one so a half-edited range never
+   * seats anybody.
+   *
+   * `null` means "not edited yet", which is what lets the saved plan show through without
+   * copying it into state in an effect — a render-time fallback rather than a second copy
+   * that has to be kept in step.
+   */
+  const [edited, setEdited] = React.useState<Record<string, string> | null>(null);
+
+  const saved = React.useMemo(
+    () => Object.fromEntries(tablePlan.plan.map((p) => [p.division, formatTableSpec(p.tables)])),
+    [tablePlan.plan],
+  );
+
+  const tableDraft = edited ?? saved;
+  const setTableDraft = (next: React.SetStateAction<Record<string, string>>) =>
+    setEdited((current) => (typeof next === "function" ? next(current ?? saved) : next));
 
   /*
    * The round is whichever one has boards, rather than a counter kept in this
@@ -253,6 +280,36 @@ export default function LiveEventPage() {
    * Publishing writes the whole round at once, so participants never see a
    * half-paired round.
    */
+  /* Tables listed for two divisions at once — invisible in settings, four people at one
+     table in the room. */
+  const tableClashes = overlappingTables(
+    app.divisions.map((d) => ({ division: d.id, tables: parseTableSpec(tableDraft[d.id] ?? "") })),
+  );
+
+  const saveTablePlan = async () => {
+    const plan = app.divisions
+      .map((d) => ({ division: d.id, tables: parseTableSpec(tableDraft[d.id] ?? "") }))
+      .filter((p) => p.tables.length > 0);
+
+    const written = await writeTablePlan(event.id, plan);
+
+    if (!written.ok) {
+      app.toast({ title: "Not saved", description: written.message, tone: "critical" });
+      return;
+    }
+
+    tablePlan.reload();
+    /* Cleared, so the field falls back to whatever was actually stored. */
+    setEdited(null);
+
+    const total = plan.reduce((n, p) => n + p.tables.length, 0);
+    app.toast({
+      title: "Table plan saved",
+      description: `${total} table${total === 1 ? "" : "s"} across ${plan.length} division${plan.length === 1 ? "" : "s"}. Pairing will seat people here.`,
+      tone: "success",
+    });
+  };
+
   const publishPairings = async () => {
     const present = attending.filter((p) => p.checkIn === "checked-in");
 
@@ -274,12 +331,36 @@ export default function LiveEventPage() {
       round: nextRound,
     });
 
-    const plan: BoardPlan[] = generated.pairings.map((pairing) => ({
+    const numbered: BoardPlan[] = generated.pairings.map((pairing) => ({
       board: pairing.board,
       division: pairing.division,
       playerA: pairing.playerAId,
       playerB: pairing.playerBId,
     }));
+
+    /*
+     * Boards become the tables they are actually played on.
+     *
+     * Pairing numbers them 1, 2, 3… in the order it makes them, which is a different number
+     * from the one painted on the table as soon as two divisions share a room. Everything
+     * downstream — the phone, the score sheet, the wall — shows this number, so it has to be
+     * the one somebody can walk to.
+     */
+    const { seated, problems } = assignTables(numbered, tablePlan.plan);
+    const plan = tablePlan.plan.length > 0 ? seated : numbered;
+
+    /*
+     * A division with more pairs than tables is refused rather than published. Seating two
+     * games at one table is not something the room can sort out later.
+     */
+    if (problems.length > 0) {
+      app.toast({
+        title: "Not enough tables",
+        description: `${problems[0].message} Set the tables under Table plan, then pair again.`,
+        tone: "critical",
+      });
+      return;
+    }
 
     /*
      * Checked before sending. The database enforces the same rules, but a
@@ -510,6 +591,66 @@ export default function LiveEventPage() {
               This code never changes. It opens whatever the event needs right now —
               currently <strong className="font-semibold text-ink">{EVENT_STATE_LABEL[eventState]}</strong>.
             </p>
+          </div>
+        </Card>
+
+        {/* Table plan ----------------------------------------------------- */}
+        <Card className="xl:col-span-4">
+          <CardHeader
+            title="Table plan"
+            subtitle="Which tables each division sits at"
+            icon={<Grid3x3 className="size-4.5" />}
+          />
+          <div className="space-y-3 px-5 pb-5">
+            {/*
+              Typed as text rather than picked from a list of every table in the room. A venue
+              has pillars, doors and a table that wobbles, so "1-3, 7, 9-11" has to be as easy
+              to say as "1-12".
+            */}
+            {app.divisions.map((d) => (
+              <Field
+                key={d.id}
+                label={d.name}
+                hint="A range or a list — 1-5, or 1, 2, 3, 5, 7"
+              >
+                <Input
+                  value={tableDraft[d.id] ?? ""}
+                  onChange={(e) => setTableDraft((t) => ({ ...t, [d.id]: e.target.value }))}
+                  placeholder="e.g. 1-5"
+                  className="num"
+                />
+              </Field>
+            ))}
+
+            {/*
+              Counted from what is typed, before it is saved. "1-5" meaning five tables is
+              obvious; "1-3, 7, 9-11" meaning seven is not, and the number of seats is the
+              thing that has to be right.
+            */}
+            <p className="text-[12px] leading-relaxed text-muted">
+              {app.divisions
+                .map((d) => {
+                  const n = parseTableSpec(tableDraft[d.id] ?? "").length;
+                  return `${d.name}: ${n} table${n === 1 ? "" : "s"}`;
+                })
+                .join(" · ")}
+            </p>
+
+            {tableClashes.length > 0 ? (
+              <p className="rounded-control bg-critical-050 px-3.5 py-2.5 text-[12.5px] font-semibold leading-relaxed text-critical">
+                Table {tableClashes.join(", ")} is listed for more than one division. Two games
+                cannot share a table.
+              </p>
+            ) : null}
+
+            <Button
+              variant="secondary"
+              className="w-full"
+              disabled={tableClashes.length > 0}
+              onClick={() => void saveTablePlan()}
+            >
+              Save table plan
+            </Button>
           </div>
         </Card>
 

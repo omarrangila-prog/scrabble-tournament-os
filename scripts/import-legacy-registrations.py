@@ -208,8 +208,11 @@ def main() -> None:
     payments = json.loads(PAYMENTS_FILE.read_text())
     url = connection()
 
-    if len(people) != 21:
-        sys.exit(f"Expected 21 people on the sheet, found {len(people)}")
+    if len(people) != len(payments):
+        sys.exit(
+            f"{len(people)} people on the sheet but {len(payments)} payment rows — "
+            "every entrant needs a row, even one that says the amount is not known yet."
+        )
 
     # Payments are matched on name and phone together, so the two Hazils stay two people.
     by_person = {(name_key(p["name"]), digits(p["phone"])): p for p in payments}
