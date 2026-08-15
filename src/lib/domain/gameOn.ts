@@ -186,6 +186,19 @@ export interface GameOnRegistration {
    */
   receiptFileName?: string;
 
+  /**
+   * True when somebody is paying cash at the door instead of transferring now.
+   *
+   * It removes the screenshot requirement, because there is no transfer to screenshot. That
+   * is the whole point: the form previously refused to submit without one, so anybody
+   * intending to pay at the venue either could not register or uploaded something irrelevant
+   * to get past it.
+   *
+   * It is a statement of intent, not a payment. The record is marked as cash owed rather
+   * than paid, and the organizer collects at the desk.
+   */
+  payAtVenue?: boolean;
+
   /* Membership. */
   membershipStatus: MembershipStatus;
   membershipNumber?: string;
@@ -288,7 +301,11 @@ export function validateRegistration(
    * the account before the payment counts as verified. Requiring it only means
    * every entry carries something to check.
    */
-  if (options.requireReceipt) {
+  /*
+   * Somebody paying at the door has nothing to upload, so requiring a screenshot of them
+   * would be asking for a picture of a transfer that has not happened.
+   */
+  if (options.requireReceipt && !reg.payAtVenue) {
     need(
       "receiptFileName",
       reg.receiptFileName,

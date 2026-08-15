@@ -42,6 +42,7 @@ import {
   bucketTotals,
   type PaymentBucket,
 } from "@/lib/domain/paymentBuckets";
+import { PAYMENT_METHOD_LABEL } from "@/lib/domain/identity";
 import { activeEvent } from "@/lib/domain/scope";
 import {
   Flag,
@@ -361,7 +362,16 @@ export default function PaymentsPage() {
             entryList.map((r) => {
               const amount = numberField(r, "amountDue");
               const pricing = importField(r, "pricingType");
-              const method = field(r, "paymentMethod");
+              /*
+               * The stored method is a code from the form ("cash") or a phrase from the Excel
+               * import ("Cash at Venue"). Both are shown as the same words, so one entry list
+               * does not read as two different systems.
+               */
+              const stored = field(r, "paymentMethod");
+              const method =
+                stored && stored in PAYMENT_METHOD_LABEL
+                  ? PAYMENT_METHOD_LABEL[stored as keyof typeof PAYMENT_METHOD_LABEL]
+                  : stored;
               const state = bucketFor({ paymentStatus: r.paymentStatus, amountDue: amount });
 
               return (

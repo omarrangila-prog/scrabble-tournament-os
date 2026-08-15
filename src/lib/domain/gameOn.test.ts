@@ -265,6 +265,32 @@ describe("validateRegistration", () => {
       expect(validateRegistration(base)).toEqual([]);
     });
 
+    /**
+     * Paying at the door is the case the requirement was blocking. There is no transfer to
+     * screenshot, so the form previously refused to submit at all — the participant either
+     * gave up or attached something irrelevant to get past it.
+     */
+    it("does not demand a screenshot from somebody paying cash at the venue", () => {
+      // The precondition: the same registration is refused without the flag.
+      expect(validateRegistration(base, hasReceipt).some((p) => p.field === "receiptFileName")).toBe(
+        true,
+      );
+      expect(validateRegistration({ ...base, payAtVenue: true }, hasReceipt)).toEqual([]);
+    });
+
+    it("still checks everything else for somebody paying at the venue", () => {
+      /*
+       * Removing one requirement must not remove the rest — a cash payer with no name is
+       * still an incomplete registration.
+       */
+      const problems = validateRegistration(
+        { ...base, payAtVenue: true, fullName: "" },
+        hasReceipt,
+      );
+      expect(problems.some((p) => p.field === "fullName")).toBe(true);
+      expect(problems.some((p) => p.field === "receiptFileName")).toBe(false);
+    });
+
     it("names the field so the form can scroll to it", () => {
       const problem = validateRegistration(base, hasReceipt).find(
         (p) => p.field === "receiptFileName",

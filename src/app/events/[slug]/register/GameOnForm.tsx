@@ -1016,7 +1016,67 @@ export function GameOnForm({
               <FeePanel quote={quote} money={money} extra={addedEvents} extraOff={bundle.bundleOff} />
 
               {/* How to pay ------------------------------------------------ */}
-              {instructions.length ? (
+              {/*
+                How they intend to pay.
+
+                Offered before the transfer details, because it decides whether those details
+                and the screenshot apply at all. Somebody paying at the door has nothing to
+                screenshot, and the form used to refuse to submit without one — so they either
+                could not register or uploaded something irrelevant to get past it.
+              */}
+              <Field label="How would you like to pay?">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { venue: false, label: "Pay now by transfer", note: "Upload your receipt below" },
+                    { venue: true, label: "Pay cash at the venue", note: "Pay at the desk on the day" },
+                  ].map((o) => (
+                    <button
+                      key={o.label}
+                      type="button"
+                      onClick={() => {
+                        set("payAtVenue", o.venue);
+                        /*
+                         * Clear any receipt when switching to cash. Leaving one attached would
+                         * record a transfer against somebody who is paying at the door.
+                         */
+                        if (o.venue) set("receiptFileName", "");
+                      }}
+                      className={cn(
+                        "rounded-control border px-3.5 py-3 text-left transition-colors",
+                        Boolean(reg.payAtVenue) === o.venue
+                          ? "border-[#2F5D3A] bg-[#2F5D3A]/5"
+                          : "border-line bg-[rgb(var(--c-surface-strong))]",
+                      )}
+                      aria-pressed={Boolean(reg.payAtVenue) === o.venue}
+                    >
+                      <span
+                        className={cn(
+                          "block text-[13.5px] font-semibold",
+                          Boolean(reg.payAtVenue) === o.venue ? "text-[#2F5D3A]" : "text-ink",
+                        )}
+                      >
+                        {o.label}
+                      </span>
+                      <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">
+                        {o.note}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              {reg.payAtVenue ? (
+                <p className="flex items-start gap-2 rounded-control bg-[#C89B3C]/12 px-3.5 py-3 text-[12.5px] leading-relaxed" style={{ color: "#8A6A1F" }}>
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                  <span>
+                    Bring the exact amount to the desk on the day. Your place is registered now —
+                    your payment is recorded as due, and the organizer marks it paid once you have
+                    handed it over.
+                  </span>
+                </p>
+              ) : null}
+
+              {instructions.length && !reg.payAtVenue ? (
                 <div className="rounded-feature border border-[#C89B3C]/40 bg-[#C89B3C]/8 p-4">
                   <p className="flex items-center gap-2 text-[13px] font-bold text-ink">
                     <Wallet className="size-4" style={{ color: "#8A6A1F" }} />
@@ -1096,6 +1156,7 @@ export function GameOnForm({
                     ))}
                   </div>
 
+
                   {/*
                     * No exact figure is quoted here. Participants pay different
                     * amounts — member, family and early-bird rates, bundles, and
@@ -1116,7 +1177,7 @@ export function GameOnForm({
               )}
 
               {/* Receipt ---------------------------------------------------- */}
-              {instructions.some((i) => i.accountNumber !== "—") ? (
+              {requireReceipt && !reg.payAtVenue ? (
                 <Field
                   label="Payment screenshot"
                   required

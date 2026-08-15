@@ -204,7 +204,11 @@ export default function RegisterPage() {
       },
       // No payment method is configured until the organizer sets one, so the
       // participant is not asked to choose one that does not exist yet.
-      paymentMethod: event.paymentMethods[0] ?? "cash",
+      /*
+       * How they said they would pay. Somebody paying at the door is recorded as such, so
+       * the desk knows to collect and the money is not counted as received.
+       */
+      paymentMethod: reg.payAtVenue ? "cash" : event.paymentMethods[0] ?? "cash",
       receiptFileName: reg.receiptFileName,
       // The bundle total when they added another event, so the payment queue
       // shows what they were actually quoted.
@@ -261,7 +265,19 @@ export default function RegisterPage() {
         ...local,
         // Sent as the claim actually made. The database decides whether a
         // receipt-backed claim becomes verified; the browser may not.
-        paymentStatus: reg.receiptFileName ? "receipt-uploaded" : local.paymentStatus,
+        /*
+         * Sent as the claim actually made. The database decides whether a receipt-backed
+         * claim becomes verified; the browser may not.
+         *
+         * Cash at the venue is neither. It is money owed, recorded in its own state so the
+         * dashboard can count it as due rather than as received — nobody has handed anything
+         * over yet, and a registration that says otherwise would overstate the takings.
+         */
+        paymentStatus: reg.payAtVenue
+          ? "cash-at-venue"
+          : reg.receiptFileName
+            ? "receipt-uploaded"
+            : local.paymentStatus,
       },
     });
 
