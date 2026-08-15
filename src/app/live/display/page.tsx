@@ -7,11 +7,10 @@ import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { useEventState } from "@/lib/supabase/useEventState";
 import { useGames } from "@/lib/supabase/useGames";
 import { arrivalTotals } from "@/lib/supabase/registrations";
-import { useRoster as useRosterForNames } from "@/lib/supabase/useRoster";
+import { publicStandings, type PublicStanding } from "@/lib/supabase/submitResult";
 import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { useStore } from "@/lib/store/useStore";
 import { qrToDataUri } from "@/lib/qr/qrcode";
-import { computeStandings } from "@/lib/engine/standings";
 import { cn } from "@/lib/utils";
 
 /**
@@ -279,20 +278,87 @@ function Qr({ url }: { url: string }) {
 /** The top of each division, once results exist. */
 function Standings({ final }: { final: boolean }) {
   const app = useStore();
-  const roster = useRosterForNames(ACTIVE_EVENT_ID);
-  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+
+  /*
+   * Read publicly, because this screen has no session. The roster needs staff auth, so
+   * computing standings from it left the final screen — the one the whole day builds to —
+   * saying "nothing to show yet" with the results sitting in the database.
+   */
+  const [rows, setRows] = React.useState<PublicStanding[]>([]);
+
+  React.useEffect(() => {
+    let live = true;
+
+    const read = async () => {
+      const next = await publicStandings(ACTIVE_EVENT_ID);
+      if (live) setRows(next);
+    };
+
+    void read();
+    const id = window.setInterval(read, 15_000);
+
+    return () => {
+      live = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  /*
+   * The reveal, once the event is finished.
+   *
+   * Third, then second, then the champion, eight seconds apart, and then the podium stays.
+   * Building to the winner is the only reason to put results on a wall rather than on a
+   * phone. Nothing loops: a room does not need to be told who won on repeat.
+   */
+  const [revealed, setRevealed] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!final) return;
+    const id = window.setInterval(() => setRevealed((n) => (n >= 3 ? n : n + 1)), 8000);
+    return () => window.clearInterval(id);
+  }, [final]);
 
   const divisions = app.divisions
     .map((d) => ({
       name: d.name,
-      rows: computeStandings(roster.players, games.pairings, app.tournament, {
-        division: d.id,
-      }).slice(0, 3),
+      rows: rows.filter((r) => r.division === d.id).slice(0, 3),
     }))
     .filter((d) => d.rows.length > 0);
 
   if (divisions.length === 0) {
     return <Headline sub="Standings appear here once results are in.">Nothing to show yet</Headline>;
+  }
+
+  /* One division gets the ceremony; every division is listed once it is over. */
+  const ceremony = divisions[0];
+
+  if (final && revealed < 3) {
+    const place = 2 - revealed;
+    const row = ceremony.rows[place];
+
+    if (row) {
+      return (
+        <div className="flex flex-col items-center">
+          <p className="text-[9vw] leading-none">{["🥇", "🥈", "🥉"][place]}</p>
+          <p
+            className="mt-[2vh] text-[2vw] font-bold uppercase tracking-[0.2em]"
+            style={{ color: BRASS }}
+          >
+            {["Champion", "Runner-up", "Third place"][place]} · {ceremony.name}
+          </p>
+          <p
+            className="font-display mt-[1vh] text-[6vw] font-semibold leading-none"
+            style={{ color: IVORY }}
+          >
+            {row.name}
+          </p>
+          <p className="num mt-[2vh] text-[2vw]" style={{ color: `${IVORY}99` }}>
+            {row.wins} won · {row.spread > 0 ? "+" : ""}
+            {row.spread} spread
+          </p>
+        </div>
+      );
+    }
   }
 
   return (
@@ -318,13 +384,11 @@ function Standings({ final }: { final: boolean }) {
               {d.name}
             </p>
             {d.rows.map((row, i) => (
-              <p key={row.playerId} className="mt-[0.8vh] flex items-baseline gap-[0.8vw]">
+              <p key={row.name} className="mt-[0.8vh] flex items-baseline gap-[0.8vw]">
                 <span className="num text-[1.8vw] font-extrabold" style={{ color: BRASS }}>
                   {["🥇", "🥈", "🥉"][i] ?? i + 1}
                 </span>
-                <span className="flex-1 truncate text-[1.7vw] font-semibold">
-                  {roster.players.find((p) => p.id === row.playerId)?.fullName ?? "—"}
-                </span>
+                <span className="flex-1 truncate text-[1.7vw] font-semibold">{row.name}</span>
                 <span className="num text-[1.5vw]" style={{ color: `${IVORY}99` }}>
                   {row.wins}–{row.losses}
                 </span>

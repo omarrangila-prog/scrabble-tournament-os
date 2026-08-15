@@ -11,8 +11,12 @@ import { selectEventBySlug, useEventStore } from "@/lib/store/useEventStore";
 import {
   boardForCode,
   boardForToken,
+  confirmResult,
+  disputeResult,
+  resultStateByToken,
   submitResult,
   type Board,
+  type ResultState,
 } from "@/lib/supabase/submitResult";
 import {
   forgetPlayer,
@@ -68,6 +72,9 @@ export default function SubmitScorePage() {
   );
 
   const [lookedUp, setLookedUp] = React.useState(false);
+  const [result, setResult] = React.useState<ResultState | null>(null);
+  const [objecting, setObjecting] = React.useState(false);
+  const [reason, setReason] = React.useState("");
 
   /*
    * A phone with no memory has nothing to look up, so it is ready immediately. Deriving this
@@ -92,6 +99,16 @@ export default function SubmitScorePage() {
       /* A token that no longer resolves is stale — fall back to asking for the code. */
       if (!found) forgetPlayer(eventId);
       else setBoard(found);
+
+      /*
+       * A board with a score already on it is not finished with. Whoever did not send it is
+       * the one person guaranteed to notice a wrong number, so they are asked.
+       */
+      if (found?.alreadyRecorded) {
+        const state = await resultStateByToken(eventId, token);
+        if (live && state) setResult(state);
+      }
+
       setLookedUp(true);
     })();
 
@@ -153,6 +170,125 @@ export default function SubmitScorePage() {
     }
     setDone(true);
   };
+
+  /* ---- Your opponent sent a score ----------------------------------------- */
+  if (result && !done) {
+    const agreed = result.confirmed;
+    const objected = result.disputed;
+
+    const settle = async (agree: boolean) => {
+      if (!token) return;
+      setBusy(true);
+      setError(null);
+
+      const outcome = agree
+        ? await confirmResult(event.id, token)
+        : await disputeResult(event.id, token, reason);
+
+      setBusy(false);
+      if (!outcome.ok) {
+        setError(outcome.reason);
+        return;
+      }
+
+      const next = await resultStateByToken(event.id, token);
+      if (next) setResult(next);
+      setObjecting(false);
+    };
+
+    return (
+      <Shell>
+        <Panel>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: GOLD }}>
+            Round {result.round} · Board {result.board}
+          </p>
+
+          <p className="num mt-3 text-[38px] font-extrabold leading-none" style={{ color: BROWN }}>
+            {result.myScore} – {result.theirScore}
+          </p>
+          <p className="mt-1.5 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
+            You {result.myScore > result.theirScore ? "won" : result.myScore === result.theirScore ? "drew" : "lost"}
+            {result.opponent ? ` against ${result.opponent}` : ""}.
+          </p>
+
+          {objected ? (
+            <p className="mt-4 rounded-control bg-critical-050 px-3.5 py-3 text-[13px] font-semibold leading-relaxed text-critical">
+              You have flagged this board. The desk will settle it — nothing else to do.
+            </p>
+          ) : agreed ? (
+            <p className="mt-4 text-[13.5px] font-semibold" style={{ color: "#2F5D3A" }}>
+              Agreed. Nothing more to do.
+            </p>
+          ) : result.iSubmitted ? (
+            /*
+              The sender is shown their own entry and asked nothing. Confirming your own score
+              proves nothing, and a button that does that is a button that teaches people the
+              confirmation means nothing.
+            */
+            <p className="mt-4 text-[13.5px] leading-relaxed" style={{ color: `${BROWN}A6` }}>
+              You sent this. {result.opponent ?? "Your opponent"} can confirm it from their own
+              phone. If it is wrong, tell the desk.
+            </p>
+          ) : objecting ? (
+            <>
+              <p className="mt-4 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
+                What is wrong with it? The desk will read this.
+              </p>
+              <Input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. my score was 455"
+                className="mt-2"
+                aria-label="What is wrong with this score"
+              />
+              <Button
+                size="lg"
+                className="mt-4 w-full border-0"
+                style={{ background: "#B3261E", color: "white" }}
+                disabled={busy}
+                onClick={() => void settle(false)}
+              >
+                {busy ? "Sending…" : "Send to the desk"}
+              </Button>
+              <button
+                onClick={() => setObjecting(false)}
+                className="mt-3 text-[13px] font-semibold underline underline-offset-4"
+                style={{ color: `${BROWN}99` }}
+              >
+                Go back
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mt-4 text-[13.5px] leading-relaxed" style={{ color: `${BROWN}A6` }}>
+                {result.opponent ?? "Your opponent"} sent this score. Is it right?
+              </p>
+              <Button
+                size="lg"
+                className="mt-4 w-full border-0"
+                style={{ background: FOREST, color: "white" }}
+                disabled={busy}
+                onClick={() => void settle(true)}
+              >
+                {busy ? "Saving…" : "Yes, that is right"}
+              </Button>
+              <button
+                onClick={() => setObjecting(true)}
+                className="mt-3 text-[13px] font-semibold underline underline-offset-4"
+                style={{ color: "#B3261E" }}
+              >
+                No, that is wrong
+              </button>
+            </>
+          )}
+
+          {error ? (
+            <p className="mt-3 text-[12.5px] font-semibold text-critical">{error}</p>
+          ) : null}
+        </Panel>
+      </Shell>
+    );
+  }
 
   /* ---- Recorded ---------------------------------------------------------- */
   if (done && board) {
