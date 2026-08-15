@@ -8,7 +8,7 @@ const BROWN = "#3E2F23";
 const FOREST = "#2F5D3A";
 
 /**
- * Six large boxes for the check-in code.
+ * Large numeric boxes for a code — six for a check-in code, three for a player number.
  *
  * Built for somebody standing in a doorway holding a phone in one hand, so the
  * details matter more than they look:
@@ -18,7 +18,7 @@ const FOREST = "#2F5D3A";
  *   when the current one is already empty.
  * - Pasting "482731", "482 731" or "482-731" fills every box at once. People
  *   paste from a WhatsApp message far more often than they type.
- * - It submits itself on the sixth digit, so there is no button to find.
+ * - It submits itself on the last digit, so there is no button to find.
  *
  * One hidden detail: every box renders the whole value's digit at its own index
  * rather than holding separate state, so a paste, a delete and a retype all stay
@@ -31,6 +31,12 @@ export function CodeInput({
   disabled,
   invalid,
   autoFocus = true,
+  /*
+   * How many digits. Defaults to the check-in code's length so every existing caller is
+   * unchanged; the player number passes three.
+   */
+  length = CHECK_IN_CODE_LENGTH,
+  label = "Check-in code",
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -38,6 +44,8 @@ export function CodeInput({
   disabled?: boolean;
   invalid?: boolean;
   autoFocus?: boolean;
+  length?: number;
+  label?: string;
 }) {
   const refs = React.useRef<(HTMLInputElement | null)[]>([]);
 
@@ -48,14 +56,14 @@ export function CodeInput({
    */
   const submitted = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (value.length === CHECK_IN_CODE_LENGTH && submitted.current !== value) {
+    if (value.length === length && submitted.current !== value) {
       submitted.current = value;
       onComplete(value);
     }
-    if (value.length < CHECK_IN_CODE_LENGTH) submitted.current = null;
-  }, [value, onComplete]);
+    if (value.length < length) submitted.current = null;
+  }, [value, onComplete, length]);
 
-  const focusBox = (i: number) => refs.current[Math.max(0, Math.min(CHECK_IN_CODE_LENGTH - 1, i))]?.focus();
+  const focusBox = (i: number) => refs.current[Math.max(0, Math.min(length - 1, i))]?.focus();
 
   const handleInput = (index: number, raw: string) => {
     const digits = normaliseCode(raw);
@@ -68,7 +76,7 @@ export function CodeInput({
       return;
     }
 
-    const chars = value.padEnd(CHECK_IN_CODE_LENGTH, " ").split("");
+    const chars = value.padEnd(length, " ").split("");
     chars[index] = digits || " ";
     const next = normaliseCode(chars.join("").replace(/ /g, ""));
     onChange(next);
@@ -97,9 +105,9 @@ export function CodeInput({
        */
       className="flex w-full justify-center gap-1.5 sm:gap-2.5"
       role="group"
-      aria-label={`Check-in code, ${CHECK_IN_CODE_LENGTH} digits`}
+      aria-label={`${label}, ${length} digits`}
     >
-      {Array.from({ length: CHECK_IN_CODE_LENGTH }, (_, i) => (
+      {Array.from({ length: length }, (_, i) => (
         <input
           key={i}
           ref={(el) => {
@@ -110,7 +118,7 @@ export function CodeInput({
           inputMode="numeric"
           autoComplete="one-time-code"
           aria-label={`Digit ${i + 1}`}
-          maxLength={CHECK_IN_CODE_LENGTH}
+          maxLength={length}
           disabled={disabled}
           autoFocus={autoFocus && i === 0}
           value={value[i] ?? ""}

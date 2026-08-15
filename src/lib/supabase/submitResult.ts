@@ -29,13 +29,28 @@ export interface Board {
  * whether a code exists or whether a particular person has arrived.
  */
 export async function boardForCode(eventId: string, code: string): Promise<Board | null> {
+  return read(eventId, { p_code: code.trim() }, "board_for_code");
+}
+
+/**
+ * The same, for a phone that proved who it belongs to at check-in.
+ *
+ * This is the path almost everybody takes between rounds: the page opens already knowing
+ * the board, so there is nothing to type but two scores.
+ */
+export async function boardForToken(eventId: string, token: string): Promise<Board | null> {
+  return read(eventId, { p_token: token.trim() }, "board_for_token");
+}
+
+async function read(
+  eventId: string,
+  key: Record<string, string>,
+  fn: "board_for_code" | "board_for_token",
+): Promise<Board | null> {
   const db = supabase();
   if (!db) return null;
 
-  const { data, error } = await db.rpc("board_for_code", {
-    p_event_id: eventId,
-    p_code: code.trim(),
-  });
+  const { data, error } = await db.rpc(fn, { p_event_id: eventId, ...key });
 
   if (error || !Array.isArray(data) || data.length === 0) return null;
 
@@ -76,23 +91,32 @@ const REFUSALS: Record<string, string> = {
  */
 export async function submitResult(
   eventId: string,
-  code: string,
+  identity: { code: string } | { token: string },
   myScore: number,
   theirScore: number,
 ): Promise<SubmitOutcome> {
   const db = supabase();
   if (!db) return { ok: false, reason: "No connection. Please see the desk." };
 
-  const { data, error } = await db.rpc("submit_result_by_code", {
-    p_event_id: eventId,
-    p_code: code.trim(),
-    p_my_score: myScore,
-    p_their_score: theirScore,
-  });
+  /*
+   * Whichever proof the phone has. A remembered phone sends its token and types nothing; a
+   * borrowed one sends the code its owner read out. The rules either side are identical.
+   */
+  const usingToken = "token" in identity;
+
+  const { data, error } = await db.rpc(
+    usingToken ? "submit_result_by_token" : "submit_result_by_code",
+    {
+      p_event_id: eventId,
+      ...(usingToken ? { p_token: identity.token.trim() } : { p_code: identity.code.trim() }),
+      p_my_score: myScore,
+      p_their_score: theirScore,
+    },
+  );
 
   if (error) {
     if (error.message.toLowerCase().includes("could not find the function")) {
-      return { ok: false, reason: "Score submission needs migration 0029 applied." };
+      return { ok: false, reason: "Score submission needs migrations 0029 and 0031 applied." };
     }
     return { ok: false, reason: "That did not save. Please see the desk." };
   }

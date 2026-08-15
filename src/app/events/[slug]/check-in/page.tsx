@@ -17,6 +17,15 @@ import {
 import { selectEventBySlug, useEventStore } from "@/lib/store/useEventStore";
 import type { GuestPaymentStatus } from "@/lib/store/useEventStore";
 import {
+  claimPlayerNumber,
+  forgetPlayer,
+  playerByNumber,
+  PLAYER_NUMBER_LENGTH,
+  rememberedPlayer,
+  rememberPlayer,
+  type PlayerSummary,
+} from "@/lib/supabase/playerNumber";
+import {
   arrivalTotals,
   checkInParticipant,
   recoverRegistration,
@@ -66,6 +75,16 @@ export default function CheckInPage() {
   const [recovering, setRecovering] = React.useState(false);
 
   /*
+   * The player number is the way in; the six-digit code stays available because thirty-two
+   * people were already given one on their confirmation page, and taking it away would
+   * strand every one of them.
+   */
+  const [mode, setMode] = React.useState<"number" | "code">("number");
+  const [playerNumber, setPlayerNumber] = React.useState("");
+  const [summary, setSummary] = React.useState<PlayerSummary | null>(null);
+  const [lastFour, setLastFour] = React.useState("");
+
+  /*
    * Attempts are held per mount rather than persisted. This is a speed bump for
    * somebody typing digits by hand; the real limit belongs on the server, and
    * the domain rule is shared so both apply the same one.
@@ -96,11 +115,24 @@ export default function CheckInPage() {
   const [fromToken, setFromToken] = React.useState<CheckInSubject | null>(null);
 
   React.useEffect(() => {
-    if (!token || !eventId) return;
+    if (!eventId) return;
     let live = true;
-    findByPersonalToken(eventId, token).then((found) => {
-      if (live) setFromToken(found);
+
+    /*
+     * The link's token wins over the remembered one. Somebody opening a personal link is
+     * saying who they are for this visit — possibly on a phone their friend used first.
+     */
+    const known = token || rememberedPlayer(eventId)?.token;
+    if (!known) return;
+
+    findByPersonalToken(eventId, known).then((found) => {
+      if (!live) return;
+      setFromToken(found);
+
+      /* A remembered token that no longer resolves is stale. Forget it and ask again. */
+      if (!found && !token) forgetPlayer(eventId);
     });
+
     return () => {
       live = false;
     };
@@ -124,6 +156,75 @@ export default function CheckInPage() {
   }
 
   const counts = totals;
+
+  /**
+   * Step one: who is this number?
+   *
+   * Nothing is proved here. The masked name comes back so the person can recognise
+   * themselves before being asked for anything private — and so somebody who typed 118
+   * instead of 117 finds out now rather than after checking in as a stranger.
+   */
+  const lookUpNumber = async (entered: string) => {
+    setError(null);
+
+    const verdict = attemptVerdict(attempts, nowMs());
+    if (!verdict.allowed) {
+      setError(verdict.message);
+      return;
+    }
+
+    setBusy(true);
+    const found = await playerByNumber(event.id, entered);
+    setBusy(false);
+
+    if (!found) {
+      setAttempts((log) => recordFailure(log, nowMs()));
+      setPlayerNumber("");
+      setError("No player has that number. Check it, or ask at the desk.");
+      return;
+    }
+
+    setSummary(found);
+  };
+
+  /**
+   * Step two: prove it.
+   *
+   * The last four digits of the mobile are the only thing standing between a guessed number
+   * and somebody else's registration — the number itself is public by design. A wrong
+   * answer says exactly what an unknown number says.
+   */
+  const proveNumber = async () => {
+    setError(null);
+
+    const verdict = attemptVerdict(attempts, nowMs());
+    if (!verdict.allowed) {
+      setError(verdict.message);
+      return;
+    }
+
+    setBusy(true);
+    const claimed = await claimPlayerNumber(event.id, playerNumber, lastFour);
+    setBusy(false);
+
+    if (!claimed) {
+      setAttempts((log) => recordFailure(log, nowMs()));
+      setLastFour("");
+      setError("Those digits do not match that player number. Try again, or see the desk.");
+      return;
+    }
+
+    /* This phone now knows who it belongs to, so nothing above is asked again today. */
+    rememberPlayer(event.id, claimed, playerNumber);
+
+    const found = await findByPersonalToken(event.id, claimed);
+    if (!found) {
+      setError("We found you but could not open your registration. Please see the desk.");
+      return;
+    }
+    setSummary(null);
+    setFromToken(found);
+  };
 
   const submitCode = async (entered: string) => {
     setError(null);
@@ -300,6 +401,144 @@ export default function CheckInPage() {
             setCandidate(r);
           }}
         />
+      </Shell>
+    );
+  }
+
+  /* ---- Is this you? ------------------------------------------------------ */
+  if (summary) {
+    const owes =
+      summary.paymentStatus === "cash-at-venue" && summary.amountDue !== null && summary.amountDue > 0;
+
+    return (
+      <Shell>
+        <Panel>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: GOLD }}>
+            Player {playerNumber}
+          </p>
+          <p className="mt-3 text-[26px] font-extrabold leading-tight" style={{ color: BROWN }}>
+            {summary.maskedName}
+          </p>
+          <p className="mt-1 text-[13.5px] capitalize" style={{ color: `${BROWN}A6` }}>
+            {summary.division}
+            {summary.checkedIn ? " · already checked in" : ""}
+          </p>
+
+          {/*
+            What they owe, before they are asked for anything. Somebody paying cash can read
+            it, walk to the desk and pay — rather than checking in, walking away, and being
+            chased later.
+          */}
+          {owes ? (
+            <p
+              className="mt-4 rounded-control px-3.5 py-3 text-[13px] font-semibold leading-relaxed"
+              style={{ background: "#C89B3C1F", color: "#8A6A1F" }}
+            >
+              Payment due: PKR {summary.amountDue?.toLocaleString("en-PK")}
+              <span className="mt-0.5 block font-medium">
+                Please pay at the desk. You can still check in now.
+              </span>
+            </p>
+          ) : null}
+
+          <p className="mt-5 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
+            To confirm it is you, enter the <strong>last 4 digits</strong> of your mobile number.
+          </p>
+
+          <div className="mx-auto mt-3 max-w-[220px]">
+            <Input
+              value={lastFour}
+              onChange={(e) => setLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              inputMode="numeric"
+              className="num text-center text-[22px] font-bold tracking-[0.3em]"
+              placeholder="0000"
+              aria-label="Last four digits of your mobile number"
+            />
+          </div>
+
+          {error ? (
+            <p className="mt-3 text-[12.5px] font-semibold text-critical">{error}</p>
+          ) : null}
+
+          <Button
+            size="lg"
+            className="mt-5 w-full border-0"
+            style={{ background: FOREST, color: "white" }}
+            disabled={lastFour.length !== 4 || busy}
+            onClick={() => void proveNumber()}
+          >
+            {busy ? "Checking…" : "Yes, this is me"}
+          </Button>
+
+          <button
+            onClick={() => {
+              setSummary(null);
+              setPlayerNumber("");
+              setLastFour("");
+              setError(null);
+            }}
+            className="mt-3 text-[13px] font-semibold underline underline-offset-4"
+            style={{ color: `${BROWN}99` }}
+          >
+            Not me, go back
+          </button>
+        </Panel>
+      </Shell>
+    );
+  }
+
+  /* ---- Enter a player number --------------------------------------------- */
+  if (mode === "number") {
+    return (
+      <Shell>
+        <Panel>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: GOLD }}>
+            {event.name}
+          </p>
+          <p className="mt-2 text-[24px] font-extrabold leading-tight" style={{ color: BROWN }}>
+            Welcome
+          </p>
+          <p className="mt-1 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
+            Enter your {PLAYER_NUMBER_LENGTH}-digit player number.
+          </p>
+
+          <div className="mt-5">
+            <CodeInput
+              value={playerNumber}
+              onChange={setPlayerNumber}
+              onComplete={lookUpNumber}
+              length={PLAYER_NUMBER_LENGTH}
+              label="Player number"
+              invalid={Boolean(error)}
+            />
+          </div>
+
+          {error ? (
+            <p className="mt-3 text-[12.5px] font-semibold text-critical">{error}</p>
+          ) : null}
+
+          <Button
+            size="lg"
+            className="mt-5 w-full border-0"
+            style={{ background: FOREST, color: "white" }}
+            disabled={playerNumber.length !== PLAYER_NUMBER_LENGTH || busy}
+            onClick={() => void lookUpNumber(playerNumber)}
+          >
+            {busy ? "Looking you up…" : "Continue"}
+          </Button>
+
+          {/* Everyone registered before today already holds one of these. */}
+          <button
+            onClick={() => {
+              setMode("code");
+              setError(null);
+            }}
+            className="mt-4 text-[13px] font-semibold underline underline-offset-4"
+            style={{ color: `${BROWN}99` }}
+          >
+            I have a {CHECK_IN_CODE_LENGTH}-digit code instead
+          </button>
+        </Panel>
       </Shell>
     );
   }

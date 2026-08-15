@@ -8,7 +8,16 @@ import { Button, Field, Input } from "@/components/ui";
 import { CodeInput } from "@/components/checkin/CodeInput";
 import { CHECK_IN_CODE_LENGTH } from "@/lib/domain/checkIn";
 import { selectEventBySlug, useEventStore } from "@/lib/store/useEventStore";
-import { boardForCode, submitResult, type Board } from "@/lib/supabase/submitResult";
+import {
+  boardForCode,
+  boardForToken,
+  submitResult,
+  type Board,
+} from "@/lib/supabase/submitResult";
+import {
+  forgetPlayer,
+  rememberedPlayer,
+} from "@/lib/supabase/playerNumber";
 
 /**
  * A player entering their own board's result.
@@ -35,6 +44,7 @@ export default function SubmitScorePage() {
 
   const store = useEventStore();
   const event = selectEventBySlug(store, slug);
+  const eventId = event?.id;
 
   const [code, setCode] = React.useState("");
   const [board, setBoard] = React.useState<Board | null>(null);
@@ -43,6 +53,52 @@ export default function SubmitScorePage() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
+
+  /*
+   * The token this phone kept at check-in.
+   *
+   * Read through `useSyncExternalStore` rather than during render: local storage is mutable
+   * state outside React, and reading it in the render body makes the component impure — two
+   * renders in the same frame could disagree about who this phone belongs to.
+   */
+  const token = React.useSyncExternalStore(
+    () => () => {},
+    () => (eventId ? (rememberedPlayer(eventId)?.token ?? "") : ""),
+    () => "",
+  );
+
+  const [lookedUp, setLookedUp] = React.useState(false);
+
+  /*
+   * A phone with no memory has nothing to look up, so it is ready immediately. Deriving this
+   * rather than setting it in the effect keeps every state change after an await, which is
+   * what the compiler requires and what stops a flash of the wrong screen.
+   */
+  const looked = !token || lookedUp;
+
+  /*
+   * A remembered phone opens straight onto its own board. This is the path almost everybody
+   * takes between rounds — the point of proving identity once at the door is that nothing is
+   * typed at the table but two scores.
+   */
+  React.useEffect(() => {
+    if (!eventId || !token) return;
+    let live = true;
+
+    (async () => {
+      const found = await boardForToken(eventId, token);
+      if (!live) return;
+
+      /* A token that no longer resolves is stale — fall back to asking for the code. */
+      if (!found) forgetPlayer(eventId);
+      else setBoard(found);
+      setLookedUp(true);
+    })();
+
+    return () => {
+      live = false;
+    };
+  }, [eventId, token]);
 
   if (!event) {
     return (
@@ -88,7 +144,7 @@ export default function SubmitScorePage() {
 
     setBusy(true);
     setError(null);
-    const result = await submitResult(event.id, code, my, their);
+    const result = await submitResult(event.id, token ? { token } : { code }, my, their);
     setBusy(false);
 
     if (!result.ok) {
@@ -209,6 +265,23 @@ export default function SubmitScorePage() {
           >
             Not you? Start again
           </button>
+        </Panel>
+      </Shell>
+    );
+  }
+
+  /*
+   * Nothing until the remembered lookup has finished. Rendering the code entry first and
+   * replacing it a moment later would ask a remembered player for a code they do not need,
+   * which is exactly the friction this removes.
+   */
+  if (!looked) {
+    return (
+      <Shell>
+        <Panel>
+          <p className="text-[13.5px]" style={{ color: `${BROWN}A6` }}>
+            Finding your board…
+          </p>
         </Panel>
       </Shell>
     );
