@@ -171,24 +171,24 @@
     "name": "Rabia Naveed",
     "age": 37,
     "phone": "03238099507",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": null,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site"
   },
   {
     "name": "Rohaan Ali",
     "age": 19,
     "phone": "03328200774",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": null,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site"
   },
   {
     "name": "Abiha",
     "age": 18,
     "phone": "03133259591",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": null,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site"
   }
 ]

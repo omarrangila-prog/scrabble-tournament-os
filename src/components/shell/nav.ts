@@ -1,4 +1,5 @@
 import {
+  Search,
   BarChart3,
   CalendarDays,
   CircleHelp,
@@ -48,6 +49,8 @@ export const NAV_ITEMS: NavItem[] = [
    * The database-backed list, now inside the dashboard shell rather than on its own
    * page. One set of navigation, so no screen is a dead end.
    */
+  /* The desk sits above the reference screens: it is the one used while standing up. */
+  { href: "/app/desk", label: "Desk", icon: Search },
   { href: "/app/registrations", label: "Registrations", icon: IdCard },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },

@@ -1,0 +1,338 @@
+"use client";
+
+import * as React from "react";
+
+import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
+import { useEventState } from "@/lib/supabase/useEventState";
+import { useGames } from "@/lib/supabase/useGames";
+import { arrivalTotals } from "@/lib/supabase/registrations";
+import { useRoster as useRosterForNames } from "@/lib/supabase/useRoster";
+import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
+import { useStore } from "@/lib/store/useStore";
+import { qrToDataUri } from "@/lib/qr/qrcode";
+import { computeStandings } from "@/lib/engine/standings";
+import { cn } from "@/lib/utils";
+
+/**
+ * The wall.
+ *
+ * Nobody touches this screen. It is put on a television at the start of the day and it
+ * follows the event by itself, because the phase already lives in the database and every
+ * other screen reads it — a display that had to be switched by hand would be one more thing
+ * to remember while a room is waiting.
+ *
+ * Each state answers the one question the room is asking at that moment, and shows the QR
+ * that answers it: where do I check in, where do I sit, how long have I got, where do I put
+ * my score. Everything is sized for reading from the back of a room rather than from a desk.
+ *
+ * The rotating panels at `/live/tv` still exist for standings between rounds. This is the
+ * screen for the moment somebody looks up.
+ */
+
+const NIGHT = "#060F0A";
+const FELT = "#123021";
+const IVORY = "#F4EBD9";
+const BRASS = "#D8AC5A";
+const EMERALD = "#279A60";
+
+/** What the room needs from the screen, for each phase the event can be in. */
+type Scene =
+  | "closed"
+  | "check-in"
+  | "pairings"
+  | "playing"
+  | "results"
+  | "break"
+  | "standings";
+
+const SCENE_FOR: Record<EventState, Scene> = {
+  draft: "closed",
+  "registration-open": "check-in",
+  "registration-closed": "check-in",
+  preparing: "check-in",
+  "check-in-open": "check-in",
+  "check-in-closed": "pairings",
+  "round-published": "pairings",
+  "round-active": "playing",
+  "result-entry": "results",
+  break: "break",
+  "final-review": "standings",
+  completed: "standings",
+  archived: "closed",
+};
+
+export default function LiveDisplayPage() {
+  const app = useStore();
+  const phase = useEventState(ACTIVE_EVENT_ID, 8);
+  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+  const round = games.round;
+  const clock = useRoundTimer(ACTIVE_EVENT_ID, round);
+
+  /* Once a second, so the clock on the wall is the clock in the room. */
+  const [, tick] = React.useState(0);
+  React.useEffect(() => {
+    const id = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const origin = React.useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => "",
+  );
+
+  const state = phase.state ?? "registration-open";
+  const scene = SCENE_FOR[state] ?? "closed";
+
+  /*
+   * Arrivals from the public counter, not from the roster.
+   *
+   * The roster needs a signed-in staff session, and a television is not signed in — so
+   * reading it there showed "0 / 0" all through check-in, on the one screen the room looks
+   * at to know whether it is waiting for ten people or for one. `checkin_counts` returns two
+   * numbers and nothing about anybody, which is exactly what a wall should have.
+   */
+  const [arrivals, setArrivals] = React.useState({ expected: 0, checkedIn: 0 });
+
+  React.useEffect(() => {
+    let live = true;
+
+    const read = async () => {
+      const totals = await arrivalTotals(ACTIVE_EVENT_ID);
+      if (live) setArrivals(totals);
+    };
+
+    void read();
+    const id = window.setInterval(read, 10_000);
+
+    return () => {
+      live = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  const checkedIn = arrivals.checkedIn;
+  const expected = arrivals.expected;
+
+  const base = `${origin}/events/${ACTIVE_EVENT.slug}`;
+  const checkInUrl = origin ? `${base}/check-in` : "";
+  const submitUrl = origin ? `${base}/submit-score` : "";
+
+  const minutesLeft = Math.max(0, Math.floor(clock.remaining / 60000));
+  const lastMinute = clock.phase === "running" && clock.remaining > 0 && clock.remaining <= 60_000;
+
+  return (
+    <main
+      className="flex min-h-dvh flex-col px-[4vw] py-[3vh]"
+      style={{
+        background: `radial-gradient(120% 80% at 50% -10%, ${FELT} 0%, ${NIGHT} 72%)`,
+        color: IVORY,
+      }}
+    >
+      {/* The banner never changes, so somebody walking in knows where they are. */}
+      <header className="flex flex-wrap items-baseline justify-between gap-4">
+        <p
+          className="text-[2.4vw] font-extrabold uppercase tracking-[0.18em]"
+          style={{ color: BRASS }}
+        >
+          Blufy&rsquo;s AlphaBattle
+        </p>
+        <p className="text-[1.5vw] font-semibold" style={{ color: `${IVORY}99` }}>
+          {EVENT_STATE_LABEL[state]}
+          {round > 0 && scene !== "check-in" ? ` · Round ${round}` : ""}
+        </p>
+      </header>
+
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        {/* ---- Nothing happening yet ------------------------------------ */}
+        {scene === "closed" ? (
+          <Headline sub="Nothing to do just yet.">{ACTIVE_EVENT.name}</Headline>
+        ) : null}
+
+        {/* ---- Come in and check in ------------------------------------- */}
+        {scene === "check-in" ? (
+          <>
+            <Headline sub="Scan with your phone, then enter your player number.">
+              Welcome — check in
+            </Headline>
+            <Qr url={checkInUrl} />
+            {/*
+              The count is the one number worth putting on a wall during check-in: it tells
+              the room whether it is waiting for ten people or for one.
+            */}
+            <p className="mt-[2vh] text-[2.6vw] font-extrabold" style={{ color: EMERALD }}>
+              {checkedIn}
+              <span style={{ color: `${IVORY}66` }}> / {expected} checked in</span>
+            </p>
+          </>
+        ) : null}
+
+        {/* ---- Boards are up -------------------------------------------- */}
+        {scene === "pairings" ? (
+          <>
+            <Headline sub="Scan to find your table, or look for your name on the boards.">
+              {round > 0 ? `Round ${round} — tables are up` : "Getting the first round ready"}
+            </Headline>
+            {round > 0 ? <Qr url={checkInUrl} /> : null}
+          </>
+        ) : null}
+
+        {/* ---- Playing --------------------------------------------------- */}
+        {scene === "playing" ? (
+          <>
+            <p className="text-[2vw] font-bold uppercase tracking-[0.2em]" style={{ color: BRASS }}>
+              Round {round}
+            </p>
+            {/*
+              The clock is the whole screen while a round is on. Everything else can wait —
+              this is the only thing anybody looks up for.
+            */}
+            <p
+              className={cn("num font-extrabold leading-none", lastMinute && "animate-pulse")}
+              style={{
+                fontSize: "22vw",
+                color: lastMinute ? "#E2703A" : IVORY,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {clock.clock}
+            </p>
+            <p className="mt-[1vh] text-[2vw] font-semibold" style={{ color: `${IVORY}99` }}>
+              {clock.phase === "paused"
+                ? "Paused"
+                : lastMinute
+                  ? "One minute remaining"
+                  : `${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`}
+            </p>
+          </>
+        ) : null}
+
+        {/* ---- Round over, send your score ------------------------------- */}
+        {scene === "results" ? (
+          <>
+            <Headline sub="One player per board. You will need your player number.">
+              Round {round} complete — submit your result
+            </Headline>
+            <Qr url={submitUrl} />
+            <p className="mt-[2vh] text-[2.2vw] font-bold" style={{ color: EMERALD }}>
+              {games.progress.verified}
+              <span style={{ color: `${IVORY}66` }}> / {games.progress.totalBoards} boards in</span>
+            </p>
+          </>
+        ) : null}
+
+        {/* ---- Break ------------------------------------------------------ */}
+        {scene === "break" ? (
+          <>
+            <Headline sub="Tea, and back shortly. Your next table appears on your phone.">
+              Break
+            </Headline>
+            <p className="mt-[1vh] text-[7vw]">☕</p>
+          </>
+        ) : null}
+
+        {/* ---- Standings, and the finish --------------------------------- */}
+        {scene === "standings" ? <Standings final={state === "completed"} /> : null}
+      </div>
+
+      <footer className="text-center text-[1.2vw]" style={{ color: `${IVORY}55` }}>
+        {ACTIVE_EVENT.venueName} · {ACTIVE_EVENT.city}
+      </footer>
+    </main>
+  );
+}
+
+function Headline({ children, sub }: { children: React.ReactNode; sub: string }) {
+  return (
+    <>
+      <h1
+        className="font-display text-[6vw] font-semibold leading-[1.05] tracking-[-0.02em]"
+        style={{ color: IVORY }}
+      >
+        {children}
+      </h1>
+      <p className="mt-[1.5vh] text-[1.9vw]" style={{ color: `${IVORY}A6` }}>
+        {sub}
+      </p>
+    </>
+  );
+}
+
+/**
+ * A QR big enough to scan from a seat.
+ *
+ * White plate behind it deliberately: a code rendered directly onto a dark background is a
+ * code half the phones in the room will not read.
+ */
+function Qr({ url }: { url: string }) {
+  if (!url) return null;
+
+  return (
+    <div className="mt-[3vh] rounded-[1.4vw] bg-white p-[1.2vw]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={qrToDataUri(url, { size: 720 })} alt="" aria-hidden className="size-[22vw]" />
+    </div>
+  );
+}
+
+/** The top of each division, once results exist. */
+function Standings({ final }: { final: boolean }) {
+  const app = useStore();
+  const roster = useRosterForNames(ACTIVE_EVENT_ID);
+  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+
+  const divisions = app.divisions
+    .map((d) => ({
+      name: d.name,
+      rows: computeStandings(roster.players, games.pairings, app.tournament, {
+        division: d.id,
+      }).slice(0, 3),
+    }))
+    .filter((d) => d.rows.length > 0);
+
+  if (divisions.length === 0) {
+    return <Headline sub="Standings appear here once results are in.">Nothing to show yet</Headline>;
+  }
+
+  return (
+    <>
+      <h1
+        className="font-display text-[5vw] font-semibold leading-none"
+        style={{ color: final ? BRASS : IVORY }}
+      >
+        {final ? "Final results" : "Standings"}
+      </h1>
+
+      <div className="mt-[3vh] grid w-full gap-[2vw] sm:grid-cols-2 lg:grid-cols-3">
+        {divisions.map((d) => (
+          <div
+            key={d.name}
+            className="rounded-[1vw] px-[1.6vw] py-[1.6vh] text-left"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
+            <p
+              className="text-[1.3vw] font-bold uppercase tracking-[0.14em]"
+              style={{ color: BRASS }}
+            >
+              {d.name}
+            </p>
+            {d.rows.map((row, i) => (
+              <p key={row.playerId} className="mt-[0.8vh] flex items-baseline gap-[0.8vw]">
+                <span className="num text-[1.8vw] font-extrabold" style={{ color: BRASS }}>
+                  {["🥇", "🥈", "🥉"][i] ?? i + 1}
+                </span>
+                <span className="flex-1 truncate text-[1.7vw] font-semibold">
+                  {roster.players.find((p) => p.id === row.playerId)?.fullName ?? "—"}
+                </span>
+                <span className="num text-[1.5vw]" style={{ color: `${IVORY}99` }}>
+                  {row.wins}–{row.losses}
+                </span>
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
