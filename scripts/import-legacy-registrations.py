@@ -228,7 +228,8 @@ def main() -> None:
           'id', id,
           'name', data->>'fullName',
           'phone', data->>'mobile',
-          'code', check_in_code
+          'code', check_in_code,
+          'importKey', data->'import'->>'importKey'
         )), '[]')
         from public.records
         where collection = 'registrations' and event_id = '%s' and status = 'active'
@@ -237,6 +238,14 @@ def main() -> None:
     )
     existing = json.loads(existing_rows)
     by_existing = {(name_key(r["name"] or ""), digits(r["phone"] or "")): r for r in existing}
+
+    # A row this import already created wins over a name-and-phone match.
+    #
+    # Without this, somebody who was imported and then registered on the website again ends
+    # up in the list twice: the insert is skipped because the import key already exists, and
+    # the update lands on the website row instead — leaving two records for one person, both
+    # carrying the same import data. That happened, and it would have paired him twice.
+    by_key = {r["importKey"]: r for r in existing if r.get("importKey")}
     taken_codes = {r["code"] for r in existing if r["code"]}
 
     codes = check_in_codes(taken_codes, len(people))
@@ -278,7 +287,7 @@ def main() -> None:
             **money["payment"],
         }
 
-        match = by_existing.get(key)
+        match = by_key.get(import_key) or by_existing.get(key)
 
         if match:
             # Already registered through the website. Their own submission stands; only the

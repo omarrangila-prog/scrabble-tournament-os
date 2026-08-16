@@ -31,9 +31,12 @@ a chat transcript.
 Registration writes straight to the database. A receipt screenshot is required — the
 form will not submit without one.
 
-**Tell people to save their six-digit code before closing the confirmation page.**
-No email is sent, and that page is the only copy. They can also copy a personal
-one-tap check-in link from it.
+**Everybody has a player number** — 101 upwards — which is what they use at the door.
+The six-digit code still works for anyone who was given one, and the confirmation page
+also offers a personal one-tap link.
+
+A player number identifies but does not authorise: the first time it is used on a phone,
+the last four digits of that person's mobile are asked for as well.
 
 If somebody loses both, they can be found on the check-in page by mobile number and
 surname, or looked up on the roster at **`/app/players`**.
@@ -42,85 +45,102 @@ surname, or looked up on the roster at **`/app/players`**.
 
 ## On the day
 
-The event **phase** decides what every participant's phone shows. It is stored in the
-database, so changing it on your laptop changes every phone within a second or two.
-Set it from **`/app/live-event`**.
+Almost none of this needs a laptop. You need a television, your phone, and the
+participants' phones.
 
-| Phase | What a participant sees |
-| --- | --- |
-| `registration-open` | Register now |
-| `check-in-open` | Check in |
-| `round-published` / `round-active` | Find your board |
-| `result-entry` | Find your board, plus "take your slip to the desk" |
-| `break` / `final-review` | Standings |
-| `completed` | Final results |
+### Set up once, before people arrive
 
-### 1. Open check-in
+**Put the wall up.** Open **`/live/display`** on the television and leave it. It follows
+the event by itself — check-in, then tables, then the clock, then results, then the
+winner. Nobody touches it again.
 
-Set the phase to **Check-in Open**.
+**Set the tables.** On **`/app/live-event`**, under **Table plan**, say which tables each
+division sits at: `1-5` for Beginner, `6-12` for Recreational, or a list like `1, 2, 3, 5,
+7` if some tables do not exist. Pairing then seats people at the numbers painted on the
+tables, not at "board 1, 2, 3".
 
-Participants check themselves in three ways, all equivalent:
+The event **phase** decides what every phone and the wall show. Set it from
+**`/app/live-event`**.
 
-- their personal link, from the confirmation page;
-- the venue QR code, then their six-digit code;
-- the desk: find them on the arrival list in **Live Event** and press **Check in**.
+| Phase | Wall | A participant's phone |
+| --- | --- | --- |
+| `registration-open` | Scan to check in | Register now |
+| `check-in-open` | Scan to check in, with the count | Check in |
+| `round-published` | Round N — tables are up | Find your table |
+| `round-active` | The clock, full screen | Find your board |
+| `result-entry` | Submit your result, with a QR | Send your score |
+| `break` | Break | Standings |
+| `completed` | Third, runner-up, champion | Final results |
 
-Checking somebody in twice is safe. The second attempt says they are already in and
-keeps the original arrival time.
+### 1. Check-in
 
-Somebody who never registered: **Add walk-in** on **`/app/players`**. It records them,
-marks them arrived, and gives you a code to write on their badge. Their payment is
-recorded as unpaid.
+Set the phase to **Check-in Open**. The wall shows a QR and a live count.
 
-### 2. Pair the first round
+Everybody has a **player number** — 101, 102, 103. It is short enough to say across a
+room and print on a badge. It identifies; it does not authorise. The first time somebody
+uses it on their phone they also give the **last four digits of their mobile**, and after
+that their phone remembers them for the rest of the day.
 
-In **Live Event**, press **Pair and publish round 1**.
+Three ways in, all equivalent:
 
-It pairs only the people who have actually checked in, using a Swiss fold that avoids
-repeat opponents. The whole round is published at once, so nobody sees half a round.
-Boards appear on every phone and on the venue screen immediately.
+- scan the wall, type their player number, confirm with their last four digits;
+- their personal link, from the confirmation page — no typing at all;
+- **the desk**: open **`/app/desk`** on your phone, search the number or name, press
+  **Check in**.
 
-### 3. Enter scores
+Checking somebody in twice is safe. The second attempt keeps the original arrival time.
 
-**`/app/score-entry`** — search a board number or a name, type both scores, Save.
+**Somebody paying cash** shows on the desk as *owes* an amount. Take the money, press
+**Cash received**, then **Check in**. Both are one tap and both are reversible from
+Payments.
 
-A score lands on every other screen in about a second and a half, so a second laptop
-can enter scores at the same time without either of you refreshing.
+Somebody who never registered: **Add walk-in** on `/app/players`.
 
-- An unusual total is flagged, not blocked.
-- **Correct** requires a reason, which is stored with the result against your name.
-- **Undo** reopens a board entered against the wrong game.
-- **Dispute** holds a board that the players disagree about. The score stays as it is and
-  nothing is deleted; the board reads *disputed*, Live Event counts it under Conflicts,
-  and the round will not advance until it is settled. A reason is required, because
-  somebody else may have to settle it.
-- A dispute ends when a person re-enters the score through **Correct**. There is no
-  "resolve" button: the only way a score becomes official is that someone puts their name
-  to it.
+### 2. Pair the round
 
-### 4. Next round
+**Pair and publish round 1** on Live Event. It pairs only the people who have actually
+checked in, and seats them at their division's tables. If a division has more pairs than
+tables it refuses and says so, rather than putting two games at one table.
 
-Wait until every board has a score — the dashboard says so — then **Pair and publish
-round 2**. A round that already has results cannot be re-paired by accident; clearing
-it is a separate, explicit action that says what it will delete.
+### 3. The round
 
-### 5. Finish
+Set the phase to **Round Active** and the clock starts — on the wall and on every phone at
+once, from the same recorded instant. **Add time** extends it everywhere.
 
-Set the phase to **Completed**. Standings are at **`/app/standings`** and on the venue
-screen at **`/live`**.
+The wall shows the clock and nothing else. In the last minute it turns and pulses.
 
-### 6. Certificates
+### 4. Scores
 
-At **`/app/certificates`**: **Prepare from standings** writes a certificate for every
-player from the verified results. Each is a draft — nothing is public yet — and each
-carries a line about that person taken from their own games.
+When the round ends, the wall shows a QR: **submit your result**.
 
-Placement certificates stay drafts until the event reaches **Final review** or
-**Completed**, so none can claim a placing that is still open to change. Change the
-phase on `/app/live-event` when the results are settled, then **Issue**.
+One player per board scans it. Their phone already knows who they are and which board they
+are on, so they type two numbers and nothing else. **The score counts immediately** and the
+standings move.
 
-Issuing is the moment the code printed on a certificate starts to resolve. Anyone can
-check one at **`/verify`**, by typing the code or scanning the QR on the back — no
+Their opponent then sees it on their own phone and can **confirm** or **say it is wrong**.
+A disagreement sends the board to **Conflicts** and stops the round until you settle it —
+the score is left alone, because a disagreement does not say which number is right.
+
+You can still do everything from **`/app/score-entry`**: type a score, **Correct** one with
+a reason, or **Dispute** a board yourself.
+
+### 5. Next round, and breaks
+
+Wait until every board is in — the dashboard says so — then pair the next round. **Start
+break** puts a break on the wall.
+
+### 6. Finish
+
+Set the phase to **Completed**. The wall counts out third place, then the runner-up, then
+the champion, and leaves the podium up.
+
+### 7. Certificates
+
+At **`/app/certificates`**: **Prepare from standings**, then **Issue**. Placement
+certificates stay drafts until the phase is Final Review or Completed, so none can claim a
+placing that is still open to change.
+
+Anyone can check a certificate at **`/verify`** by typing its code or scanning its QR — no
 account, on any phone.
 
 **Withdraw** voids one and asks for a reason, which is what a checker is then shown.
@@ -134,13 +154,16 @@ account, on any phone.
 | `/app` | The morning's summary and anything needing a decision |
 | `/organizer/registrations` | Every entrant: who has paid, who has arrived |
 | `/app/players` | The roster, walk-in entry, CSV export |
-| `/app/live-event` | Phase, arrivals, pairing, the round timer, venue QR |
+| `/app/desk` | The desk on a phone: find somebody, take cash, check them in |
+| `/app/live-event` | Phase, table plan, arrivals, pairing, the round timer, venue QR |
 | `/app/score-entry` | Scores |
 | `/app/standings` | Standings, computed from verified games |
 | `/app/payments` | Receipts and revenue |
 | `/app/certificates` | Awards and certificates |
 | `/report/<event id>` | The printable report for a sponsor — open it from **Analytics → Printable report** |
-| `/live` | The big screen for the wall |
+| `/live/display` | **The wall.** Follows the event by itself — put this on the television |
+| `/live` | The rotating screen: standings, pairings, announcements |
+| `/events/alphabattle-23-august/submit-score` | Where a player sends their result |
 | `/live/alphabattle-23-august` | What a participant sees on their phone |
 
 ---
@@ -151,15 +174,19 @@ account, on any phone.
 are shown, so they cannot drift from the results. The same is true of arrival counts
 and revenue.
 
-**Twenty-one entrants came from the Excel sheet.** They are marked "Legacy Excel Import" and
+**Twenty-four entrants came from the sheet.** They are marked "Legacy Excel Import" and
 behave exactly like a web registration — they have check-in codes, they pair, they appear in
-standings and certificates. Do not ask them to register again. One of them, Muhammad Yadaan,
-also registered on the website; he is one record, not two.
+standings and certificates. Do not ask them to register again. Two of them — Muhammad Yadaan
+and Abdul wasay Narinja — also registered on the website; each is one record, not two.
 
 **Money is shown in four separate figures, not one.** Paid online is the only one that is
 revenue. Cash at venue is promised, not collected. Needs review is recorded but unconfirmed.
-Unpaid / unknown is one entrant whose amount has never been established — that is not the same
-as owing nothing. Press any tile on Payments to see just those people.
+Unpaid / unknown covers anybody whose amount has never been established — which is not the
+same as owing nothing. Press any tile on Payments to see just those people.
+
+**A registration writes a receipt or a promise, never revenue.** Somebody choosing "pay cash
+at the venue" is recorded as owing it, and only becomes revenue when the desk takes the
+money.
 
 **A receipt counts as paid the moment it is uploaded.** This was chosen deliberately:
 no receipt-checking work on the day, in exchange for revenue figures that include
