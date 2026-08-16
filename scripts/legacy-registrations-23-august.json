@@ -324,7 +324,7 @@
   {
     "originalTimestamp": "2026-08-15 22:35:11",
     "fullName": "Abiha",
-    "email": "abihanoman14@gamil.com",
+    "email": "abihanoman14@gmail.com",
     "age": 18,
     "phone": "03133259591",
     "playsPSARankingTournaments": "No",
@@ -333,6 +333,7 @@
     "mediaConsent": "No",
     "cancellationAgreement": "Agreed",
     "refundAgreement": "Agreed",
-    "eventRulesAgreement": "Agreed"
+    "eventRulesAgreement": "Agreed",
+    "emailAsSupplied": "abihanoman14@gamil.com"
   }
 ]

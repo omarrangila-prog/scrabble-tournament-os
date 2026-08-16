@@ -280,6 +280,8 @@ def main() -> None:
             "originalSkillLevel": original,
             "skillLevel": division.capitalize(),
             "heardAboutEvent": person["heardAboutEvent"],
+            # Kept when an address was corrected, so the change stays visible.
+            **({"emailAsSupplied": person["emailAsSupplied"]} if person.get("emailAsSupplied") else {}),
             "mediaConsent": person["mediaConsent"],
             "cancellationAgreement": person["cancellationAgreement"],
             "refundAgreement": person["refundAgreement"],
