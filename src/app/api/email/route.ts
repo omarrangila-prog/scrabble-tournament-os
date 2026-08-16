@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
-import { certificateEmail, registrationEmail } from "@/lib/email/templates";
+import {
+  certificateEmail,
+  playerCodeEmail,
+  registrationEmail,
+} from "@/lib/email/templates";
 import { checkDeliverability, isEmailConfigured, sendEmail } from "@/lib/email/send";
 
 /**
@@ -25,7 +29,14 @@ import { checkDeliverability, isEmailConfigured, sendEmail } from "@/lib/email/s
  */
 
 interface RegistrationRequest {
-  kind: "registration";
+  kind: "registration" | "player-codes";
+  people?: {
+    fullName: string;
+    email: string;
+    playerNumber: string;
+    checkInCode: string;
+    token: string;
+  }[];
   token: string;
 }
 
@@ -95,6 +106,29 @@ async function registrationForToken(token: string) {
   return Array.isArray(rows) && rows.length > 0 ? rows[0]! : null;
 }
 
+/**
+ * One person's player-number message.
+ *
+ * Composed here rather than in the browser so the recipient list comes from the database
+ * and not from whatever a page happened to be showing.
+ */
+async function sendPlayerCode(
+  origin: string,
+  row: { fullName: string; email: string; playerNumber: string; checkInCode: string; token: string },
+) {
+  const composed = playerCodeEmail({
+    fullName: row.fullName || "there",
+    playerNumber: row.playerNumber,
+    checkInCode: row.checkInCode,
+    eventName: "Blufy's AlphaBattle",
+    eventDate: "Sunday 23 August 2026",
+    venue: "Chai Chatt, Habitt City, Karachi",
+    checkInUrl: `${origin}/events/alphabattle-23-august/check-in?t=${encodeURIComponent(row.token)}`,
+  });
+
+  return sendEmail({ to: row.email, ...composed });
+}
+
 export async function POST(request: Request) {
   if (!isEmailConfigured()) {
     /*
@@ -155,6 +189,46 @@ export async function POST(request: Request) {
 
     const result = await sendEmail({ to, ...composed });
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
+
+  /* ---- Everybody's player number, sent by staff ------------------------ */
+  if (body.kind === "player-codes") {
+    if (!(await callerIsStaff(request.headers.get("authorization")))) {
+      return NextResponse.json(
+        { ok: false, message: "Only the organizer can send these." },
+        { status: 401 },
+      );
+    }
+
+    const people = Array.isArray(body.people) ? body.people : [];
+    if (people.length === 0) {
+      return NextResponse.json({ ok: false, message: "Nobody to send to." }, { status: 400 });
+    }
+
+    const origin = new URL(request.url).origin;
+    const sent: string[] = [];
+    const failed: { name: string; reason: string }[] = [];
+
+    /*
+     * One at a time, and the outcome of each is kept.
+     *
+     * A bulk send that reports "done" hides the one address that bounced, and the person
+     * behind it turns up on the day never having been told their number. Providers also
+     * rate-limit bursts, and a sequential send is well inside every limit that matters at
+     * this size.
+     */
+    for (const person of people) {
+      if (!person?.email?.includes("@")) {
+        failed.push({ name: person?.fullName ?? "unknown", reason: "no email address" });
+        continue;
+      }
+
+      const result = await sendPlayerCode(origin, person);
+      if (result.ok) sent.push(person.fullName);
+      else failed.push({ name: person.fullName, reason: result.message ?? "refused" });
+    }
+
+    return NextResponse.json({ ok: failed.length === 0, sent, failed });
   }
 
   /* ---- A certificate, sent by staff ------------------------------------ */

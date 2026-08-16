@@ -1,4 +1,5 @@
 import {
+  Send,
   Search,
   BarChart3,
   CalendarDays,
@@ -54,6 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/registrations", label: "Registrations", icon: IdCard },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
+  { href: "/app/send-codes", label: "Send codes", icon: Send },
   { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
   { href: "/app/certificates", label: "Awards", icon: Trophy },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },

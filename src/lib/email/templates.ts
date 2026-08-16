@@ -141,6 +141,63 @@ export interface CertificateEmail {
  * certificate can check it against the record, which is what makes it worth having —
  * a picture proves nothing on its own.
  */
+export interface PlayerCodeEmail {
+  fullName: string;
+  playerNumber: string;
+  checkInCode: string;
+  eventName: string;
+  eventDate: string;
+  venue: string;
+  checkInUrl: string;
+}
+
+/**
+ * The message every entrant gets before the day: their player number.
+ *
+ * The number is the point, so it is the largest thing in the message and it is in the
+ * subject line as well — a number somebody has to open an email to find is a number they
+ * will be hunting for at the door.
+ *
+ * It also says what will be asked for alongside it. Being asked for the last four digits of
+ * your mobile is reassuring if you were told to expect it and alarming if you were not.
+ */
+export function playerCodeEmail(input: PlayerCodeEmail): Composed {
+  const subject = `You are player ${input.playerNumber} — ${input.eventName}`;
+
+  const html = wrap("Your player number", [
+    `<p style="margin:0;">${escape(input.fullName)}, here is everything you need for the day.</p>`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;background:${CREAM};border-radius:12px;">`,
+    `<tr><td style="padding:18px;text-align:center;">`,
+    `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:rgba(62,47,35,0.6);">Your player number</p>`,
+    `<p style="margin:6px 0 0;font-size:44px;font-weight:800;letter-spacing:4px;color:${BROWN};">${escape(input.playerNumber)}</p>`,
+    `</td></tr></table>`,
+    `<p style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">At the door, scan the code on the screen and type <strong>${escape(input.playerNumber)}</strong>. You will also be asked for the <strong>last four digits of your mobile number</strong>, to confirm it is you. After that your phone remembers you for the rest of the day.</p>`,
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">`,
+    `<tr><td style="padding:3px 0;">Date</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.eventDate)}</td></tr>`,
+    `<tr><td style="padding:3px 0;">Venue</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.venue)}</td></tr>`,
+    `</table>`,
+    button(input.checkInUrl, "Check in on the day"),
+    `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Keep this message. If you lose your number, the desk can find you by name.</p>`,
+  ].join(""));
+
+  const text = [
+    `${input.fullName}, here is everything you need for the day.`,
+    ``,
+    `YOUR PLAYER NUMBER: ${input.playerNumber}`,
+    ``,
+    `At the door, scan the code on the screen and type ${input.playerNumber}.`,
+    `You will also be asked for the last four digits of your mobile number, to confirm it is you.`,
+    ``,
+    `${input.eventName}`,
+    `${input.eventDate}`,
+    `${input.venue}`,
+    ``,
+    `Check in: ${input.checkInUrl}`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
 export function certificateEmail(input: CertificateEmail): Composed {
   const subject = `Your certificate — ${input.eventName}`;
 
