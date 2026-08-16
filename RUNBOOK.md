@@ -98,7 +98,10 @@ Somebody who never registered: **Add walk-in** on `/app/players`.
 
 ### 2. Pair the round
 
-**Pair and publish round 1** on Live Event. It pairs only the people who have actually
+Set the phase to **Check-in Closed** first — pairing is only offered once check-in is
+closed, so that a round cannot be built while people are still arriving.
+
+Then **Pair and publish round 1** on Live Event. It pairs only the people who have actually
 checked in, and seats them at their division's tables. If a division has more pairs than
 tables it refuses and says so, rather than putting two games at one table.
 
