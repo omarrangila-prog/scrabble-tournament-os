@@ -98,6 +98,24 @@ export function useGames(eventId: string, tournamentId = eventId): GamesState {
    */
   React.useEffect(() => subscribeToGames(eventId, reload), [eventId, reload]);
 
+  /*
+   * A slow poll behind the live subscription.
+   *
+   * Realtime is the fast path and usually the only one that matters — a score appears on
+   * every screen in about a second. But it is best-effort: a dropped socket, a backgrounded
+   * tab or a phone that slept can miss a message, and nothing tells the page it missed one.
+   *
+   * That was tolerable when a person was watching. It is not now that the last result of a
+   * round is what triggers the next round being paired: a missed message would leave a room
+   * waiting for something that had already happened. Fifteen seconds is far below the
+   * interval anybody would notice and far above anything that troubles the database.
+   */
+  React.useEffect(() => {
+    if (!eventId) return;
+    const id = window.setInterval(reload, 15_000);
+    return () => window.clearInterval(id);
+  }, [eventId, reload]);
+
   const pairings = React.useMemo(
     () => pairingsFromGames(games, tournamentId),
     [games, tournamentId],

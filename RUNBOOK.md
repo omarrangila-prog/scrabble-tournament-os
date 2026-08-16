@@ -144,6 +144,22 @@ the score is left alone, because a disagreement does not say which number is rig
 You can still do everything from **`/app/score-entry`**: type a score, **Correct** one with
 a reason, or **Dispute** a board yourself.
 
+### The day runs itself
+
+At the top of Live Event there is a line saying what is about to happen. Once a round has
+every result in, the next one is paired ten seconds later; once boards are up, the round
+starts after thirty seconds so people can find their tables; when the clock runs out, the
+event moves to result entry on its own.
+
+Every automatic step is announced and counts down first, and **Not yet** stops that one
+step. **Turn off** hands the whole day back to you and the controls below still work.
+
+Two things stop it by themselves, which is what they are for: a **disputed board** is not
+a verified result, so a disagreement halts the loop until you settle it; and a **break**
+is a decision to stop, so nothing overrides one.
+
+Keep Live Event open on your phone. It is the screen doing the watching.
+
 ### 5. Next round, and breaks
 
 Wait until every board is in — the dashboard says so — then pair the next round.

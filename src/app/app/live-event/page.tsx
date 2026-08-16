@@ -49,6 +49,7 @@ import { setEventPhase, useEventState } from "@/lib/supabase/useEventState";
 import { announceBoardsChanged } from "@/lib/supabase/realtime";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
+import { AutoRun } from "@/components/organizer/AutoRun";
 import { generateRound } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
@@ -395,8 +396,20 @@ export default function LiveEventPage() {
      * downstream — the phone, the score sheet, the wall — shows this number, so it has to be
      * the one somebody can walk to.
      */
-    const { seated, problems } = assignTables(numbered, tablePlan.plan);
-    const plan = tablePlan.plan.length > 0 ? seated : numbered;
+    /*
+     * Only when a plan exists.
+     *
+     * With no plan, `assignTables` correctly reports that no division has any tables — and
+     * the refusal below then blocked pairing entirely for anybody who had not set one.
+     * Boards keep their generated numbers instead, which is what they did before table
+     * plans existed and is a perfectly good room.
+     */
+    const hasPlan = tablePlan.plan.length > 0;
+    const { seated, problems } = hasPlan
+      ? assignTables(numbered, tablePlan.plan)
+      : { seated: numbered, problems: [] };
+
+    const plan = hasPlan ? seated : numbered;
 
     /*
      * A division with more pairs than tables is refused rather than published. Seating two
@@ -812,7 +825,26 @@ export default function LiveEventPage() {
             }
           />
           <div className="px-4 pb-4">
-            <RosterGate access={roster.access} loaded={roster.loaded}>
+            {/*
+        The day, running itself. Announced and cancellable — an event that rearranges a room
+        with no warning is worse than one that waits.
+      */}
+      <AutoRun
+        round={games.round}
+        totalRounds={event.rounds}
+        boardsTotal={games.progress.totalBoards}
+        boardsVerified={games.progress.verified}
+        /*
+         * The effective phase, not the raw stored one. `storedPhase.state` is null until the
+         * first read returns and can lag a write by a poll — and auto-run comparing against
+         * null simply never fires, which is exactly what happened.
+         */
+        phase={eventState}
+        onPublish={publishPairings}
+        onPhase={setState}
+      />
+
+      <RosterGate access={roster.access} loaded={roster.loaded}>
               <ArrivalList players={attending} onChanged={roster.reload} />
             </RosterGate>
           </div>
