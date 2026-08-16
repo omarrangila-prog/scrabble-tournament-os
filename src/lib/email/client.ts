@@ -89,3 +89,78 @@ export async function emailCertificate(input: CertificateSend): Promise<EmailOut
 
   return post({ kind: "certificate", ...input }, `Bearer ${session.access_token}`);
 }
+
+export interface PlayerCodeRecipient {
+  fullName: string;
+  email: string;
+  playerNumber: string;
+  checkInCode: string;
+  token: string;
+}
+
+export interface BulkOutcome {
+  ok: boolean;
+  sent: string[];
+  failed: { name: string; reason: string }[];
+  message?: string;
+}
+
+/**
+ * Sends everybody their player number. Staff only.
+ *
+ * The session token is attached for the same reason the certificate send attaches it: this
+ * posts a list of names and addresses and asks the server to mail them, and an anonymous
+ * request must not be able to do that.
+ *
+ * Omitting it is not a small mistake — the route answers 401 and the page reports "0 sent,
+ * 0 not delivered", which reads like an empty list rather than like a refusal.
+ */
+export async function emailPlayerCodes(
+  people: PlayerCodeRecipient[],
+): Promise<BulkOutcome> {
+  const db = supabase();
+  const session = db ? (await db.auth.getSession()).data.session : null;
+
+  if (!session) {
+    return { ok: false, sent: [], failed: [], message: "Sign in again to send these." };
+  }
+
+  const response = await fetch("/api/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ kind: "player-codes", people }),
+  }).catch(() => null);
+
+  if (!response) {
+    return { ok: false, sent: [], failed: [], message: "No connection." };
+  }
+
+  const body = (await response.json().catch(() => null)) as Partial<BulkOutcome> | null;
+
+  if (!body) {
+    return { ok: false, sent: [], failed: [], message: "The server did not answer." };
+  }
+
+  /*
+   * A refusal is reported as one. Defaulting the lists to empty and calling it a result is
+   * how "nobody was told" comes to look like "there was nobody to tell".
+   */
+  if (!response.ok && !body.sent) {
+    return {
+      ok: false,
+      sent: [],
+      failed: [],
+      message: body.message ?? `The server refused (${response.status}).`,
+    };
+  }
+
+  return {
+    ok: Boolean(body.ok),
+    sent: body.sent ?? [],
+    failed: body.failed ?? [],
+    message: body.message,
+  };
+}

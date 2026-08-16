@@ -41,6 +41,18 @@ the last four digits of that person's mobile are asked for as well.
 If somebody loses both, they can be found on the check-in page by mobile number and
 surname, or looked up on the roster at **`/app/players`**.
 
+### The day before: send everyone their number
+
+Open **`/app/send-codes`** and press **Email all**. Everybody is told their player number,
+what will be asked for at the door, and where to check in.
+
+It sends one at a time and reports each outcome by name, so an address that bounces is
+visible rather than buried in a total. WhatsApp is on the same screen — one tap per person,
+the same message — for anybody whose email fails or who has no address.
+
+Mail goes out from **Blufy's AlphaBattle <muhammadahmedrangila@gmail.com>** through Brevo,
+which allows 300 a day on the free plan. Thirty-two entrants is well inside that.
+
 ---
 
 ## On the day

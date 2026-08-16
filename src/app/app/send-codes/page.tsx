@@ -9,6 +9,7 @@ import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { field, importField } from "@/lib/supabase/organizer";
 import { useStore } from "@/lib/store/useStore";
+import { emailPlayerCodes } from "@/lib/email/client";
 import { useDeliverability, whatsappLink } from "@/lib/email/deliverability";
 import { cn } from "@/lib/utils";
 
@@ -82,33 +83,28 @@ export default function SendCodesPage() {
     setSending(true);
     setOutcome(null);
 
-    const response = await fetch("/api/email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "player-codes", people: withEmail }),
-    }).catch(() => null);
-
-    const body = (await response?.json().catch(() => null)) as {
-      sent?: string[];
-      failed?: { name: string; reason: string }[];
-      message?: string;
-    } | null;
+    const result = await emailPlayerCodes(withEmail);
 
     setSending(false);
 
-    if (!body) {
-      app.toast({ title: "Nothing sent", description: "The request failed.", tone: "critical" });
+    /* A refusal is shown as a refusal, not as an empty result. */
+    if (!result.ok && result.sent.length === 0 && result.failed.length === 0) {
+      app.toast({
+        title: "Nothing sent",
+        description: result.message ?? "The request was refused.",
+        tone: "critical",
+      });
       return;
     }
 
-    setOutcome({ sent: body.sent ?? [], failed: body.failed ?? [] });
+    setOutcome({ sent: result.sent, failed: result.failed });
 
     app.toast({
-      title: `${body.sent?.length ?? 0} sent`,
-      description: body.failed?.length
-        ? `${body.failed.length} could not be delivered — see the list.`
+      title: `${result.sent.length} sent`,
+      description: result.failed.length
+        ? `${result.failed.length} could not be delivered — see the list.`
         : "Everybody with an email address has been told their number.",
-      tone: body.failed?.length ? "warning" : "success",
+      tone: result.failed.length ? "warning" : "success",
     });
   };
 
