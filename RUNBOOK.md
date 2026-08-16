@@ -126,8 +126,10 @@ a reason, or **Dispute** a board yourself.
 
 ### 5. Next round, and breaks
 
-Wait until every board is in — the dashboard says so — then pair the next round. **Start
-break** puts a break on the wall.
+Wait until every board is in — the dashboard says so — then pair the next round.
+
+**Start break** and **Start lunch break** both stop the room; they differ only in what the
+wall says, and a room reads "lunch" very differently from "back shortly".
 
 ### 6. Finish
 

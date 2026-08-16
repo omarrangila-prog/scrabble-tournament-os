@@ -7,6 +7,7 @@ import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { useEventState } from "@/lib/supabase/useEventState";
 import { useGames } from "@/lib/supabase/useGames";
 import { arrivalTotals } from "@/lib/supabase/registrations";
+import { readBreakKind } from "@/lib/supabase/useTablePlan";
 import { publicStandings, type PublicStanding } from "@/lib/supabase/submitResult";
 import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { useStore } from "@/lib/store/useStore";
@@ -93,6 +94,26 @@ export default function LiveDisplayPage() {
    * numbers and nothing about anybody, which is exactly what a wall should have.
    */
   const [arrivals, setArrivals] = React.useState({ expected: 0, checkedIn: 0 });
+
+  /* Break, or lunch. The room reads the two very differently. */
+  const [breakKind, setBreakKind] = React.useState<"break" | "lunch">("break");
+
+  React.useEffect(() => {
+    let live = true;
+
+    const read = async () => {
+      const kind = await readBreakKind(ACTIVE_EVENT_ID);
+      if (live) setBreakKind(kind);
+    };
+
+    void read();
+    const id = window.setInterval(read, 15_000);
+
+    return () => {
+      live = false;
+      window.clearInterval(id);
+    };
+  }, []);
 
   React.useEffect(() => {
     let live = true;
@@ -224,10 +245,16 @@ export default function LiveDisplayPage() {
         {/* ---- Break ------------------------------------------------------ */}
         {scene === "break" ? (
           <>
-            <Headline sub="Tea, and back shortly. Your next table appears on your phone.">
-              Break
+            <Headline
+              sub={
+                breakKind === "lunch"
+                  ? "Lunch and chai for everybody. Your next table appears on your phone."
+                  : "Back shortly. Your next table appears on your phone."
+              }
+            >
+              {breakKind === "lunch" ? "Lunch break" : "Break"}
             </Headline>
-            <p className="mt-[1vh] text-[7vw]">☕</p>
+            <p className="mt-[1vh] text-[7vw]">{breakKind === "lunch" ? "🍽️" : "☕"}</p>
           </>
         ) : null}
 

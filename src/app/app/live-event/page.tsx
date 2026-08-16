@@ -57,7 +57,7 @@ import {
   overlappingTables,
   parseTableSpec,
 } from "@/lib/domain/tables";
-import { useTablePlan, writeTablePlan } from "@/lib/supabase/useTablePlan";
+import { useTablePlan, writeBreakKind, writeTablePlan } from "@/lib/supabase/useTablePlan";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Player } from "@/lib/domain/types";
 import {
@@ -285,6 +285,20 @@ export default function LiveEventPage() {
   const tableClashes = overlappingTables(
     app.divisions.map((d) => ({ division: d.id, tables: parseTableSpec(tableDraft[d.id] ?? "") })),
   );
+
+  /**
+   * Stops the room, and tells the wall which kind of stop it is.
+   *
+   * The label is written before the phase, so the wall never shows "break" for a second on
+   * its way to "lunch" — a room glances up once.
+   */
+  const startBreak = async (kind: "break" | "lunch") => {
+    const labelled = await writeBreakKind(event.id, kind);
+    if (!labelled.ok) {
+      app.toast({ title: "Not saved", description: labelled.message, tone: "warning" });
+    }
+    await setState("break");
+  };
 
   const saveTablePlan = async () => {
     const plan = app.divisions
@@ -701,8 +715,17 @@ export default function LiveEventPage() {
                   >
                     {advance.reason}
                   </div>
-                  <Button variant="secondary" className="w-full" icon={<Coffee className="size-4" />} onClick={() => void setState("break")}>
+                  {/*
+                    Two buttons rather than a break plus a toggle. On the day the question is
+                    "are we stopping for ten minutes or for lunch", and answering it in one
+                    press is the difference between a wall that says the right thing and one
+                    nobody remembered to change.
+                  */}
+                  <Button variant="secondary" className="w-full" icon={<Coffee className="size-4" />} onClick={() => void startBreak("break")}>
                     Start break
+                  </Button>
+                  <Button variant="secondary" className="w-full" onClick={() => void startBreak("lunch")}>
+                    Start lunch break
                   </Button>
                 </>
               ) : null}
