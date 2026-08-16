@@ -6,10 +6,8 @@ import { motion } from "framer-motion";
 
 import { Button, Field, Input } from "@/components/ui";
 import { CodeInput } from "@/components/checkin/CodeInput";
-import { CHECK_IN_CODE_LENGTH } from "@/lib/domain/checkIn";
 import { selectEventBySlug, useEventStore } from "@/lib/store/useEventStore";
 import {
-  boardForCode,
   boardForToken,
   confirmResult,
   disputeResult,
@@ -19,8 +17,12 @@ import {
   type ResultState,
 } from "@/lib/supabase/submitResult";
 import {
+  claimPlayerNumber,
   forgetPlayer,
+  playerByNumber,
+  PLAYER_NUMBER_LENGTH,
   rememberedPlayer,
+  rememberPlayer,
 } from "@/lib/supabase/playerNumber";
 
 /**
@@ -75,6 +77,9 @@ export default function SubmitScorePage() {
   const [result, setResult] = React.useState<ResultState | null>(null);
   const [objecting, setObjecting] = React.useState(false);
   const [reason, setReason] = React.useState("");
+  /** The number being proved, when this phone does not already know somebody. */
+  const [asking, setAsking] = React.useState("");
+  const [lastFour, setLastFour] = React.useState("");
 
   /*
    * A phone with no memory has nothing to look up, so it is ready immediately. Deriving this
@@ -132,22 +137,53 @@ export default function SubmitScorePage() {
     );
   }
 
+  /**
+   * For a phone that does not remember anybody — a borrowed one, or a browser cleared
+   * between rounds.
+   *
+   * The same two things as the door: the player number, then the last four digits. Asking
+   * for a different code here would mean two identities for one person, and the six-digit
+   * code is no longer what anybody is told.
+   */
   const lookUp = async (value: string) => {
     setBusy(true);
     setError(null);
-    const found = await boardForCode(event.id, value);
+    const summary = await playerByNumber(event.id, value);
+    setBusy(false);
+
+    if (!summary) {
+      setError("No player has that number. Check it, or ask at the desk.");
+      return;
+    }
+    setAsking(value);
+  };
+
+  const prove = async () => {
+    setBusy(true);
+    setError(null);
+    const claimed = await claimPlayerNumber(event.id, asking, lastFour);
+
+    if (!claimed) {
+      setBusy(false);
+      setError("Those digits do not match that player number.");
+      return;
+    }
+
+    /* Remembered, so this phone is not asked again for the rest of the day. */
+    rememberPlayer(event.id, claimed, asking);
+
+    const found = await boardForToken(event.id, claimed);
+    const state = found?.alreadyRecorded ? await resultStateByToken(event.id, claimed) : null;
     setBusy(false);
 
     if (!found) {
-      /*
-       * One message for every reason it failed. Saying "that code does not exist" as against
-       * "that person has not checked in" would turn this page into a way of finding out who
-       * has arrived.
-       */
-      setError("We could not find a board for that code. Check the digits, or ask at the desk.");
+      setError("You are not on a board this round. Please see the desk.");
       return;
     }
+
     setBoard(found);
+    if (state) setResult(state);
+    setAsking("");
   };
 
   const send = async () => {
@@ -423,7 +459,63 @@ export default function SubmitScorePage() {
     );
   }
 
-  /* ---- The code ---------------------------------------------------------- */
+  /* ---- Prove the number --------------------------------------------------- */
+  if (asking) {
+    return (
+      <Shell>
+        <Panel>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: GOLD }}>
+            Player {asking}
+          </p>
+          <p className="mt-2 text-[20px] font-extrabold leading-tight" style={{ color: BROWN }}>
+            Confirm it is you
+          </p>
+          <p className="mt-1 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
+            Enter the last 4 digits of your mobile number.
+          </p>
+
+          <div className="mx-auto mt-4 max-w-[220px]">
+            <Input
+              value={lastFour}
+              onChange={(e) => setLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              inputMode="numeric"
+              className="num text-center text-[22px] font-bold tracking-[0.3em]"
+              placeholder="0000"
+              aria-label="Last four digits of your mobile number"
+            />
+          </div>
+
+          {error ? (
+            <p className="mt-3 text-[12.5px] font-semibold text-critical">{error}</p>
+          ) : null}
+
+          <Button
+            size="lg"
+            className="mt-5 w-full border-0"
+            style={{ background: FOREST, color: "white" }}
+            disabled={lastFour.length !== 4 || busy}
+            onClick={() => void prove()}
+          >
+            {busy ? "Finding your board…" : "Continue"}
+          </Button>
+
+          <button
+            onClick={() => {
+              setAsking("");
+              setLastFour("");
+              setError(null);
+            }}
+            className="mt-3 text-[13px] font-semibold underline underline-offset-4"
+            style={{ color: `${BROWN}99` }}
+          >
+            Not me, go back
+          </button>
+        </Panel>
+      </Shell>
+    );
+  }
+
+  /* ---- The player number -------------------------------------------------- */
   return (
     <Shell>
       <Panel>
@@ -434,7 +526,7 @@ export default function SubmitScorePage() {
           Enter your result
         </p>
         <p className="mt-1 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
-          One player per board. Enter your {CHECK_IN_CODE_LENGTH}-digit check-in code and we
+          One player per board. Enter your {PLAYER_NUMBER_LENGTH}-digit player number and we
           will find your game.
         </p>
 
@@ -443,6 +535,8 @@ export default function SubmitScorePage() {
             value={code}
             onChange={setCode}
             onComplete={lookUp}
+            length={PLAYER_NUMBER_LENGTH}
+            label="Player number"
             invalid={Boolean(error)}
           />
         </div>
@@ -455,7 +549,7 @@ export default function SubmitScorePage() {
           size="lg"
           className="mt-5 w-full border-0"
           style={{ background: FOREST, color: "white" }}
-          disabled={code.length !== CHECK_IN_CODE_LENGTH || busy}
+          disabled={code.length !== PLAYER_NUMBER_LENGTH || busy}
           onClick={() => void lookUp(code)}
         >
           {busy ? "Finding your board…" : "Find my board"}

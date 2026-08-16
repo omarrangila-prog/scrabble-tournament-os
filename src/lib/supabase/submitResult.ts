@@ -21,8 +21,12 @@ export interface Board {
 }
 
 /**
- * Which board this code is playing, so the page can show it back before anybody types a
- * score.
+ * Which board a six-digit check-in code is playing.
+ *
+ * No screen asks for that code any more — a participant is told one identity, their
+ * three-digit player number — but the function stays because the code is still on the
+ * records of everybody who registered before numbers existed, and a person holding one
+ * should not be turned away.
  *
  * Null covers every failure — unknown code, not checked in, no round yet. The page says one
  * thing for all of them, because distinguishing them would let somebody use this to find out

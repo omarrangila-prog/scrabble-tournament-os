@@ -31,9 +31,10 @@ a chat transcript.
 Registration writes straight to the database. A receipt screenshot is required — the
 form will not submit without one.
 
-**Everybody has a player number** — 101 upwards — which is what they use at the door.
-The six-digit code still works for anyone who was given one, and the confirmation page
-also offers a personal one-tap link.
+**Everybody has a player number** — 101 upwards — and it is the only code anybody is
+told. It appears on the confirmation page when they register, in their email, and on the
+desk. A six-digit code still opens check-in for the handful who noted one before numbers
+existed, but nothing asks for it any more.
 
 A player number identifies but does not authorise: the first time it is used on a phone,
 the last four digits of that person's mobile are asked for as well.
@@ -121,6 +122,10 @@ tables it refuses and says so, rather than putting two games at one table.
 
 Set the phase to **Round Active** and the clock starts — on the wall and on every phone at
 once, from the same recorded instant. **Add time** extends it everywhere.
+
+**When the clock runs out the event moves itself to Result Entry.** The wall changes to the
+result QR and every phone follows, without you pressing anything. Keep Live Event open on
+your phone for that to happen — it is the screen watching the clock.
 
 The wall shows the clock and nothing else. In the last minute it turns and pulses.
 

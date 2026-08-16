@@ -14,6 +14,7 @@ import {
   selectRegistrations,
   useEventStore,
 } from "@/lib/store/useEventStore";
+import { playerNumberForToken } from "@/lib/supabase/playerNumber";
 import { usePublicEvent } from "@/lib/supabase/usePublicEvent";
 import {
   CampaignReduction,
@@ -90,6 +91,7 @@ export default function RegisterPage() {
    * return below for an unknown event.
    */
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [playerNumber, setPlayerNumber] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
   /* While the lookup is still running, do not tell somebody their link is dead. */
@@ -289,6 +291,13 @@ export default function RegisterPage() {
     }
 
     setSubmitted({ token, registration: reg });
+
+    /*
+     * The number is assigned by a trigger, so it exists only after the insert. Reading it
+     * back is what lets the confirmation show the same identity the email will — one person,
+     * one number, rather than a six-digit code here and a three-digit one later.
+     */
+    playerNumberForToken(event.id, token).then(setPlayerNumber);
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     /*
@@ -334,6 +343,7 @@ export default function RegisterPage() {
         checkInCode={
           store.registrations.find((r) => r.token === submitted.token)?.checkInCode ?? ""
         }
+        playerNumber={playerNumber}
       />
     );
   }
@@ -493,6 +503,7 @@ function GameOnConfirmation({
   payable,
   paymentStatus,
   checkInCode,
+  playerNumber,
   emailed,
 }: {
   token: string;
@@ -502,6 +513,8 @@ function GameOnConfirmation({
   paymentStatus: GuestPaymentStatus;
   /** The six digits they will type at the venue. */
   checkInCode: string;
+  /** Assigned by the database after the insert, so it arrives a moment later. */
+  playerNumber: string | null;
   /**
    * Whether the confirmation email was accepted by the provider: null while the
    * answer is still outstanding. Three states, because the page must not claim a
@@ -586,7 +599,7 @@ function GameOnConfirmation({
           * showed it, so nobody would have known their code. Large, spaced and
           * copyable, because it gets read off a phone in a doorway.
           */}
-        {checkInCode ? (
+        {playerNumber ?? checkInCode ? (
           <div
             className="mt-4 rounded-[20px] p-5 text-center"
             style={{ background: FOREST }}
@@ -595,17 +608,17 @@ function GameOnConfirmation({
               className="text-[10.5px] font-bold uppercase tracking-[0.18em]"
               style={{ color: GOLD }}
             >
-              Your check-in code
+              Your player number
             </p>
             <p
               className="num mt-2 text-[40px] font-extrabold leading-none tracking-[0.16em]"
               style={{ color: CREAM }}
             >
-              {checkInCode}
+              {playerNumber ?? checkInCode}
             </p>
             <p className="mt-3 text-[12.5px] leading-relaxed" style={{ color: `${CREAM}B3` }}>
-              Bring this on {formatDate(event.startDate)}. Scan the code at the venue
-              and enter these six digits.
+              Bring this on {formatDate(event.startDate)}. Scan the code at the venue,
+              enter your number, then the last four digits of your mobile.
             </p>
 
             <div className="mt-4 flex flex-col gap-2">
@@ -613,9 +626,9 @@ function GameOnConfirmation({
                 size="sm"
                 className="w-full border-0"
                 style={{ background: CREAM, color: BROWN }}
-                onClick={() => navigator.clipboard?.writeText(checkInCode)}
+                onClick={() => navigator.clipboard?.writeText(playerNumber ?? checkInCode)}
               >
-                Copy code
+                Copy number
               </Button>
               {checkInUrl ? (
                 <Button

@@ -160,6 +160,41 @@ export default function LiveEventPage() {
     app.currentUser?.name ?? "Director",
   );
 
+  /*
+   * When the clock runs out, the event moves itself on.
+   *
+   * The round is over the moment the time is up — that is not a judgement anybody needs to
+   * make, and the room has already stopped playing. Waiting for the director to press
+   * something means the wall keeps showing 00:00 while thirty people wonder whether to
+   * bring their slip up.
+   *
+   * Only from `round-active`, and only once: guarded by a ref rather than by state so a
+   * re-render between the check and the write cannot fire it twice.
+   */
+  const advanced = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    /*
+     * Reads the stored phase directly rather than the `eventState` computed below: that is
+     * defined after the "no event" guard, and a hook cannot sit after an early return.
+     */
+    if (clock.phase !== "finished" || storedPhase.state !== "round-active") return;
+    if (advanced.current === round) return;
+
+    advanced.current = round;
+
+    void (async () => {
+      const written = await setEventPhase(event?.id ?? "", "result-entry");
+      if (!written.ok) {
+        /* Let it be tried again rather than leaving the room stuck at 00:00. */
+        advanced.current = null;
+        return;
+      }
+      storedPhase.reload();
+      announceBoardsChanged(event?.id ?? "");
+    })();
+  }, [clock.phase, storedPhase, round, event?.id]);
+
   // Tick once a second so the clock stays live.
   const [, tick] = React.useState(0);
   React.useEffect(() => {

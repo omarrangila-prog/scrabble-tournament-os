@@ -123,3 +123,25 @@ export function forgetPlayer(eventId: string): void {
     /* Nothing to do. */
   }
 }
+
+/**
+ * The number just assigned to a new registration.
+ *
+ * The trigger assigns it after the insert, so the browser that submitted the form does not
+ * have it — and the confirmation page is the one place somebody is guaranteed to look.
+ */
+export async function playerNumberForToken(
+  eventId: string,
+  token: string,
+): Promise<string | null> {
+  const db = supabase();
+  if (!db) return null;
+
+  const { data, error } = await db.rpc("player_number_for_token", {
+    p_event_id: eventId,
+    p_token: token.trim(),
+  });
+
+  if (error || typeof data !== "string" || data === "") return null;
+  return data;
+}
