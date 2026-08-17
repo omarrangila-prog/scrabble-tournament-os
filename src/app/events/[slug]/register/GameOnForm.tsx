@@ -17,6 +17,8 @@ import {
   Sparkles,
   Users,
   Wallet,
+  Banknote,
+  Landmark,
 } from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
 import { PublicEvent } from "@/lib/domain/events";
@@ -1024,44 +1026,89 @@ export function GameOnForm({
                 screenshot, and the form used to refuse to submit without one — so they either
                 could not register or uploaded something irrelevant to get past it.
               */}
+              {/*
+                Two large choices rather than two small ones.
+
+                This was a pair of text-only buttons at 13.5px in a two-column grid, and
+                paying at the venue is the one people were missing — the option that decides
+                whether a receipt is needed at all. So each is now a full-width row on a
+                phone, tall enough to hit with a thumb, with an icon, a title at 15px and a
+                tick on the one that is chosen. Nobody should have to read carefully to find
+                out they can pay on the day.
+              */}
               <Field label="How would you like to pay?">
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2.5 sm:grid-cols-2">
                   {[
-                    { venue: false, label: "Pay now by transfer", note: "Upload your receipt below" },
-                    { venue: true, label: "Pay cash at the venue", note: "Pay at the desk on the day" },
-                  ].map((o) => (
-                    <button
-                      key={o.label}
-                      type="button"
-                      onClick={() => {
-                        set("payAtVenue", o.venue);
-                        /*
-                         * Clear any receipt when switching to cash. Leaving one attached would
-                         * record a transfer against somebody who is paying at the door.
-                         */
-                        if (o.venue) set("receiptFileName", "");
-                      }}
-                      className={cn(
-                        "rounded-control border px-3.5 py-3 text-left transition-colors",
-                        Boolean(reg.payAtVenue) === o.venue
-                          ? "border-[#2F5D3A] bg-[#2F5D3A]/5"
-                          : "border-line bg-[rgb(var(--c-surface-strong))]",
-                      )}
-                      aria-pressed={Boolean(reg.payAtVenue) === o.venue}
-                    >
-                      <span
+                    {
+                      venue: false,
+                      label: "Pay now by transfer",
+                      note: "Bank or wallet, then upload your receipt",
+                      Icon: Landmark,
+                    },
+                    {
+                      venue: true,
+                      label: "Pay cash at the venue",
+                      note: "No receipt needed — pay at the desk on the day",
+                      Icon: Banknote,
+                    },
+                  ].map((o) => {
+                    const chosen = Boolean(reg.payAtVenue) === o.venue;
+                    return (
+                      <button
+                        key={o.label}
+                        type="button"
+                        onClick={() => {
+                          set("payAtVenue", o.venue);
+                          /*
+                           * Clear any receipt when switching to cash. Leaving one attached would
+                           * record a transfer against somebody who is paying at the door.
+                           */
+                          if (o.venue) set("receiptFileName", "");
+                        }}
                         className={cn(
-                          "block text-[13.5px] font-semibold",
-                          Boolean(reg.payAtVenue) === o.venue ? "text-[#2F5D3A]" : "text-ink",
+                          "flex w-full items-center gap-3 rounded-feature border-2 px-4 py-4 text-left transition-all",
+                          "min-h-[4.5rem] active:scale-[0.99]",
+                          chosen
+                            ? "border-[#2F5D3A] bg-[#2F5D3A]/8 shadow-[0_2px_10px_rgba(47,93,58,0.14)]"
+                            : "border-line bg-[rgb(var(--c-surface-strong))] hover:border-[#2F5D3A]/45",
                         )}
+                        aria-pressed={chosen}
                       >
-                        {o.label}
-                      </span>
-                      <span className="mt-0.5 block text-[11.5px] leading-relaxed text-muted">
-                        {o.note}
-                      </span>
-                    </button>
-                  ))}
+                        <span
+                          className={cn(
+                            "grid size-10 shrink-0 place-items-center rounded-full transition-colors",
+                            chosen ? "bg-[#2F5D3A] text-white" : "bg-[#2F5D3A]/10 text-[#2F5D3A]",
+                          )}
+                        >
+                          <o.Icon className="size-5" />
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className={cn(
+                              "block text-[15px] font-bold leading-snug",
+                              chosen ? "text-[#2F5D3A]" : "text-ink",
+                            )}
+                          >
+                            {o.label}
+                          </span>
+                          <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted">
+                            {o.note}
+                          </span>
+                        </span>
+
+                        {/*
+                          Only on the chosen one. A tick outline on both would be another thing
+                          to interpret in a form somebody is trying to get to the end of.
+                        */}
+                        {chosen ? (
+                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#2F5D3A] text-white">
+                            <Check className="size-3.5" strokeWidth={3} />
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               </Field>
 
@@ -1168,13 +1215,21 @@ export function GameOnForm({
                     step.
                   </p>
                 </div>
-              ) : (
+              ) : !reg.payAtVenue ? (
+                /*
+                 * Only for somebody who means to transfer and has nowhere to transfer to.
+                 *
+                 * This used to be the `else` of the panel above, so it also caught anybody who
+                 * had chosen to pay cash — telling them to expect payment instructions
+                 * directly underneath a notice telling them to bring cash to the desk. Two
+                 * contradictory things about the same payment.
+                 */
                 <p className="flex items-start gap-2 rounded-control bg-warning-050 px-3.5 py-3 text-[12.5px] leading-relaxed text-[#a76d16]">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
                   Payment details are being finalised. You can still register — the organizer will
                   send you payment instructions.
                 </p>
-              )}
+              ) : null}
 
               {/* Receipt ---------------------------------------------------- */}
               {requireReceipt && !reg.payAtVenue ? (
