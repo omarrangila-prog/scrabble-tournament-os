@@ -108,6 +108,55 @@ def digits(raw: str) -> str:
     return re.sub(r"\D", "", raw or "")
 
 
+def local_phone(raw: str) -> str:
+    """
+    A Pakistani mobile number in the one format every other record uses.
+
+    Three of these arrived written "+92 336 8505214". Stripping the punctuation gives
+    923368505214, and the desk's search compares the digits it is given against the digits it
+    holds — so a volunteer typing 0336 8505214, which is how the number is written on every
+    phone in the room, would not have found them.
+
+    +92 336 and 0336 are the same number, so this is a change of notation and not of fact.
+    The string as submitted is kept beside it.
+    """
+    d = digits(raw)
+
+    if d.startswith("0092") and len(d) == 14:
+        d = d[4:]
+    elif d.startswith("92") and len(d) == 12:
+        d = d[2:]
+    else:
+        return d
+
+    # A country code replaces the trunk zero, so removing one puts the other back. Dropping
+    # the code and stopping there leaves a number one digit short of every other record.
+    return d if d.startswith("0") else "0" + d
+
+
+def display_name(raw: str) -> str:
+    """
+    The name to print, from the name as submitted.
+
+    Two of these carry something that is not part of anybody's name: an organizer's tag
+    ("Raanya Fazil 8AUG") and a note about money ("Hania (free)"). Both would be printed on a
+    badge, shown on the wall beside a board number, and engraved on a certificate.
+
+    The second is the reason this exists rather than being left alone. A television telling a
+    room that one twelve-year-old is the free one is a disclosure about her family's money,
+    made to an audience, by a screen nobody thought of as saying anything about payment.
+
+    Nothing is discarded — the submitted string is stored as `nameAsSupplied`, the same way a
+    corrected email keeps `emailAsSupplied` — so the original response survives and the
+    organizer can see exactly what was typed.
+    """
+    without_note = re.sub(r"\s*\((?:free|paid|complimentary)\)\s*", " ", raw, flags=re.I)
+    # A trailing all-caps date tag: "8AUG", "23AUG". Only at the end, only in capitals, so a
+    # name that genuinely ends in capitals is not touched.
+    without_tag = re.sub(r"\s+\d{1,2}[A-Z]{3}\d*$", "", without_note)
+    return " ".join(without_tag.split())
+
+
 def name_key(raw: str) -> str:
     """
     A name reduced to what identifies the person.
@@ -191,9 +240,14 @@ def payment_fields(pay: dict) -> dict:
             "paymentMethod": method,
             "paymentVerified": verified,
             "paymentNote": (
-                "Historical registration imported from Excel"
-                if amount is None
-                else f"{pay['promo']} — {label}, from the organizer's payment sheet"
+                # A note supplied with the row wins: it says something specific about this
+                # person's money that a generic sentence would erase.
+                pay.get("note")
+                or (
+                    "Historical registration imported from Excel"
+                    if amount is None
+                    else f"{pay['promo']} — {label}, from the organizer's payment sheet"
+                )
             ),
         },
     }
@@ -215,7 +269,7 @@ def main() -> None:
         )
 
     # Payments are matched on name and phone together, so the two Hazils stay two people.
-    by_person = {(name_key(p["name"]), digits(p["phone"])): p for p in payments}
+    by_person = {(name_key(p["name"]), local_phone(p["phone"])): p for p in payments}
     if len(by_person) != len(payments):
         sys.exit("Two payment rows share a name and phone — cannot tell them apart.")
 
@@ -237,7 +291,7 @@ def main() -> None:
         % EVENT_ID,
     )
     existing = json.loads(existing_rows)
-    by_existing = {(name_key(r["name"] or ""), digits(r["phone"] or "")): r for r in existing}
+    by_existing = {(name_key(r["name"] or ""), local_phone(r["phone"] or "")): r for r in existing}
 
     # A row this import already created wins over a name-and-phone match.
     #
@@ -261,22 +315,40 @@ def main() -> None:
         if division is None:
             sys.exit(f"Unmapped skill level {original!r} for {person['fullName']!r}")
 
-        key = (name_key(person["fullName"]), digits(person["phone"]))
-        pay = by_person.get(key)
+        shown = display_name(person["fullName"])
+        phone = local_phone(person["phone"])
+
+        pay = by_person.get((name_key(person["fullName"]), phone))
+        key = (name_key(shown), phone)
         if pay is None:
             sys.exit(f"No payment row for {person['fullName']!r} on {person['phone']!r}")
+
+        # The sheet sometimes states the division as well as the category it came from. A
+        # disagreement is a data problem to look at, not something to quietly resolve.
+        stated = person.get("skillLevel")
+        if stated and stated != division.capitalize():
+            sys.exit(
+                f"{person['fullName']!r} is stated as {stated!r} but "
+                f"{original!r} maps to {division.capitalize()!r}"
+            )
 
         money = payment_fields(pay)
         submitted = karachi_iso(person["originalTimestamp"])
         import_key = f"legacy:{person['originalTimestamp']}:{person['email'].lower()}"
 
+        source = person.get("registrationSource", "Legacy Excel Import")
+
         import_block = {
-            "registrationSource": "Legacy Excel Import",
+            "registrationSource": source,
             "importKey": import_key,
             "originalTimestamp": person["originalTimestamp"],
             "age": person["age"],
             "phone": person["phone"],
             "playsPSARankingTournaments": person["playsPSARankingTournaments"],
+            # Kept whenever the submitted name is not the name to print, so the change is
+            # visible rather than silent.
+            **({"nameAsSupplied": person["fullName"]} if shown != person["fullName"] else {}),
+            "phoneAsSupplied": person["phone"],
             "originalSkillLevel": original,
             "skillLevel": division.capitalize(),
             "heardAboutEvent": person["heardAboutEvent"],
@@ -307,15 +379,15 @@ def main() -> None:
                 "where id = %s;"
                 % (sql_literal(json.dumps(patch)), sql_literal(match["id"]))
             )
-            report.append((person["fullName"], "matched existing website registration", pay["promo"]))
+            report.append((shown, "matched existing website registration", pay["promo"]))
             continue
 
         data = {
             "id": f"reg-legacy-{i + 1:02d}",
             "eventId": EVENT_ID,
-            "fullName": person["fullName"],
+            "fullName": shown,
             "email": person["email"],
-            "mobile": digits(person["phone"]),
+            "mobile": phone,
             "status": "submitted",
             "submittedAt": submitted,
             "preferredDivision": division,
@@ -331,8 +403,12 @@ def main() -> None:
             "timeline": [
                 {
                     "at": submitted,
-                    "by": "Legacy Excel Import",
-                    "entry": "Registered on the 23 August sheet, before the website existed.",
+                    "by": source,
+                    "entry": (
+                        "Registered on the entry form; imported by the organizer."
+                        if source == "Legacy Form Import"
+                        else "Registered on the 23 August sheet, before the website existed."
+                    ),
                 }
             ],
             "import": import_block,
@@ -355,7 +431,7 @@ def main() -> None:
                 sql_literal(import_key),
             )
         )
-        report.append((person["fullName"], f"import as {division}", pay["promo"]))
+        report.append((shown, f"import as {division}", pay["promo"]))
 
     print(f"{len(inserts)} to insert, {len(updates)} to update\n")
     for name, what, promo in report:

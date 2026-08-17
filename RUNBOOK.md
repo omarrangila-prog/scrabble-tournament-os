@@ -212,10 +212,33 @@ account, on any phone.
 are shown, so they cannot drift from the results. The same is true of arrival counts
 and revenue.
 
-**Twenty-four entrants came from the sheet.** They are marked "Legacy Excel Import" and
-behave exactly like a web registration — they have check-in codes, they pair, they appear in
-standings and certificates. Do not ask them to register again. Two of them — Muhammad Yadaan
-and Abdul wasay Narinja — also registered on the website; each is one record, not two.
+**Twenty-nine entrants were imported, not typed into the website.** Twenty-four came from
+the Excel sheet and five from the entry form on 17 August. They behave exactly like a web
+registration — they have player numbers, they pair, they appear in standings and certificates.
+Do not ask them to register again. Two of them — Muhammad Yadaan and Abdul wasay Narinja —
+also registered on the website; each is one record, not two.
+
+Three of the five share one email address and two share a mobile: Hammad, Aariz hussain
+solangi and Sakina Rameen are a family, and they are three separate entrants with three
+player numbers. Nothing in the system merges people on a shared contact.
+
+**Two of them submitted a name with something extra in it** — an "8AUG" tag and a "(free)"
+note. Player numbers 138 and 139 are stored as *Raanya Fazil* and *Hania*, with the submitted
+string kept on the record as `nameAsSupplied`. A wall display announcing which child is the
+free one is a thing about her family's money said to a room.
+
+**Eleven entrants cannot check themselves in**, because their payment is still being checked
+and the phone will tell them to see the desk. That is deliberate, and the desk can admit any
+of them in one tap. Expect them at the desk rather than at the QR:
+
+> 108 Sehaan Owais · 110 Raamiz Ahmed · 113 Mohammed Hazil Sami · 114 Huzaifa Amir ·
+> 115 Khizr Hussain Khan · 121 Khizrakhan · 138 Raanya Fazil · 139 Hania · 140 Hammad ·
+> 141 Aariz hussain solangi · 142 Sakina Rameen
+
+Five of those have an amount recorded and six have none, and the desk says which is which.
+**"Check receipt · PKR 800" is not "Unpaid"** — that person says they have already paid and
+their receipt has not been looked at, so taking cash from them takes it twice. **"No amount
+set" means nothing has been agreed** with them at all.
 
 **Money is shown in four separate figures, not one.** Paid online is the only one that is
 revenue. Cash at venue is promised, not collected. Needs review is recorded but unconfirmed.

@@ -190,5 +190,50 @@
     "promo": "Pay at venue",
     "amount": null,
     "paymentStatus": "Cash on Site"
+  },
+  {
+    "name": "Raanya Fazil 8AUG",
+    "age": 16,
+    "phone": "03055330654",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "Name as submitted carries the tag '8AUG'. No amount was supplied on the form."
+  },
+  {
+    "name": "Hania (free)",
+    "age": 12,
+    "phone": "03313537401",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "Name as submitted contains '(free)'. Recorded, but not classified as complimentary until the organizer confirms it."
+  },
+  {
+    "name": "Hammad",
+    "age": 31,
+    "phone": "03222585711",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied on the form."
+  },
+  {
+    "name": "Aariz hussain solangi",
+    "age": 11,
+    "phone": "+92 336 8505214",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied on the form."
+  },
+  {
+    "name": "Sakina Rameen",
+    "age": 13,
+    "phone": "+92 336 8505214",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied on the form. Answered yes to playing PSA ranking tournaments, which carries its own rate."
   }
 ]
