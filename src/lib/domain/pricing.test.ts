@@ -400,3 +400,53 @@ describe("the PSA rate", () => {
     expect(byCode.final).toBe(byAnswer.final);
   });
 });
+
+describe("the KAS rate", () => {
+  /*
+   * Against the event's real price rules rather than a fixture, because the thing worth
+   * knowing is that the code the organizer hands out charges what they said. A fixture
+   * declaring KAS would pass while the live event had never heard of it.
+   */
+  const rules = ACTIVE_EVENT.priceRules!;
+  const at = "2026-08-20T10:00:00+05:00";
+
+  it("charges 850", () => {
+    const priced = resolvePrice(rules, { isMember: false, code: "KAS", at });
+    expect(priced.final).toBe(850);
+    expect(priced.coupon.status).toBe("accepted");
+    expect(priced.appliedLabel).toBe("KAS Promotional Rate");
+    expect(priced.saving).toBe(400);
+  });
+
+  it("is accepted however it is typed", () => {
+    for (const code of ["kas", " KAS ", "Kas"]) {
+      expect(resolvePrice(rules, { isMember: false, code, at }).final).toBe(850);
+    }
+  });
+
+  it("does not stack with PSA membership", () => {
+    /*
+     * The precondition that makes this test mean anything: the two rates are different
+     * numbers, so a result of exactly one of them proves only one was applied. KAS is the
+     * cheaper of the pair, which is also why a member holding the code is not being
+     * short-changed by the coupon-first order.
+     */
+    expect(rules.member!.price).toBe(950);
+    expect(rules.member!.price).toBeGreaterThan(850);
+
+    const both = resolvePrice(rules, { isMember: true, code: "KAS", at });
+    expect(both.final).toBe(850);
+    expect(both.appliedKind).toBe("coupon");
+    // Not 850 reduced again by membership, which is the failure that would matter.
+    expect(both.final).toBeGreaterThan(0);
+  });
+
+  it("has no closing date, so it still works on the day", () => {
+    const onTheDay = "2026-08-23T09:00:00+05:00";
+    // The precondition: the early bird is long closed by then, so this is not simply a date
+    // at which every coupon happens to work.
+    expect(resolvePrice(rules, { isMember: false, code: "EARLYBIRD", at: onTheDay }).coupon.status)
+      .toBe("expired");
+    expect(resolvePrice(rules, { isMember: false, code: "KAS", at: onTheDay }).final).toBe(850);
+  });
+});

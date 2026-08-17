@@ -73,6 +73,7 @@ export const ALPHABATTLE_PRICES = {
   base: 1250,
   psaMember: 950,
   hhs: 1000,
+  kas: 850,
   earlyBird: 800,
   currency: "PKR",
   /** Early Bird closes at the end of this day. Extend it to reopen the offer. */
@@ -200,6 +201,11 @@ const ALPHABATTLE: PublicEvent = {
        */
       { code: "PSA", label: "PSA Member", price: ALPHABATTLE_PRICES.psaMember },
       { code: "HHS", label: "HHS Promotional Rate", price: ALPHABATTLE_PRICES.hhs },
+      /*
+       * No closing date, because none was set. Add `availableUntil` to close it — the code
+       * is refused the moment it passes, the way EARLYBIRD is.
+       */
+      { code: "KAS", label: "KAS Promotional Rate", price: ALPHABATTLE_PRICES.kas },
     ],
     currency: ALPHABATTLE_PRICES.currency,
   },
