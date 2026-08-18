@@ -27,10 +27,20 @@ export function lowestPrice(event: PublicEvent, now = new Date()): number {
   const at = now.toISOString();
   const rules = event.priceRules;
 
+  /*
+   * Only the prices somebody can actually get by turning up at the page.
+   *
+   * Coupon prices used to be included, so a search result and the landing card both read
+   * "From PKR 850" — a rate reachable only by knowing a code that is no longer printed
+   * anywhere. That advertises a price a stranger cannot obtain, and it leaks the existence of
+   * the cheaper rate the codes were made private to protect.
+   *
+   * Membership stays in, because it is claimed by answering a question rather than by knowing
+   * a secret, so anybody reading "from PKR 950" can in fact pay it.
+   */
   return Math.min(
     resolvePrice(rules, { isMember: false, at }).final,
     resolvePrice(rules, { isMember: true, at }).final,
-    ...rules.coupons.map((c) => resolvePrice(rules, { isMember: false, code: c.code, at }).final),
   );
 }
 

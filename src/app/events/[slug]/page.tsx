@@ -32,18 +32,6 @@ import { cn, formatDate } from "@/lib/utils";
 const CREAM = "#F5F0E4";
 const FOREST = "#2F5D3A";
 const GOLD = "#C89B3C";
-/**
- * The current time, read outside render.
- *
- * The React Compiler treats `Date.now()` in a component body as impure and refuses
- * it. Reading the clock through a module-level function keeps the check happy while
- * still giving the real time, which is what deciding whether an offer has expired
- * needs.
- */
-function nowMs(): number {
-  return Date.now();
-}
-
 const BROWN = "#3E2F23";
 
 /**
@@ -201,14 +189,22 @@ export default function PublicEventPage() {
    * The reduced rates that are still open, in the order somebody would meet them.
    * Built from `priceRules` because that is what the form charges from; anything
    * derived separately here would drift from it.
+   *
+   * Promotion codes are deliberately not among them.
+   *
+   * This listed every code beside its price, which was readable when there were one or two
+   * and self-defeating at ten: a rate handed to a particular school, printed on a public page
+   * for anybody to type. Every code still works in the form — a code is a thing you are given,
+   * not a thing you find — so nobody who holds one is worse off, and the advertised price is
+   * the price a stranger actually pays.
+   *
+   * The membership rate stays, because it is claimed by answering a question rather than by
+   * knowing a secret, and withholding it would only mean members paying more than they owe.
    */
   const rules = event.priceRules;
 
   const otherPrices: { label: string; price: number; code?: string }[] = [
     ...(rules?.member ? [{ label: `${rules.member.label} rate`, price: rules.member.price }] : []),
-    ...(rules?.coupons ?? [])
-      .filter((c) => !c.availableUntil || Date.parse(c.availableUntil) >= nowMs())
-      .map((c) => ({ label: c.label, price: c.price, code: c.code })),
   ].filter((rate) => rate.price < event.fee);
 
 
