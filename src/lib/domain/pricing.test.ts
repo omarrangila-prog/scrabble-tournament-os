@@ -10,7 +10,7 @@ import {
   PriceRules,
   resolvePrice,
 } from "./pricing";
-import { ACTIVE_EVENT } from "./eventSeed";
+import { ACTIVE_EVENT, ALPHABATTLE_SCHOOL_CODES } from "./eventSeed";
 
 /** The rates the August event actually offers. */
 const RATES: Rate[] = [
@@ -398,6 +398,68 @@ describe("the PSA rate", () => {
     const byCode = resolvePrice(rules, { isMember: false, code: "PSA", at: "2026-08-20T10:00:00+05:00" });
     const byAnswer = resolvePrice(rules, { isMember: true, at: "2026-08-20T10:00:00+05:00" });
     expect(byCode.final).toBe(byAnswer.final);
+  });
+});
+
+describe("the school rates", () => {
+  /*
+   * Seven codes at one price. Tested as a set rather than one representative, because the
+   * failure this guards against is a single code being mistyped into the list — which a test
+   * of "FPS23 charges 900" would never notice about "BSSCLIFTON23".
+   */
+  const rules = ACTIVE_EVENT.priceRules!;
+  const at = "2026-08-20T10:00:00+05:00";
+
+  it("charges 900 for every school code", () => {
+    expect(ALPHABATTLE_SCHOOL_CODES).toHaveLength(7);
+
+    for (const code of ALPHABATTLE_SCHOOL_CODES) {
+      const priced = resolvePrice(rules, { isMember: false, code, at });
+      expect(priced.final, `${code} should charge 900`).toBe(900);
+      expect(priced.coupon.status, `${code} should be accepted`).toBe("accepted");
+    }
+  });
+
+  it("names each one after its own code", () => {
+    for (const code of ALPHABATTLE_SCHOOL_CODES) {
+      expect(resolvePrice(rules, { isMember: false, code, at }).appliedLabel).toBe(
+        `${code} Promotional Rate`,
+      );
+    }
+  });
+
+  it("accepts them however they are typed", () => {
+    for (const code of ALPHABATTLE_SCHOOL_CODES) {
+      for (const typed of [code.toLowerCase(), ` ${code} `]) {
+        expect(resolvePrice(rules, { isMember: false, code: typed, at }).final).toBe(900);
+      }
+    }
+  });
+
+  it("does not stack with PSA membership", () => {
+    /* Different numbers, so a result of exactly one of them proves only one was applied. */
+    expect(rules.member!.price).toBe(950);
+
+    const both = resolvePrice(rules, { isMember: true, code: "FPS23", at });
+    expect(both.final).toBe(900);
+    expect(both.appliedKind).toBe("coupon");
+  });
+
+  it("still works on the day", () => {
+    const onTheDay = "2026-08-23T09:00:00+05:00";
+    // The precondition: the early bird is long closed by then, so this is not a date at which
+    // every coupon happens to work.
+    expect(resolvePrice(rules, { isMember: false, code: "EARLYBIRD", at: onTheDay }).coupon.status)
+      .toBe("expired");
+
+    for (const code of ALPHABATTLE_SCHOOL_CODES) {
+      expect(resolvePrice(rules, { isMember: false, code, at: onTheDay }).final).toBe(900);
+    }
+  });
+
+  it("keeps every code in the event distinct", () => {
+    const codes = rules.coupons.map((c) => c.code.toUpperCase());
+    expect(new Set(codes).size, "two coupons share a code").toBe(codes.length);
   });
 });
 

@@ -74,11 +74,32 @@ export const ALPHABATTLE_PRICES = {
   psaMember: 950,
   hhs: 1000,
   kas: 850,
+  school: 900,
   earlyBird: 800,
   currency: "PKR",
   /** Early Bird closes at the end of this day. Extend it to reopen the offer. */
   earlyBirdUntil: "2026-08-09T23:59:59+05:00",
 } as const;
+
+/**
+ * The school codes, all at the same price.
+ *
+ * Held as codes rather than school names because codes are what the organizer supplied.
+ * Expanding "FPS23" into a school name here would be guessing at what the letters stand for,
+ * and the guess would then be printed on somebody's fee line as though it were a fact.
+ *
+ * One price for all of them, from `school` above, so a change to the school rate is one edit
+ * rather than seven — seven copies of a number diverge the moment one is missed.
+ */
+export const ALPHABATTLE_SCHOOL_CODES = [
+  "FPS23",
+  "KGS23",
+  "BSSPECHS23",
+  "GEN23",
+  "HPS23",
+  "HGS23",
+  "BSSCLIFTON23",
+] as const;
 
 /**
  * Blufy's AlphaBattle — 23 August.
@@ -206,6 +227,15 @@ const ALPHABATTLE: PublicEvent = {
        * is refused the moment it passes, the way EARLYBIRD is.
        */
       { code: "KAS", label: "KAS Promotional Rate", price: ALPHABATTLE_PRICES.kas },
+      /*
+       * The school codes. Same shape as the two above, same lack of a closing date, and one
+       * shared price — see ALPHABATTLE_SCHOOL_CODES.
+       */
+      ...ALPHABATTLE_SCHOOL_CODES.map((code) => ({
+        code,
+        label: `${code} Promotional Rate`,
+        price: ALPHABATTLE_PRICES.school,
+      })),
     ],
     currency: ALPHABATTLE_PRICES.currency,
   },
