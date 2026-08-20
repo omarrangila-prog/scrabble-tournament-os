@@ -213,27 +213,54 @@
     "name": "Hammad",
     "age": 31,
     "phone": "03222585711",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied on the form."
+    "promo": "Organizer Confirmed",
+    "amount": 850,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 850 by the organizer."
   },
   {
     "name": "Aariz hussain solangi",
     "age": 11,
     "phone": "+92 336 8505214",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied on the form."
+    "promo": "Organizer Confirmed",
+    "amount": 850,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 850 by the organizer."
   },
   {
     "name": "Sakina Rameen",
     "age": 13,
     "phone": "+92 336 8505214",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied on the form. Answered yes to playing PSA ranking tournaments, which carries its own rate."
+    "promo": "Organizer Confirmed",
+    "amount": 850,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 850 by the organizer."
+  },
+  {
+    "name": "Ibtehaj Khan",
+    "age": 35,
+    "phone": "03352254055",
+    "promo": "Organizer Confirmed",
+    "amount": 900,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 900 by the organizer."
+  },
+  {
+    "name": "Muhammad Moosa Sarosh",
+    "age": 10,
+    "phone": "03352254055",
+    "promo": "Organizer Confirmed",
+    "amount": 900,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 900 by the organizer."
+  },
+  {
+    "name": "Muhammad Essa Sarosh",
+    "age": 8,
+    "phone": "03352254055",
+    "promo": "Organizer Confirmed",
+    "amount": 900,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 900 by the organizer."
   }
 ]

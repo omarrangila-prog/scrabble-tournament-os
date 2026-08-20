@@ -69,7 +69,15 @@ PAYMENT_STATE = {
     "Cash on Site": ("cash-at-venue", "Cash at Venue", False),
     "Needs Review": ("review-required", None, False),
     "Promo / Complimentary": ("complimentary", "Promotion", True),
+    # Money the organizer has confirmed arriving, without saying how it came. Naming a method
+    # would put "Online" on a receipt nobody has seen; the amount is the fact, not the route.
+    "Paid": ("verified", None, True),
 }
+
+
+# Payment states that mean the money is settled. Nothing in this file moves a person out of
+# one of these.
+SETTLED = {"verified", "complimentary"}
 
 
 def connection() -> str:
@@ -283,7 +291,9 @@ def main() -> None:
           'name', data->>'fullName',
           'phone', data->>'mobile',
           'code', check_in_code,
-          'importKey', data->'import'->>'importKey'
+          'importKey', data->'import'->>'importKey',
+          'storedStatus', data->>'paymentStatus',
+          'storedAmount', data->>'amountDue'
         )), '[]')
         from public.records
         where collection = 'registrations' and event_id = '%s' and status = 'active'
@@ -307,6 +317,7 @@ def main() -> None:
 
     inserts: list[str] = []
     updates: list[str] = []
+    stale: list[tuple[str, str, str | None, str]] = []
     report: list[tuple[str, str, str]] = []
 
     for i, person in enumerate(people):
@@ -343,6 +354,10 @@ def main() -> None:
             "importKey": import_key,
             "originalTimestamp": person["originalTimestamp"],
             "age": person["age"],
+            # Kept when the sheet says more about an age than a number can hold — one of these
+            # reads "8 (will turn 9 in September)", which matters for a junior division and
+            # would be lost by storing the 8 alone.
+            **({"ageAsSupplied": person["ageAsSupplied"]} if person.get("ageAsSupplied") else {}),
             "phone": person["phone"],
             "playsPSARankingTournaments": person["playsPSARankingTournaments"],
             # Kept whenever the submitted name is not the name to print, so the change is
@@ -362,6 +377,24 @@ def main() -> None:
         }
 
         match = by_key.get(import_key) or by_existing.get(key)
+
+        # A settled payment is never unsettled by this sheet.
+        #
+        # This import rewrites the payment of everybody it recognises, from a file. When money
+        # is confirmed somewhere else — at the desk, on the payments screen, or by hand — and
+        # the file is not updated to match, the next run quietly puts it back to whatever the
+        # file says. That happened: three people who had paid PKR 850 were returned to "needs
+        # review" with no amount, which on the day reads as somebody who has not paid and gets
+        # them charged twice.
+        #
+        # So a stored `verified` or `complimentary` is left alone unless the sheet also says
+        # the money arrived. The refusal is reported rather than silent, because a sheet that
+        # disagrees with the database is something to go and look at.
+        if match and match.get("storedStatus") in SETTLED and money["paymentStatus"] not in SETTLED:
+            stale.append(
+                (shown, match["storedStatus"], match.get("storedAmount"), pay["paymentStatus"])
+            )
+            continue
 
         if match:
             # Already registered through the website. Their own submission stands; only the
@@ -432,6 +465,13 @@ def main() -> None:
             )
         )
         report.append((shown, f"import as {division}", pay["promo"]))
+
+    if stale:
+        print(f"\n{len(stale)} left alone — already settled, and the sheet disagrees:\n")
+        for name, status, amount, sheet_says in stale:
+            held = f"{status} {amount}" if amount else status
+            print(f"  {name:<30} database says {held:<22} sheet says {sheet_says}")
+        print("\n  Update the payments file to match, or leave them; nothing was changed.\n")
 
     print(f"{len(inserts)} to insert, {len(updates)} to update\n")
     for name, what, promo in report:
