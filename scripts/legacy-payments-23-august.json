@@ -289,5 +289,32 @@
     "amount": 850,
     "paymentStatus": "Paid",
     "note": "Confirmed paid PKR 850 by the organizer."
+  },
+  {
+    "name": "Zaki Abbas Somani ",
+    "age": 12,
+    "phone": "03702861522",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied with this registration."
+  },
+  {
+    "name": "Hamza",
+    "age": 13,
+    "phone": "0300-2769282 ",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied with this registration."
+  },
+  {
+    "name": "Murtaza ",
+    "age": 17,
+    "phone": "0329-1438053",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied with this registration."
   }
 ]
