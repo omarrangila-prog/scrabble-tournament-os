@@ -675,20 +675,30 @@ describe("statusAfterUpload", () => {
   });
 
   /**
-   * The organizer chose auto-verification deliberately, against a
-   * recommendation. This test documents the consequence rather than endorsing
-   * it: any uploaded file marks the payment received, so paid and unpaid
-   * entrants are indistinguishable in the records. Flip AUTO_VERIFY_ON_UPLOAD
-   * to restore review-before-verified.
+   * A receipt is a claim, not a payment.
+   *
+   * This asserted the opposite until the receipts turned out not to exist: the upload keeps
+   * `file.name` and drops the file, and there is no storage bucket, so "verified" rested on a
+   * string a phone produced with nothing behind it. Eleven entrants and PKR 10,900 were
+   * counted as paid that way, and some of them had not paid.
+   *
+   * Turning the flag back on only makes sense once the image is kept somewhere a person can
+   * open it, so this pins the flag as well as the function.
    */
-  it("verifies on upload, as configured", () => {
-    expect(AUTO_VERIFY_ON_UPLOAD).toBe(true);
-    expect(statusAfterUpload(true, false)).toBe("verified");
+  it("holds an uploaded receipt for review rather than declaring it paid", () => {
+    expect(AUTO_VERIFY_ON_UPLOAD).toBe(false);
+    expect(statusAfterUpload(true, false)).toBe("receipt-uploaded");
   });
 
-  it("would hold a receipt for review if auto-verification were off", () => {
-    // Guards the other branch so turning the flag off cannot silently break.
-    const held = AUTO_VERIFY_ON_UPLOAD ? "receipt-uploaded" : statusAfterUpload(true, false);
-    expect(held).toBe("receipt-uploaded");
+  it("never returns verified from an upload, whatever the flag says", () => {
+    /*
+     * The other branch, guarded so that flipping the flag back cannot quietly reintroduce
+     * self-declared payment without somebody reading the comment above first.
+     */
+    for (const paysCash of [true, false]) {
+      for (const hasReceipt of [true, false]) {
+        expect(statusAfterUpload(hasReceipt, paysCash)).not.toBe("verified");
+      }
+    }
   });
 });

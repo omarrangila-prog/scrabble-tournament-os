@@ -702,29 +702,24 @@ export function paymentInstructions(
 /**
  * Whether uploading a receipt marks the payment verified without a human check.
  *
- * The organizer chose this deliberately, against a recommendation, to make
- * registration complete in one step. The consequence is recorded here rather
- * than buried: **any** uploaded file marks the payment as received, including a
- * blank image or a screenshot of somebody else's transfer. Paid and unpaid
- * entrants become indistinguishable in the records.
+ * Off, after it did real damage.
  *
- * The organizer has chosen this twice, knowing the trade: no receipt-checking work
- * on the day, in exchange for revenue figures that include money nobody confirmed
- * and a payments queue that is empty by construction. It is their event and their
- * money, so it stays on.
+ * The organizer chose this on twice, knowing the trade: no receipt-checking work on the day,
+ * in exchange for revenue that includes money nobody confirmed. What none of us noticed is
+ * that the trade was never available, because **the receipt image was never stored**. The
+ * upload handler keeps `file.name` and drops the file, and the project has no storage bucket
+ * — so "verified" rested on a piece of text a phone generated, and there was nothing for
+ * anybody to open, then or later.
  *
- * What follows from it, recorded so nobody has to rediscover it:
+ * That is worse than an unchecked receipt. An unchecked receipt can be checked afterwards;
+ * this could not be checked at all, and it counted eleven entrants and PKR 10,900 as paid on
+ * the strength of a filename. The organizer has since said some of those people had not paid.
  *
- *   - `paymentStatus` is "verified" the moment a file is attached, so the roster
- *     shows every entrant paid and the review queue shows nothing waiting;
- *   - the duplicate and amount checks still run and still flag, so a reviewer who
- *     goes looking can find the suspicious ones;
- *   - a receipt can still be rejected afterwards from the payments screen, which
- *     records who decided and why.
- *
- * Set to false to hold each upload for review instead.
+ * So a receipt is a claim again. It marks `receipt-uploaded`, the desk settles it, and the
+ * revenue figure means money somebody confirmed. Turning this back on only makes sense once
+ * the image is actually kept somewhere a person can look at it.
  */
-export const AUTO_VERIFY_ON_UPLOAD = true;
+export const AUTO_VERIFY_ON_UPLOAD = false;
 
 /** The payment status a freshly uploaded receipt produces. */
 export function statusAfterUpload(hasReceipt: boolean, paysCash: boolean): string {

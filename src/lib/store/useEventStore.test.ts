@@ -102,8 +102,14 @@ const submitOne = (fullName: string, over: Record<string, unknown> = {}) => {
     experience: "",
     preferredDivision: "recreational",
     answers: {},
-    paymentMethod: "bank-transfer",
-    receiptFileName: "receipt.jpg",
+    /*
+     * Cash at the venue, because these tests are about check-in and a payment still being
+     * checked is blocked from checking itself in. Left as a bank transfer, they would have
+     * been asserting the payment gate by accident — which is what happened when receipts
+     * stopped verifying themselves and four of them turned red.
+     */
+    paymentMethod: "cash",
+    receiptFileName: "",
     amountDue: 1250,
     discountAmount: 0,
     currency: "PKR",
@@ -127,6 +133,22 @@ describe("check-in through the store", () => {
     for (let i = 0; i < 25; i += 1) submitOne(`Player ${i}`);
     const codes = useEventStore.getState().registrations.map((r) => r.checkInCode);
     expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  /**
+   * The consequence of a receipt no longer declaring itself paid: the person holding it
+   * cannot wave themselves in, and the desk settles the money first.
+   */
+  it("stops somebody whose receipt has not been checked from checking themselves in", () => {
+    submitOne("Unchecked Receipt", { paymentMethod: "bank-transfer", receiptFileName: "r.jpg" });
+    const r = useEventStore.getState().registrations.at(-1)!;
+
+    // The precondition, so this cannot pass because the fixture drifted to some other state.
+    expect(r.paymentStatus).toBe("receipt-uploaded");
+
+    const outcome = useEventStore.getState().checkIn(r.id, "venue_qr");
+    expect(outcome.result).toBe("blocked");
+    expect(useEventStore.getState().registrations.at(-1)!.checkedInAt).toBeFalsy();
   });
 
   it("records the arrival with its method", () => {

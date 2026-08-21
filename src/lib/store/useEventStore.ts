@@ -456,12 +456,9 @@ export const useEventStore = create<EventStore>()(
           overCapacity && event?.waitingList ? "waitlisted" : "submitted";
 
         /*
-         * The organizer chose to verify on upload, against a recommendation, so
-         * that registration completes in a single step. The consequence is
-         * recorded in AUTO_VERIFY_ON_UPLOAD: any uploaded file marks the
-         * payment received, including a blank one, and paid and unpaid entrants
-         * become indistinguishable. The duplicate and amount checks still run,
-         * so a reviewer can find suspicious receipts afterwards.
+         * A receipt is a claim. See AUTO_VERIFY_ON_UPLOAD: it used to promote itself to
+         * `verified`, until the receipts turned out never to have been stored, so the status
+         * rested on a filename with no image behind it. It now waits for a person.
          */
         const paymentStatus: GuestPaymentStatus =
           input.amountDue === 0

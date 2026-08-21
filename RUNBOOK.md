@@ -249,10 +249,15 @@ same as owing nothing. Press any tile on Payments to see just those people.
 at the venue" is recorded as owing it, and only becomes revenue when the desk takes the
 money.
 
-**A receipt counts as paid the moment it is uploaded.** This was chosen deliberately:
-no receipt-checking work on the day, in exchange for revenue figures that include
-money nobody has confirmed. The payments queue will therefore look empty. A receipt
-can still be rejected afterwards, and the rejection records who decided.
+**A receipt is a claim, not a payment.** It used to count as paid the moment it was
+uploaded, until the receipts turned out never to have been stored: the form kept the file's
+*name* and dropped the file, and there is no storage bucket, so "paid" rested on a piece of
+text with no image behind it. Eleven entrants were counted as paid that way and some of them
+had not paid. Uploading now records `receipt-uploaded`, which waits for a person.
+
+**That means an uploaded receipt cannot check itself in.** Anybody whose payment is not
+settled is sent to the desk, which is one tap — but it makes the desk the place the money is
+decided, which is the point.
 
 **Nobody but the director can read the participant list.** Names and phone numbers are
 not released to a browser that has not signed in, and that is enforced by the database
