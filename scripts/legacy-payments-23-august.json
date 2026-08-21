@@ -262,5 +262,32 @@
     "amount": 900,
     "paymentStatus": "Paid",
     "note": "Confirmed paid PKR 900 by the organizer."
+  },
+  {
+    "name": "Omema Shoaib",
+    "age": 30,
+    "phone": "03232402169",
+    "promo": "Organizer Confirmed",
+    "amount": 850,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 850 by the organizer."
+  },
+  {
+    "name": "Manahil Fatima",
+    "age": 11,
+    "phone": "03232402169",
+    "promo": "Organizer Confirmed",
+    "amount": 850,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 850 by the organizer."
+  },
+  {
+    "name": "Wania Fatima",
+    "age": 10,
+    "phone": "03232402169",
+    "promo": "Organizer Confirmed",
+    "amount": 850,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 850 by the organizer."
   }
 ]
