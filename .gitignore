@@ -44,3 +44,8 @@ next-env.d.ts
 # Python bytecode from the import scripts.
 __pycache__/
 *.pyc
+
+# Participant contact exports. Real names, mobiles and email addresses —
+# this repository is public, so these never get committed.
+contacts/
+*.vcf
