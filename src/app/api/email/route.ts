@@ -40,6 +40,22 @@ interface RegistrationRequest {
   token: string;
 }
 
+/**
+ * A details confirmation, already composed.
+ *
+ * Composed on the client because the card is assembled from the participant's own record,
+ * which the browser has already read through their token — recomposing it here would mean a
+ * second source of truth for what somebody's card says. Staff only, and the recipient is
+ * supplied, so the sign-in check is what stops this being an open relay.
+ */
+interface ConfirmationRequest {
+  kind: "details-confirmation";
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}
+
 interface CertificateRequest {
   kind: "certificate";
   to: string;
@@ -53,7 +69,7 @@ interface CertificateRequest {
   verifyUrl: string;
 }
 
-type Body = RegistrationRequest | CertificateRequest;
+type Body = RegistrationRequest | CertificateRequest | ConfirmationRequest;
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const SUPABASE_KEY =
@@ -232,6 +248,30 @@ export async function POST(request: Request) {
   }
 
   /* ---- A certificate, sent by staff ------------------------------------ */
+  if (body.kind === "details-confirmation") {
+    if (!(await callerIsStaff(request.headers.get("authorization")))) {
+      return NextResponse.json(
+        { ok: false, message: "Only the organizer can send confirmations." },
+        { status: 401 },
+      );
+    }
+
+    if (!body.to?.includes("@")) {
+      return NextResponse.json(
+        { ok: false, message: "That contact has no email address on file." },
+        { status: 422 },
+      );
+    }
+
+    const result = await sendEmail({
+      to: body.to,
+      subject: body.subject,
+      html: body.html,
+      text: body.text,
+    });
+    return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
+
   if (body.kind === "certificate") {
     if (!(await callerIsStaff(request.headers.get("authorization")))) {
       return NextResponse.json(

@@ -164,3 +164,29 @@ export async function emailPlayerCodes(
     message: body.message,
   };
 }
+
+
+/**
+ * A details confirmation, to one contact.
+ *
+ * Staff only, and the session token goes with it: this names people and states what they owe,
+ * which is not something an anonymous request should be able to post to any address.
+ *
+ * Composed by the caller, because the card is built from the participant's own record and
+ * having the server rebuild it would be a second opinion about what somebody's card says.
+ */
+export async function emailDetailsConfirmation(input: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<EmailOutcome> {
+  const db = supabase();
+  const session = db ? (await db.auth.getSession()).data.session : null;
+
+  if (!session) {
+    return { ok: false, configured: true, message: "Sign in again to send confirmations." };
+  }
+
+  return post({ kind: "details-confirmation", ...input }, `Bearer ${session.access_token}`);
+}

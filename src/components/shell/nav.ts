@@ -1,4 +1,5 @@
 import {
+  MailCheck,
   Send,
   Search,
   BarChart3,
@@ -56,6 +57,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
   { href: "/app/send-codes", label: "Send codes", icon: Send },
+  /* Before the day: everybody checks their own details, so the roster is right by Sunday. */
+  { href: "/app/confirmations", label: "Confirmations", icon: MailCheck },
   { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
   { href: "/app/certificates", label: "Awards", icon: Trophy },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
