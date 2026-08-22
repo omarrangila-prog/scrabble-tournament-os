@@ -128,6 +128,13 @@ export function memberFee(baseFee = GAME_ON_FEE): number {
 /* -------------------------------------------------------------------------- */
 
 /** What a participant tells us, plus what the organizer decides afterwards. */
+/** One more person on the same form: only the fields that differ between siblings. */
+export interface ExtraPlayer {
+  fullName: string;
+  dateOfBirth?: string;
+  requestedLevel?: PlayerCategory;
+}
+
 export interface GameOnRegistration {
   track: ParticipationTrack;
 
@@ -174,6 +181,18 @@ export interface GameOnRegistration {
   attendedPreviousEvent?: boolean;
   hasVerifiedRating?: boolean;
   requestedLevel?: PlayerCategory;
+  /**
+   * Other players being entered on the same form.
+   *
+   * A parent with three children filled this in three times, and the roster shows exactly
+   * that: the Sohails, the Lodhis, the Saroshes and the Shoaibs all arrived as separate
+   * submissions carrying one email between them.
+   *
+   * They still become separate registrations — separate player numbers, separate boards,
+   * separate certificates. What is shared is the typing: one contact, one payment, one
+   * journey through the form. Nothing here merges anybody.
+   */
+  extraPlayers?: ExtraPlayer[];
   previousTournaments?: string;
   typicalScore?: number;
 

@@ -290,6 +290,82 @@ export default function RegisterPage() {
       return;
     }
 
+    /*
+     * The other players on the same form, each becoming their own entrant.
+     *
+     * Separate registrations with their own player number, their own check-in code and their
+     * own board — the form is shared, the record never is. Done after the first has saved, so
+     * a family is not half-created if the connection drops on the first write.
+     *
+     * The contact details and the payment are the parent's, because that is whose they are.
+     * The amount is per person: three children at eight hundred is two thousand four hundred,
+     * and recording eight hundred against each is what the desk then collects.
+     */
+    const extras = (reg.extraPlayers ?? []).filter((p) => p.fullName.trim() !== "");
+    const failed: string[] = [];
+
+    for (const extra of extras) {
+      const extraToken = store.submitRegistration({
+        eventId: event.id,
+        fullName: extra.fullName.trim(),
+        email: reg.email,
+        mobile: reg.mobile,
+        dateOfBirth: extra.dateOfBirth ?? "",
+        city: reg.city,
+        club: reg.affiliation || "Unaffiliated",
+        participationTrack: reg.track,
+        experience: "New to competition",
+        preferredDivision: (extra.requestedLevel ?? reg.requestedLevel ?? "beginner") as PlayerCategory,
+        answers: {
+          ...(reg.area ? { area: reg.area } : {}),
+          /* Kept so the desk can see at a glance who paid for whom. */
+          registeredWith: reg.fullName,
+        },
+        paymentMethod: reg.payAtVenue ? "cash" : event.paymentMethods[0] ?? "cash",
+        receiptFileName: reg.receiptFileName,
+        amountDue: quote.payable,
+        /* The same reduction the parent was shown, so the record explains the amount. */
+        discountAmount: reg.quotedDiscountAmount ?? quote.totalOff,
+        currency: event.currency,
+      });
+
+      const localExtra = useEventStore
+        .getState()
+        .registrations.find((r) => r.token === extraToken);
+
+      if (!localExtra) {
+        failed.push(extra.fullName);
+        continue;
+      }
+
+      const savedExtra = await saveRegistration({
+        eventId: event.id,
+        organizationId: event.organizationId,
+        checkInCode: localExtra.checkInCode ?? "",
+        data: {
+          ...localExtra,
+          paymentStatus: reg.payAtVenue
+            ? "cash-at-venue"
+            : reg.receiptFileName
+              ? "receipt-uploaded"
+              : localExtra.paymentStatus,
+        },
+      });
+
+      if (!savedExtra.ok) failed.push(extra.fullName);
+    }
+
+    /*
+     * A partial family is worth saying out loud. The first player is registered either way,
+     * so the confirmation still shows — but somebody who added three children and had one
+     * fail needs to know which, rather than discovering it at the door.
+     */
+    if (failed.length > 0) {
+      setSaveError(
+        `Registered, but we could not save ${failed.join(" and ")}. Please add them again, or tell us at the desk.`,
+      );
+    }
+
     setSubmitted({ token, registration: reg });
 
     /*

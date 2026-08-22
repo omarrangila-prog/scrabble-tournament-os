@@ -18,6 +18,7 @@ import {
   Users,
   Wallet,
   Banknote,
+  Plus,
   Landmark,
 } from "lucide-react";
 import { Badge, Button, Card, Field, Input, Select, Textarea } from "@/components/ui";
@@ -34,6 +35,7 @@ import {
   quoteBundle,
   quoteFee,
   validateRegistration,
+  type ExtraPlayer,
 } from "@/lib/domain/gameOn";
 import {
   INTEREST_LABEL,
@@ -611,6 +613,23 @@ export function GameOnForm({
                   onChange={(e) => set("affiliation", e.target.value)}
                 />
               </Field>
+
+              {/*
+                More than one player on one form.
+
+                A parent with three children filled this in three times, and the roster shows
+                exactly that — four families arrived as separate submissions sharing one email
+                between them. They stay separate registrations with their own player numbers;
+                what is shared is the typing, the contact and the payment.
+
+                Only the fields that differ between siblings are asked for again. Repeating
+                the email, the mobile and the area for each child is how somebody gives up
+                halfway down.
+              */}
+              <ExtraPlayers
+                players={reg.extraPlayers ?? []}
+                onChange={(next) => set("extraPlayers", next)}
+              />
             </>
           ) : null}
 
@@ -1147,7 +1166,13 @@ export function GameOnForm({
                 </div>
               ) : null}
 
-              <FeePanel quote={quote} money={money} extra={addedEvents} extraOff={bundle.bundleOff} />
+              <FeePanel
+                quote={quote}
+                money={money}
+                extra={addedEvents}
+                extraOff={bundle.bundleOff}
+                players={1 + (reg.extraPlayers ?? []).filter((p) => p.fullName.trim() !== "").length}
+              />
 
               {instructions.length && !reg.payAtVenue ? (
                 <div className="rounded-feature border border-[#C89B3C]/40 bg-[#C89B3C]/8 p-4">
@@ -1444,13 +1469,24 @@ function FeePanel({
   money,
   extra = [],
   extraOff = 0,
+  players = 1,
 }: {
   quote: ReturnType<typeof quoteFee>;
   money: (n: number) => string;
   extra?: { name: string; date: string; fee: number }[];
   extraOff?: number;
+  /** Everybody being entered on this form, the person filling it in included. */
+  players?: number;
 }) {
-  const total = Math.max(0, quote.payable + extra.reduce((s, e) => s + e.fee, 0) - extraOff);
+  /*
+   * The fee is per person, so a parent entering three children owes it three times.
+   *
+   * Quoting one entry and then charging three at the desk is the kind of surprise that ends
+   * with somebody arguing in a doorway, so the number shown here counts everybody on the form.
+   */
+  const heads = Math.max(1, players);
+  const entries = quote.payable * heads;
+  const total = Math.max(0, entries + extra.reduce((s, e) => s + e.fee, 0) - extraOff);
   return (
     <div className="rounded-feature bg-[rgb(var(--c-surface-soft))] p-4">
       <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
@@ -1458,7 +1494,17 @@ function FeePanel({
       </p>
 
       <div className="mt-2 space-y-1.5">
-        {quote.lines.map((line, i) => (
+        {heads > 1 ? (
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[13px] text-muted">
+              {heads} players at {money(quote.payable)} each
+            </span>
+            <span className="num shrink-0 text-[13.5px] font-semibold text-ink">
+              {money(entries)}
+            </span>
+          </div>
+        ) : null}
+        {heads > 1 ? null : quote.lines.map((line, i) => (
           <div key={i} className="flex items-baseline justify-between gap-3">
             <span className="text-[13px] text-muted">
               {line.label}
@@ -1536,6 +1582,9 @@ function ReviewBlock({
   addedEvents: BundleEvent[];
   bundleOff: number;
 }) {
+  /* Everybody on this form, so the review total shows what the payment step showed. */
+  const players = 1 + (reg.extraPlayers ?? []).filter((p) => p.fullName.trim() !== "").length;
+
   const rows: [string, string][] = [
     ["Name", reg.fullName ?? "—"],
     ["Email", reg.email ?? "—"],
@@ -1586,7 +1635,116 @@ function ReviewBlock({
         </dl>
       </div>
 
-      <FeePanel quote={quote} money={money} extra={addedEvents} extraOff={bundleOff} />
+      <FeePanel
+        quote={quote}
+        money={money}
+        extra={addedEvents}
+        extraOff={bundleOff}
+        players={players}
+      />
+    </div>
+  );
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* More than one player                                                        */
+/* -------------------------------------------------------------------------- */
+
+const LEVELS: { value: PlayerCategory; label: string }[] = [
+  { value: "beginner", label: "New to the game / Beginner" },
+  { value: "recreational", label: "Intermediate / Recreational" },
+  { value: "advanced", label: "Regular / Advanced" },
+];
+
+/**
+ * Adding brothers, sisters and children to the same registration.
+ *
+ * Each one becomes their own entrant with their own player number — this shares the form,
+ * never the record. The contact details and the payment are the parent's; the name, the age
+ * and the playing level belong to each child, so those are the only things asked twice.
+ */
+function ExtraPlayers({
+  players,
+  onChange,
+}: {
+  players: ExtraPlayer[];
+  onChange: (next: ExtraPlayer[]) => void;
+}) {
+  const update = (i: number, patch: Partial<ExtraPlayer>) =>
+    onChange(players.map((p, at) => (at === i ? { ...p, ...patch } : p)));
+
+  return (
+    <div className="rounded-feature border-2 border-dashed p-4" style={{ borderColor: "#C89B3C66" }}>
+      <p className="text-[14px] font-bold text-ink">Registering more than one player?</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+        Add them here — brothers, sisters or children. Each one gets their own player number
+        and plays their own games. You only pay once, at the end.
+      </p>
+
+      {players.map((player, i) => (
+        <div
+          key={i}
+          className="mt-3 rounded-control border border-line bg-white p-3.5"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-muted">
+              Player {i + 2}
+            </p>
+            <button
+              type="button"
+              onClick={() => onChange(players.filter((_, at) => at !== i))}
+              className="text-[12.5px] font-semibold text-critical"
+            >
+              Remove
+            </button>
+          </div>
+
+          <Field label="Full name" required>
+            <Input
+              value={player.fullName}
+              onChange={(e) => update(i, { fullName: e.target.value })}
+              placeholder="As it should appear on their certificate"
+              invalid={player.fullName.trim() === ""}
+            />
+          </Field>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Date of birth">
+              <Input
+                type="date"
+                value={player.dateOfBirth ?? ""}
+                onChange={(e) => update(i, { dateOfBirth: e.target.value })}
+              />
+            </Field>
+
+            <Field label="Playing level" required>
+              <Select
+                value={player.requestedLevel ?? ""}
+                onChange={(e) =>
+                  update(i, { requestedLevel: e.target.value as PlayerCategory })
+                }
+              >
+                <option value="">Select…</option>
+                {LEVELS.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+        </div>
+      ))}
+
+      <Button
+        variant="secondary"
+        className="mt-3 w-full"
+        icon={<Plus className="size-4" />}
+        onClick={() => onChange([...players, { fullName: "" }])}
+      >
+        {players.length === 0 ? "Add another player" : "Add one more"}
+      </Button>
     </div>
   );
 }
