@@ -11,25 +11,28 @@
     "name": "Salah Sohail",
     "age": 15,
     "phone": "0321 2586691",
-    "promo": "Early Bird",
+    "promo": "Needs Classification",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Needs Review",
+    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
   },
   {
     "name": "Shiza Sohail",
     "age": 11,
     "phone": "0321 2586691",
-    "promo": "Early Bird",
+    "promo": "Needs Classification",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Needs Review",
+    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
   },
   {
     "name": "Muzammil Sohail",
     "age": 9,
     "phone": "0321 2586691",
-    "promo": "Early Bird",
+    "promo": "Needs Classification",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Needs Review",
+    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
   },
   {
     "name": "Muhammad Ashar Narinja",
@@ -75,9 +78,10 @@
     "name": "Muhammad Yadaan",
     "age": 16,
     "phone": "03452615517",
-    "promo": "Paid on New Form",
+    "promo": "Needs Classification",
     "amount": 950,
-    "paymentStatus": "Online"
+    "paymentStatus": "Needs Review",
+    "note": "Taken off the paid list: nobody confirmed this payment. The sheet said Online, but that rested on a screenshot filename and the image was never stored."
   },
   {
     "name": "Raamiz Ahmed",
@@ -91,9 +95,10 @@
     "name": "Muhammad Hashir",
     "age": 17,
     "phone": "03162386809",
-    "promo": "Early Bird",
+    "promo": "Needs Classification",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Needs Review",
+    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
   },
   {
     "name": "Iman umair",
@@ -131,33 +136,37 @@
     "name": "Yazdan lodhi",
     "age": 11,
     "phone": "03152862866",
-    "promo": "Early Bird",
+    "promo": "Organizer Confirmed",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Paid",
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Rayyan hussain khan lodhi",
     "age": 14,
     "phone": "03152862866",
-    "promo": "Early Bird",
+    "promo": "Organizer Confirmed",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Paid",
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Abdul Basit Lodhi",
     "age": 9,
     "phone": "03152862866",
-    "promo": "Early Bird",
+    "promo": "Organizer Confirmed",
     "amount": 800,
-    "paymentStatus": "Online"
+    "paymentStatus": "Paid",
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "sharimkizoja123°",
     "age": 18,
     "phone": "03353976286",
-    "promo": "Special Discount",
+    "promo": "Needs Classification",
     "amount": 1000,
-    "paymentStatus": "Online"
+    "paymentStatus": "Needs Review",
+    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
   },
   {
     "name": "Khizrakhan",
@@ -216,7 +225,7 @@
     "promo": "Organizer Confirmed",
     "amount": 850,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 850 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Aariz hussain solangi",
@@ -225,7 +234,7 @@
     "promo": "Organizer Confirmed",
     "amount": 850,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 850 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Sakina Rameen",
@@ -234,7 +243,7 @@
     "promo": "Organizer Confirmed",
     "amount": 850,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 850 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Ibtehaj Khan",
@@ -243,7 +252,7 @@
     "promo": "Organizer Confirmed",
     "amount": 900,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 900 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Muhammad Moosa Sarosh",
@@ -252,7 +261,7 @@
     "promo": "Organizer Confirmed",
     "amount": 900,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 900 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Muhammad Essa Sarosh",
@@ -261,7 +270,7 @@
     "promo": "Organizer Confirmed",
     "amount": 900,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 900 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Omema Shoaib",
@@ -270,7 +279,7 @@
     "promo": "Organizer Confirmed",
     "amount": 850,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 850 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Manahil Fatima",
@@ -279,7 +288,7 @@
     "promo": "Organizer Confirmed",
     "amount": 850,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 850 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Wania Fatima",
@@ -288,7 +297,7 @@
     "promo": "Organizer Confirmed",
     "amount": 850,
     "paymentStatus": "Paid",
-    "note": "Confirmed paid PKR 850 by the organizer."
+    "note": "Confirmed by the organizer on 22 August."
   },
   {
     "name": "Zaki Abbas Somani ",
