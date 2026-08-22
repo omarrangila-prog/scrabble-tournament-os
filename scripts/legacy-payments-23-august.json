@@ -122,9 +122,10 @@
     "name": "Huzaifa Amir",
     "age": 12,
     "phone": "03452900033",
-    "promo": "Early Bird",
-    "amount": 800,
-    "paymentStatus": "Needs Review"
+    "promo": "Organizer Confirmed",
+    "amount": 950,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 950 by the organizer."
   },
   {
     "name": "Khizr Hussain Khan",

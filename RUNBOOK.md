@@ -172,6 +172,21 @@ fifteen seconds. There is no new link to hand out.
 Somebody who scans before checking in is offered **Check me in** on the same page — unless
 their payment is unsettled, in which case it sends them to the desk.
 
+### The song round
+
+Drop the audio clips into **`public/songs/`** and list them in `manifest.json`:
+
+```json
+{ "clips": [ { "file": "song-1.mp3", "answer": "Pasoori" } ] }
+```
+
+When a round finishes the wall plays the next clip for twenty seconds, counts it down, and
+then shows the answer. One clip per round, in order; it stops rather than looping. With no
+clips the song round simply does not appear.
+
+**Press "Tap once for sound" when you set the television up.** A browser will not play audio
+until somebody has touched the page — one tap and it stays unlocked for the day.
+
 ### 4. Scores
 
 When the round ends, the wall shows a QR: **submit your result**.

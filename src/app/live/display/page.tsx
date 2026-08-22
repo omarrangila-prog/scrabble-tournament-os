@@ -5,13 +5,14 @@ import * as React from "react";
 import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { useEventState } from "@/lib/supabase/useEventState";
-import { useGames } from "@/lib/supabase/useGames";
 import { arrivalTotals } from "@/lib/supabase/registrations";
 import { readBreakKind } from "@/lib/supabase/useTablePlan";
 import { publicStandings, type PublicStanding } from "@/lib/supabase/submitResult";
 import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { useStore } from "@/lib/store/useStore";
 import { qrToDataUri } from "@/lib/qr/qrcode";
+import { SongRound } from "@/components/public/SongRound";
+import { useRoundProgress } from "@/lib/supabase/useRoundProgress";
 import { cn } from "@/lib/utils";
 
 /**
@@ -63,10 +64,20 @@ const SCENE_FOR: Record<EventState, Scene> = {
 };
 
 export default function LiveDisplayPage() {
-  const app = useStore();
+  /*
+   * No store, and no signed-in read of any kind. Everything on this screen comes from
+   * functions a television can call without an account — which is what a television is.
+   */
   const phase = useEventState(ACTIVE_EVENT_ID, 8);
-  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
-  const round = games.round;
+  /*
+   * The round, read the way a television can read it.
+   *
+   * `useGames` goes through a staff-only function, so on a screen that has never signed in it
+   * returns nothing and the wall announced "Round 0 complete · 0 / 0 boards in" — during the
+   * one scene whose whole job is telling the room what to do.
+   */
+  const live = useRoundProgress(ACTIVE_EVENT_ID);
+  const round = live.round;
   const clock = useRoundTimer(ACTIVE_EVENT_ID, round);
 
   /* Once a second, so the clock on the wall is the clock in the room. */
@@ -245,9 +256,15 @@ export default function LiveDisplayPage() {
             </Headline>
             <Qr url={playUrl} />
             <p className="mt-[2vh] text-[2.2vw] font-bold" style={{ color: EMERALD }}>
-              {games.progress.verified}
-              <span style={{ color: `${IVORY}66` }}> / {games.progress.totalBoards} boards in</span>
+              {live.verified}
+              <span style={{ color: `${IVORY}66` }}> / {live.boards} boards in</span>
             </p>
+
+            {/*
+              The song round, while the room is between games.
+              Silent and invisible if no clips have been added.
+            */}
+            <SongRound round={round} playing />
           </>
         ) : null}
 
