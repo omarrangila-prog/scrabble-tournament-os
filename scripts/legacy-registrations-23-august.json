@@ -562,5 +562,20 @@
     "refundAgreement": "Agreed",
     "eventRulesAgreement": "Agreed",
     "registrationSource": "Legacy Form Import"
+  },
+  {
+    "originalTimestamp": "2026-08-22 22:34:00",
+    "fullName": "Muhammad Ebaad Hasan",
+    "email": "shaikhebaad.hasan@gmail.com",
+    "age": 13,
+    "phone": "0319 8463396",
+    "playsPSARankingTournaments": "Yes",
+    "originalSkillLevel": "Regular/Advanced",
+    "heardAboutEvent": "Friend",
+    "mediaConsent": "Yes",
+    "cancellationAgreement": "Agreed",
+    "refundAgreement": "Agreed",
+    "eventRulesAgreement": "Agreed",
+    "registrationSource": "Legacy Form Import"
   }
 ]

@@ -337,5 +337,14 @@
     "amount": null,
     "paymentStatus": "Cash on Site",
     "note": "Paying cash at the venue. Amount to be agreed at the desk."
+  },
+  {
+    "name": "Muhammad Ebaad Hasan",
+    "age": 13,
+    "phone": "0319 8463396",
+    "promo": "Needs Classification",
+    "amount": null,
+    "paymentStatus": "Needs Review",
+    "note": "No amount was supplied with this registration."
   }
 ]
