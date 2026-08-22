@@ -35,6 +35,7 @@ import type { Player } from "@/lib/domain/types";
 import { useStore } from "@/lib/store/useStore";
 import { addWalkIn } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { field, importField, numberField } from "@/lib/supabase/organizer";
 import { downloadFile, formatTime, toCsv } from "@/lib/utils";
 
 
@@ -94,26 +95,47 @@ function PlayersView() {
   }, [players, query, division, status]);
 
   /*
-   * Export what the roster actually knows. Rating and club are deliberately
-   * absent: nobody has a rating at a first event, and the registration form never
-   * asked for a club, so both columns would have been blank in every row.
+   * Export what the roster actually knows, keyed by the number that is on the badge.
+   *
+   * It used to lead with "AB-001", an index into this list — a number that appears on no
+   * badge, in no email, on no certificate and nowhere at the desk. Anybody reconciling the
+   * spreadsheet against the day had nothing to join on. The player number is the identifier
+   * everything else uses, so it is the first column.
+   *
+   * Rating and club stay absent: nobody has a rating at a first event, and the form never
+   * asked for a club, so both columns would be blank in every row.
    */
   const exportCsv = () => {
+    const byId = new Map(roster.registrations.map((r) => [r.id, r]));
+
     const rows: (string | number)[][] = [
-      ["Entry", "Name", "Mobile", "Area", "Division", "Seed", "Payment", "Check-in", "Arrived at", "Registered"],
-      ...filtered.map((p) => [
-        p.playerId,
-        p.fullName,
-        p.emergencyContact.phone,
-        p.city,
-        p.division,
-        p.seed,
-        p.payment,
-        p.checkIn,
-        p.checkInAt ? formatTime(p.checkInAt) : "",
-        p.registeredAt,
-      ]),
+      [
+        "Player #", "Name", "Mobile", "Email", "Division", "Payment", "Amount (PKR)",
+        "Check-in", "Arrived at", "Registered", "Area",
+      ],
+      ...filtered.map((p) => {
+        const reg = byId.get(p.id);
+        const number =
+          (reg ? importField(reg, "playerNumber") ?? field(reg, "playerNumber") : null) ?? "";
+        const amount = reg ? numberField(reg, "amountDue") : null;
+
+        return [
+          number,
+          p.fullName,
+          p.emergencyContact.phone,
+          reg?.email ?? "",
+          p.division,
+          p.payment,
+          /* Blank where no amount was ever established. Zero would be a claim. */
+          amount === null ? "" : amount,
+          p.checkIn,
+          p.checkInAt ? formatTime(p.checkInAt) : "",
+          p.registeredAt,
+          p.city,
+        ];
+      }),
     ];
+
     downloadFile("roster.csv", toCsv(rows), "text/csv");
     store.toast({
       title: "Roster exported",

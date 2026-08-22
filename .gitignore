@@ -49,3 +49,4 @@ __pycache__/
 # this repository is public, so these never get committed.
 contacts/
 *.vcf
+*.xlsx

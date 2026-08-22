@@ -41,9 +41,16 @@ export function timeAgo(iso: string, reference = Date.now()): string {
 
 export const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
-/** Triggers a client-side file download for demo exports. */
+/**
+ * Triggers a client-side file download.
+ *
+ * CSV gets a byte-order mark. Excel reads a .csv as the machine's local codepage unless one
+ * is present, so "sharimkizoja123°" arrives as mojibake and an Urdu name arrives as rubbish —
+ * on the organizer's machine, not on ours, which is why it survives being tested here.
+ */
 export function downloadFile(filename: string, content: string, type = "text/plain") {
-  const blob = new Blob([content], { type });
+  const csv = type.includes("csv") || filename.endsWith(".csv");
+  const blob = new Blob(csv ? ["\uFEFF", content] : [content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -54,15 +61,24 @@ export function downloadFile(filename: string, content: string, type = "text/pla
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Rows to CSV that Excel opens correctly.
+ *
+ * Two things it does beyond quoting:
+ *
+ * A value that is digits with a leading zero is written as a formula string — `="03222927461"`
+ * — because Excel reads 03222927461 as a number and hands back 3222927461. Every mobile in
+ * this event starts with a zero, so without it the export loses a digit from all seventy-one
+ * and is worse than useless for ringing anybody.
+ *
+ * Lines end CRLF, which is what the CSV convention says and what Excel on Windows expects.
+ */
 export function toCsv(rows: (string | number)[][]): string {
-  return rows
-    .map((r) =>
-      r
-        .map((cell) => {
-          const s = String(cell ?? "");
-          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        })
-        .join(","),
-    )
-    .join("\n");
+  const cell = (raw: string | number) => {
+    const s = String(raw ?? "");
+    if (/^0\d+$/.test(s)) return `="${s}"`;
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  return rows.map((r) => r.map(cell).join(",")).join("\r\n");
 }
