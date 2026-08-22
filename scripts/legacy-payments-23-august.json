@@ -70,9 +70,10 @@
     "name": "Mohammed Hazil",
     "age": 8,
     "phone": "03232877434",
-    "promo": "Instagram Promo",
+    "promo": "Song",
     "amount": 0,
-    "paymentStatus": "Promo / Complimentary"
+    "paymentStatus": "Promo / Complimentary",
+    "note": "Complimentary entry for the song round."
   },
   {
     "name": "Muhammad Yadaan",
@@ -104,9 +105,10 @@
     "name": "Iman umair",
     "age": 11,
     "phone": "03313613405",
-    "promo": "Instagram Promo",
+    "promo": "Song",
     "amount": 0,
-    "paymentStatus": "Promo / Complimentary"
+    "paymentStatus": "Promo / Complimentary",
+    "note": "Complimentary entry for the song round."
   },
   {
     "name": "Mohammed Hazil Sami",
