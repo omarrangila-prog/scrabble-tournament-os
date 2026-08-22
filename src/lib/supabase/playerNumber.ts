@@ -145,3 +145,31 @@ export async function playerNumberForToken(
   if (error || typeof data !== "string" || data === "") return null;
   return data;
 }
+
+
+/**
+ * Claiming a player by picking their name, with nothing else asked.
+ *
+ * The organizer removed the last-four-digits step: at a door with seventy-nine people it cost
+ * more than it earned. The trade is real and worth naming — anybody who can read a name off
+ * the pairing list can now claim that player, check them in, and type a score for a board
+ * they are not sitting at.
+ *
+ * What keeps that from deciding anything: the opponent confirms every score on their own
+ * phone, and a disagreement stops the board for a person to settle.
+ */
+export async function claimPlayerOpen(
+  eventId: string,
+  number: string,
+): Promise<string | null> {
+  const db = supabase();
+  if (!db) return null;
+
+  const { data, error } = await db.rpc("claim_player_open", {
+    p_event_id: eventId,
+    p_number: number.trim(),
+  });
+
+  if (error || typeof data !== "string" || data === "") return null;
+  return data;
+}

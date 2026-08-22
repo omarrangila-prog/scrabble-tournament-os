@@ -6,10 +6,9 @@ import { AlertTriangle, Check, ChevronLeft, Loader2, Search, Trophy } from "luci
 
 import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import {
-  claimPlayerNumber,
+  claimPlayerOpen,
   forgetPlayer,
   playerByNumber,
-  PLAYER_NUMBER_LENGTH,
   type PlayerSummary,
   rememberedPlayer,
   rememberPlayer,
@@ -198,33 +197,37 @@ function Find({
 }) {
   const [query, setQuery] = React.useState("");
   const [hits, setHits] = React.useState<PlayerHit[]>([]);
-  const [picked, setPicked] = React.useState<PlayerHit | null>(null);
-  const [lastFour, setLastFour] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   /* Searching as they type, a beat behind, so the list settles rather than flickering. */
   React.useEffect(() => {
-    if (picked) return;
     const q = query;
     const id = window.setTimeout(async () => {
       setHits(await searchPlayers(eventId, q));
     }, 220);
     return () => window.clearTimeout(id);
-  }, [query, eventId, picked]);
+  }, [query, eventId]);
 
-  const claim = async () => {
-    if (!picked) return;
+  /*
+   * Picking a name is the whole of it.
+   *
+   * There used to be a second screen asking for the last four digits of the mobile. It is a
+   * real protection and the organizer removed it deliberately: at a door with seventy-nine
+   * people, most of them children, the step cost more than it earned.
+   */
+  const pick = async (hit: PlayerHit) => {
     setBusy(true);
     setError(null);
-    const token = await claimPlayerNumber(eventId, picked.number, lastFour);
+
+    const token = await claimPlayerOpen(eventId, hit.number);
     setBusy(false);
 
     if (!token) {
-      setError("Those four digits do not match that player. Try again, or ask at the desk.");
+      setError("That did not work. Please try again, or ask at the desk.");
       return;
     }
-    onClaimed(token, picked.number);
+    onClaimed(token, hit.number);
   };
 
   return (
@@ -240,108 +243,60 @@ function Find({
           Find your player profile
         </h1>
 
-        {!picked ? (
-          <>
-            <p className="mt-2 text-center text-[13px] leading-relaxed text-muted">
-              Type your name or your 3-digit player number. Spelling does not have to be exact.
+        <p className="mt-2 text-center text-[13px] leading-relaxed text-muted">
+          Type your name. Spelling does not have to be exact — part of it is enough.
+        </p>
+
+        <div className="relative mt-6">
+          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Type your name"
+            autoFocus
+            autoComplete="off"
+            className="w-full rounded-feature border-2 border-line bg-white py-4 pl-10 pr-4 text-[16px] outline-none focus:border-[#2F5D3A]"
+            aria-label="Your name"
+          />
+        </div>
+
+        {error ? <p className="mt-3 text-center text-[12.5px] text-critical">{error}</p> : null}
+
+        <div className="mt-3 space-y-2">
+          {hits.map((h) => (
+            <button
+              key={h.number}
+              type="button"
+              disabled={busy}
+              onClick={() => void pick(h)}
+              className="flex w-full items-center gap-3 rounded-feature border-2 border-line bg-white px-4 py-4 text-left active:scale-[0.99] disabled:opacity-50"
+            >
+              <span
+                className="num shrink-0 rounded-control px-2.5 py-1 text-[15px] font-extrabold"
+                style={{ background: `${GOLD}2E`, color: "#8A6A1F" }}
+              >
+                {h.number}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-bold text-ink">{h.name}</span>
+                <span className="block text-[12px] capitalize text-muted">{h.division}</span>
+              </span>
+              <span className="shrink-0 text-[12.5px] font-semibold" style={{ color: FOREST }}>
+                {busy ? "…" : "That's me"}
+              </span>
+            </button>
+          ))}
+
+          {query.trim().length >= 2 && hits.length === 0 && !busy ? (
+            <p className="rounded-feature bg-white px-4 py-5 text-center text-[13px] leading-relaxed text-muted">
+              Nobody matches that. Try just your first name or your surname — or ask at the desk.
             </p>
-
-            <div className="relative mt-6">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Your name, or 117"
-                autoFocus
-                autoComplete="off"
-                className="w-full rounded-feature border-2 border-line bg-white py-4 pl-10 pr-4 text-[16px] outline-none focus:border-[#2F5D3A]"
-                aria-label="Your name or player number"
-              />
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {hits.map((h) => (
-                <button
-                  key={h.number}
-                  type="button"
-                  onClick={() => {
-                    setPicked(h);
-                    setLastFour("");
-                    setError(null);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-feature border-2 border-line bg-white px-4 py-4 text-left active:scale-[0.99]"
-                >
-                  <span
-                    className="num shrink-0 rounded-control px-2.5 py-1 text-[15px] font-extrabold"
-                    style={{ background: `${GOLD}2E`, color: "#8A6A1F" }}
-                  >
-                    {h.number}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-bold text-ink">{h.name}</span>
-                    <span className="block text-[12px] capitalize text-muted">{h.division}</span>
-                  </span>
-                </button>
-              ))}
-
-              {query.trim().length >= 2 && hits.length === 0 ? (
-                <p className="rounded-feature bg-white px-4 py-5 text-center text-[13px] leading-relaxed text-muted">
-                  Nobody matches that. Try part of your name, or your player number — or ask at
-                  the desk.
-                </p>
-              ) : null}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="mt-6 rounded-feature border-2 bg-white p-5 text-center" style={{ borderColor: FOREST }}>
-              <p className="num text-[13px] font-bold" style={{ color: GOLD }}>
-                PLAYER {picked.number}
-              </p>
-              <p className="mt-1 text-[20px] font-extrabold text-ink">{picked.name}</p>
-
-              <p className="mt-4 text-[13px] leading-relaxed text-muted">
-                To confirm it is you, enter the last 4 digits of your mobile number.
-              </p>
-
-              <input
-                value={lastFour}
-                onChange={(e) => setLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                inputMode="numeric"
-                placeholder="0000"
-                autoFocus
-                aria-label="Last four digits of your mobile number"
-                className="num mt-3 w-full rounded-feature border-2 border-line bg-white py-4 text-center text-[24px] font-extrabold tracking-[0.4em] outline-none focus:border-[#2F5D3A]"
-              />
-
-              {error ? <p className="mt-3 text-[12.5px] text-critical">{error}</p> : null}
-
-              <button
-                type="button"
-                disabled={lastFour.length !== 4 || busy}
-                onClick={() => void claim()}
-                className="mt-4 w-full rounded-feature py-4 text-[15px] font-bold text-white disabled:opacity-45"
-                style={{ background: FOREST }}
-              >
-                {busy ? "Checking…" : "Yes, this is me"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPicked(null);
-                  setError(null);
-                }}
-                className="mt-2 w-full py-2 text-[13px] font-semibold text-muted"
-              >
-                Not me, go back
-              </button>
-            </div>
-          </>
-        )}
+          ) : null}
+        </div>
 
         <p className="mt-8 text-center text-[11.5px] leading-relaxed text-muted">
-          Player number {PLAYER_NUMBER_LENGTH} digits. No app, no password.
+          {/* The number still works for anybody who has it, but nobody is asked for one. */}
+          No app and no password. Your player number works here too, if you have it.
         </p>
       </div>
     </main>

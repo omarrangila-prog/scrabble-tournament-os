@@ -98,10 +98,18 @@ The event **phase** decides what every phone and the wall show. Set it from
 
 Set the phase to **Check-in Open**. The wall shows a QR and a live count.
 
-Everybody has a **player number** — 101, 102, 103. It is short enough to say across a
-room and print on a badge. It identifies; it does not authorise. The first time somebody
-uses it on their phone they also give the **last four digits of their mobile**, and after
-that their phone remembers them for the rest of the day.
+**Nobody types a number.** They scan the wall, type their name — part of it is enough, and
+spelling need not be exact — tap themselves in the list, and press **Check me in**. Two taps.
+Their phone remembers them for the rest of the day.
+
+The player number still exists on every badge and still works in the same box, but nothing
+asks for one.
+
+**There is no PIN.** The last-four-digits step was removed deliberately: at a door with
+seventy-nine people, most of them children, it cost more than it earned. The trade is that
+anybody who can read a name off the pairing list can claim that player and type a score for
+a board they are not sitting at — which is why **the opponent confirms every score on their
+own phone**, and a disagreement stops that board for you to settle.
 
 Three ways in, all equivalent:
 

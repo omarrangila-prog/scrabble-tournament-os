@@ -274,7 +274,7 @@ export default function LiveDisplayPage() {
         {/* ---- Round over, send your score ------------------------------- */}
         {scene === "results" ? (
           <>
-            <Headline sub="One player per board. You will need your player number.">
+            <Headline sub="One player per board. Scan, find your name, and send the score.">
               Round {round} complete — submit your result
             </Headline>
             <Qr url={playUrl} />
