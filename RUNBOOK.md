@@ -67,10 +67,14 @@ participants' phones.
 the event by itself — check-in, then tables, then the clock, then results, then the
 winner. Nobody touches it again.
 
-**Set the tables.** On **`/app/live-event`**, under **Table plan**, say which tables each
-division sits at: `1-5` for Beginner, `6-12` for Recreational, or a list like `1, 2, 3, 5,
-7` if some tables do not exist. Pairing then seats people at the numbers painted on the
-tables, not at "board 1, 2, 3".
+**Set the tables — optional, and worth doing.** On **`/app/live-event`**, under **Table
+plan**, say which tables each division sits at: `1-5` for Beginner, `6-12` for Recreational,
+or a list like `1, 2, 3, 5, 7` if some tables do not exist. Pairing then seats people at the
+numbers painted on the tables rather than at "board 1, 2, 3".
+
+**Pairing works without it.** With no plan, boards are numbered from one in each division and
+nothing is refused — so a plan that is wrong or missing cannot stop a round going out. Set it
+if the tables in the room are numbered; skip it if they are not.
 
 The event **phase** decides what every phone and the wall show. Set it from
 **`/app/live-event`**.
@@ -116,7 +120,8 @@ closed, so that a round cannot be built while people are still arriving.
 
 Then **Pair and publish round 1** on Live Event. It pairs only the people who have actually
 checked in, and seats them at their division's tables. If a division has more pairs than
-tables it refuses and says so, rather than putting two games at one table.
+tables it refuses and says so, rather than putting two games at one table. That check only
+runs when a table plan is set; without one, boards are simply numbered from one.
 
 ### 3. The round
 

@@ -152,8 +152,20 @@ export function BoardList({
                     : "flex items-center gap-3 rounded-[12px] bg-black/4 px-3.5 py-3"
                 }
               >
-                <span className="grid size-11 shrink-0 place-items-center rounded-[10px] bg-[#2F5D3A] text-[17px] font-extrabold text-white">
-                  {b.board}
+                {/*
+                  A bye carries a board number for storage — a round is one row per board and
+                  they have to differ — but it is not a table and must not be shown as one.
+                  Sending somebody with a bye to "table 7" is exactly the confusion the bye
+                  row exists to prevent.
+                */}
+                <span
+                  className={
+                    b.playerB
+                      ? "grid size-11 shrink-0 place-items-center rounded-[10px] bg-[#2F5D3A] text-[17px] font-extrabold text-white"
+                      : "grid size-11 shrink-0 place-items-center rounded-[10px] bg-black/12 text-[17px] font-extrabold text-black/45"
+                  }
+                >
+                  {b.playerB ? b.board : "—"}
                 </span>
 
                 <span className="min-w-0 flex-1">

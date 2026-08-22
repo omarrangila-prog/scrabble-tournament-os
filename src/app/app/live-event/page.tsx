@@ -55,6 +55,7 @@ import { generateRound } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
   assignTables,
+  numberByes,
   formatTableSpec,
   overlappingTables,
   parseTableSpec,
@@ -408,9 +409,9 @@ export default function LiveEventPage() {
     const hasPlan = tablePlan.plan.length > 0;
     const { seated, problems } = hasPlan
       ? assignTables(numbered, tablePlan.plan)
-      : { seated: numbered, problems: [] };
+      : { seated: numberByes(numbered), problems: [] };
 
-    const plan = hasPlan ? seated : numbered;
+    const plan = hasPlan ? seated : numberByes(seated);
 
     /*
      * A division with more pairs than tables is refused rather than published. Seating two

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assignTables,
   formatTableSpec,
+  numberByes,
   overlappingTables,
   parseTableSpec,
 } from "./tables";
@@ -147,5 +148,64 @@ describe("assignTables", () => {
     );
     const tables = seated.filter((s) => s.playerB !== null).map((s) => s.board);
     expect(new Set(tables).size).toBe(tables.length);
+  });
+});
+
+describe("byes need distinct board numbers", () => {
+  /**
+   * Not a seat — a storage fact. A round is stored one row per board with a unique
+   * (round, board), and the pairing engine marks every bye as board 0. One bye saved fine;
+   * two collided and the whole round refused to publish, which is most rounds: it happens
+   * whenever two divisions hold an odd number of players.
+   */
+  const game = (board: number, division: string) =>
+    ({ board, division, playerB: "someone" });
+  const bye = (division: string, playerA: string) =>
+    ({ board: 0, division, playerB: null, playerA });
+
+  it("gives every bye its own number, above the real tables", () => {
+    const plan = [game(3, "beginner"), game(9, "advanced"), bye("beginner", "a"), bye("advanced", "b"), bye("recreational", "c")];
+    /* The precondition: they really do collide before this runs. */
+    expect(plan.filter((p) => p.board === 0)).toHaveLength(3);
+
+    const out = numberByes(plan);
+    const byes = out.filter((p) => p.playerB === null).map((p) => p.board);
+
+    expect(new Set(byes).size).toBe(3);
+    expect(Math.min(...byes)).toBeGreaterThan(9);
+  });
+
+  it("leaves every real table exactly where it was", () => {
+    const out = numberByes([game(5, "beginner"), bye("beginner", "a"), game(12, "advanced")]);
+    expect(out.filter((p) => p.playerB !== null).map((p) => p.board)).toEqual([5, 12]);
+  });
+
+  it("does nothing to a round with no byes", () => {
+    const plan = [game(1, "beginner"), game(2, "beginner")];
+    expect(numberByes(plan)).toEqual(plan);
+  });
+
+  it("produces the same round twice, so re-pairing is not a lottery", () => {
+    const plan = [game(1, "beginner"), bye("beginner", "a"), bye("advanced", "b")];
+    expect(numberByes(plan)).toEqual(numberByes(plan));
+  });
+
+  it("numbers byes after tables assigned from a plan, not before", () => {
+    const { seated } = assignTables(
+      [
+        { division: "beginner", board: 1, playerB: "x" },
+        { division: "beginner", board: 0, playerB: null },
+        { division: "advanced", board: 0, playerB: null },
+      ],
+      [
+        { division: "beginner", tables: [21, 22] },
+        { division: "advanced", tables: [30] },
+      ],
+    );
+
+    const byes = seated.filter((p) => p.playerB === null).map((p) => p.board);
+    expect(new Set(byes).size).toBe(2);
+    // Above the highest real table actually handed out.
+    expect(Math.min(...byes)).toBeGreaterThan(21);
   });
 });

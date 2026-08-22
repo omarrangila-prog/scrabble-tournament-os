@@ -321,9 +321,9 @@
     "name": "Mohammed aabid",
     "age": 13,
     "phone": "03323012919",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied with this registration."
+    "paymentStatus": "Cash on Site",
+    "note": "Paying cash at the venue. Amount to be agreed at the desk."
   }
 ]

@@ -197,8 +197,20 @@ export function validateBoardPlan(plan: BoardPlan[]): { ok: boolean; problems: s
 
   if (plan.length === 0) problems.push("There are no boards to publish.");
 
+  /*
+   * Two boards cannot share a table — but a bye is not a board.
+   *
+   * A bye is generated with board 0, meaning "nowhere", because the player has nobody to
+   * play and no table to sit at. Counting those numbers as occupied made every round with
+   * more than one bye invalid: "Board 0 appears twice", and nothing published.
+   *
+   * That is not a rare shape. It happens whenever two divisions have an odd number of
+   * players, which is most rounds of most events — this one has three divisions and all
+   * three are odd, so its first round would have produced three byes and refused to publish.
+   */
   const boards = new Set<number>();
   for (const b of plan) {
+    if (b.playerB === null) continue;
     if (boards.has(b.board)) problems.push(`Board ${b.board} appears twice.`);
     boards.add(b.board);
   }

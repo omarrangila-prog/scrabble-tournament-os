@@ -141,6 +141,13 @@ export function FinalResults({ eventId, by }: { eventId: string; by: string }) {
               <p className="text-[13px] font-bold text-ink">
                 {report.emailed} sent · {report.failed} not delivered
               </p>
+              {/*
+                Every code is a link, because this panel is where they exist.
+                Certificates issued here are written to the database — verifiable by anyone,
+                on any phone — but the awards screen builds its list from this browser's own
+                storage and will not show them. Rather than leave the codes as text nobody can
+                do anything with, each one opens the page a participant would see.
+              */}
               <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
                 {report.lines.map((l) => (
                   <p key={l.code} className="text-[12.5px] leading-relaxed">
@@ -151,10 +158,24 @@ export function FinalResults({ eventId, by }: { eventId: string; by: string }) {
                       <span className="text-critical"> · {l.problem}</span>
                     ) : (
                       <span style={{ color: "#2F5D3A" }}> · sent</span>
-                    )}
+                    )}{" "}
+                    <a
+                      href={`/verify/certificate/${l.code}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="num underline decoration-dotted underline-offset-2 text-muted"
+                    >
+                      {l.code}
+                    </a>
                   </p>
                 ))}
               </div>
+
+              <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
+                Every certificate above is in the database and can be checked by anyone at
+                /verify. They will not appear on the Certificates screen, which lists only the
+                ones prepared by hand in this browser.
+              </p>
             </div>
           ) : (
             <>

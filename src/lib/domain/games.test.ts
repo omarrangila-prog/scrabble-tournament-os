@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { canAdvanceRound } from "../engine/roundTimer";
+import type { DivisionId } from "./types";
 import {
   fullRoundProgress,
   latestRound,
@@ -287,5 +288,49 @@ describe("fullRoundProgress", () => {
     expect(p.totalBoards).toBe(0);
     expect(p.percentComplete).toBe(0);
     expect(p.complete).toBe(false);
+  });
+});
+
+describe("byes do not occupy a board", () => {
+  /**
+   * A bye is generated with board 0 — "nowhere" — because the player has no opponent and no
+   * table. Counting those as real board numbers made any round with two byes invalid, which
+   * is most rounds: it happens whenever two divisions have an odd number of players.
+   */
+  const bye = (playerA: string): BoardPlan =>
+    ({ board: 0, division: "beginner" as DivisionId, playerA, playerB: null });
+
+  it("accepts a round with several byes", () => {
+    const plan: BoardPlan[] = [
+      { board: 1, division: "beginner" as DivisionId, playerA: "a", playerB: "b" },
+      { board: 2, division: "advanced" as DivisionId, playerA: "c", playerB: "d" },
+      bye("e"),
+      bye("f"),
+      bye("g"),
+    ];
+    /* The precondition: they really do share a board number. */
+    expect(plan.filter((p) => p.board === 0)).toHaveLength(3);
+
+    const check = validateBoardPlan(plan);
+    expect(check.problems).toEqual([]);
+    expect(check.ok).toBe(true);
+  });
+
+  it("still refuses two real games at one table", () => {
+    const check = validateBoardPlan([
+      { board: 4, division: "beginner" as DivisionId, playerA: "a", playerB: "b" },
+      { board: 4, division: "beginner" as DivisionId, playerA: "c", playerB: "d" },
+    ]);
+    expect(check.ok).toBe(false);
+    expect(check.problems[0]).toContain("Board 4 appears twice");
+  });
+
+  it("still catches a player who is on a board and also has a bye", () => {
+    const check = validateBoardPlan([
+      { board: 1, division: "beginner" as DivisionId, playerA: "a", playerB: "b" },
+      bye("a"),
+    ]);
+    expect(check.ok).toBe(false);
+    expect(check.problems.join(" ")).toContain("A player is on both");
   });
 });

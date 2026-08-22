@@ -114,6 +114,12 @@ export function overlappingTables(plan: DivisionTables[]): number[] {
  *
  * Byes are given no table. A player with a bye has nobody to play, and sending them to sit
  * somewhere is how they end up asking a volunteer why the seat opposite is empty.
+ *
+ * They still need distinct board numbers, which is a storage fact rather than a seating one:
+ * a round is stored one row per board with a unique (round, board), and the pairing engine
+ * marks every bye as board 0. One bye was fine; two collided and the round would not save at
+ * all. So byes are numbered above the real tables — a number nothing shows them, since every
+ * screen decides "bye" from having no opponent.
  */
 export function assignTables<T extends { division: string; board: number; playerB: string | null }>(
   pairings: T[],
@@ -160,5 +166,22 @@ export function assignTables<T extends { division: string; board: number; player
     seated.push(...byes);
   }
 
-  return { seated, problems };
+  return { seated: numberByes(seated), problems };
+}
+
+/**
+ * Distinct board numbers for byes, above every real table.
+ *
+ * Not a seat. It exists because a round is stored with a unique board per row, and the
+ * pairing engine gives every bye board 0 — so a round with two byes could not be saved, which
+ * is most rounds: it happens whenever two divisions hold an odd number of players.
+ *
+ * Above the real tables so a bye can never take a number somebody is sitting at, and in the
+ * order they arrived so re-running produces the same round twice.
+ */
+export function numberByes<T extends { board: number; playerB: string | null }>(plan: T[]): T[] {
+  const highest = plan.reduce((max, p) => (p.playerB !== null && p.board > max ? p.board : max), 0);
+  let next = highest + 1;
+
+  return plan.map((p) => (p.playerB === null ? { ...p, board: next++ } : p));
 }
