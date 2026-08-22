@@ -132,16 +132,23 @@ export function CertificateSheet({
           * The name, which the template leaves blank. Sized down for long names rather
           * than wrapped into the rules above and below it — a two-line name would
           * collide with them.
+          *
+          * Set in capitals, which is how a name is engraved. Done here rather than stored
+          * that way: the record keeps the name as the person wrote it, so the roster, the
+          * desk and the board list still read "Abdul wasay Narinja" and only the certificate
+          * shouts. Capitals are also wider, so the threshold for stepping the size down is
+          * lower than it would be for mixed case.
           */}
         <p
           className="font-display absolute inset-x-0 truncate px-[9%] text-center font-bold"
           style={{
             top: "29.5%",
-            fontSize: recipientName.length > 26 ? "4.4cqw" : "5.6cqw",
+            fontSize: recipientName.length > 22 ? "4.4cqw" : "5.6cqw",
             lineHeight: 1.15,
+            letterSpacing: "0.02em",
           }}
         >
-          {recipientName}
+          {recipientName.toUpperCase()}
         </p>
 
         <Rule top="39.4%" />

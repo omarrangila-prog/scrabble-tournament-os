@@ -214,7 +214,12 @@ export function certificateEmail(input: CertificateEmail): Composed {
     `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.eventName)}</p>`,
     `<p style="margin:4px 0 0;font-size:12px;font-weight:600;color:rgba(62,47,35,0.6);">${escape(input.eventDate)}</p>`,
     `<p style="margin:16px 0 0;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.statement)}</p>`,
-    `<p style="margin:6px 0 0;font-size:24px;font-weight:800;color:${BROWN};">${escape(input.recipientName)}</p>`,
+    /*
+     * Capitals inside the certificate block, matching the printed sheet — and written into
+     * the string rather than left to `text-transform`, which several mail clients drop.
+     * The greeting above stays as they wrote their name; only the certificate shouts.
+     */
+    `<p style="margin:6px 0 0;font-size:24px;font-weight:800;letter-spacing:0.5px;color:${BROWN};">${escape(input.recipientName.toUpperCase())}</p>`,
     input.personalNote
       ? `<p style="margin:10px 0 0;font-size:13.5px;color:rgba(62,47,35,0.78);">${escape(input.personalNote)}</p>`
       : "",

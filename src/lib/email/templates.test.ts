@@ -98,3 +98,33 @@ describe("certificateEmail", () => {
     expect(html).not.toContain("<script>");
   });
 });
+
+describe("the name on a certificate", () => {
+  /**
+   * Capitals on the certificate, as engraved — and only there. The record keeps the name the
+   * person wrote, so the roster, the desk and the board list still read it back to them the
+   * way they typed it.
+   */
+  const mail = certificateEmail({
+    recipientName: "Abdul wasay Narinja",
+    statement: "Champion — Recreational",
+    detail: "Played 5, won 4, lost 1. Spread +142.",
+    code: "ABCD-1234-EFGH",
+    eventName: "Blufy's AlphaBattle",
+    eventDate: "23 August 2026",
+    verifyUrl: "https://example.com/verify/ABCD-1234-EFGH",
+  });
+
+  it("shouts inside the certificate block", () => {
+    expect(mail.html).toContain("ABDUL WASAY NARINJA");
+  });
+
+  it("greets them the way they wrote their own name", () => {
+    expect(mail.html).toContain("Congratulations, Abdul wasay Narinja.");
+    expect(mail.text).toContain("Congratulations, Abdul wasay Narinja.");
+  });
+
+  it("puts what they won in the subject rather than the word certificate", () => {
+    expect(mail.subject).toBe("Champion — Recreational · Blufy's AlphaBattle");
+  });
+});
