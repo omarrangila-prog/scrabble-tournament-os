@@ -51,6 +51,8 @@ import { RosterGate } from "@/components/organizer/RosterGate";
 import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
 import { AutoRun } from "@/components/organizer/AutoRun";
 import { FinalResults } from "@/components/organizer/FinalResults";
+import { RunTheDay } from "@/components/organizer/RunTheDay";
+import { useEventFormat } from "@/lib/supabase/useEventFormat";
 import { generateRound } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
@@ -116,6 +118,16 @@ export default function LiveEventPage() {
    * are actually seeing, rather than what this browser last set.
    */
   const storedPhase = useEventState(ACTIVE_EVENT_ID);
+
+  /*
+   * Round length and round count come from the event record, not from this browser: the wall
+   * has to show the same clock. Declared with the other subscriptions because it is a hook —
+   * below the early return it would run only on some renders.
+   */
+  const { format, save: saveFormat } = useEventFormat(ACTIVE_EVENT_ID, {
+    rounds: event?.rounds ?? 5,
+    roundMinutes: event?.roundMinutes ?? 20,
+  });
   const [publishing, setPublishing] = React.useState(false);
 
   const origin = React.useSyncExternalStore(
@@ -215,7 +227,7 @@ export default function LiveEventPage() {
 
   const timer = clock.timer;
   const phase = clock.phase;
-  const remaining = timer ? clock.remaining : event.roundMinutes * 60_000;
+  const remaining = timer ? clock.remaining : format.roundMinutes * 60_000;
 
   /*
    * Arrivals are counted from the database, so the number agrees with the one the
@@ -245,6 +257,7 @@ export default function LiveEventPage() {
    */
   const eventState = storedPhase.state ?? event.state;
 
+
   /**
    * Moves the event to a new phase.
    *
@@ -273,7 +286,7 @@ export default function LiveEventPage() {
     storedPhase.reload();
 
     if (next === "round-active") {
-      live.ensureTimer(event.id, round, event.roundMinutes);
+      live.ensureTimer(event.id, round, format.roundMinutes);
       live.start(event.id, round);
 
       /*
@@ -281,7 +294,7 @@ export default function LiveEventPage() {
        * still live — the phase has already changed — so the failure is reported as what
        * it is rather than being allowed to look like a clock nobody can see.
        */
-      const started = await clock.start(event.roundMinutes);
+      const started = await clock.start(format.roundMinutes);
       if (!started) {
         app.toast({
           title: "Clock not shared",
@@ -362,7 +375,7 @@ export default function LiveEventPage() {
     });
   };
 
-  const publishPairings = async () => {
+  const publishPairings = async (): Promise<boolean> => {
     const present = attending.filter((p) => p.checkIn === "checked-in");
 
     if (present.length < 2) {
@@ -371,7 +384,7 @@ export default function LiveEventPage() {
         description: "At least two arrivals are needed to pair a round.",
         tone: "warning",
       });
-      return;
+      return false;
     }
 
     const nextRound = games.round + 1;
@@ -423,7 +436,7 @@ export default function LiveEventPage() {
         description: `${problems[0].message} Set the tables under Table plan, then pair again.`,
         tone: "critical",
       });
-      return;
+      return false;
     }
 
     /*
@@ -438,7 +451,7 @@ export default function LiveEventPage() {
         description: check.problems[0] ?? "Please try again.",
         tone: "critical",
       });
-      return;
+      return false;
     }
 
     setPublishing(true);
@@ -447,11 +460,11 @@ export default function LiveEventPage() {
 
     if (!result.ok) {
       app.toast({ title: "Round not published", description: result.message, tone: "critical" });
-      return;
+      return false;
     }
 
     games.reload();
-    live.ensureTimer(event.id, nextRound, event.roundMinutes);
+    live.ensureTimer(event.id, nextRound, format.roundMinutes);
     setState("round-published");
 
     app.toast({
@@ -462,6 +475,36 @@ export default function LiveEventPage() {
           : `${result.boards} boards are now visible to participants.`,
       tone: "success",
     });
+
+    return true;
+  };
+
+  /**
+   * One press: the boards, the clock, the wall and every phone.
+   *
+   * Publishing and starting were two buttons in different cards, and a round that was paired
+   * but never started is a hall full of people sitting at the right tables waiting for a
+   * clock nobody pressed. If there is nothing to play, this pairs it first and then starts
+   * it; if the boards are already up, it just starts them.
+   */
+  const startTheRound = async () => {
+    if (boards.totalBoards === 0) {
+      /*
+       * Not chained blindly. `publishPairings` refuses for good reasons — too few people
+       * checked in, a division with more pairs than tables — and each says so itself.
+       * Starting a clock over a round that was never published would bury that message
+       * under a countdown.
+       *
+       * It reports the answer directly rather than this reading the board count back:
+       * `games.reload()` refreshes a subscription, and the value in hand belongs to the
+       * render that is already running, so a re-read here is always the number from before.
+       * That is what made the first version pair a round and then quietly never start it.
+       */
+      const published = await publishPairings();
+      if (!published) return;
+    }
+
+    await setState("round-active");
   };
 
   /** Removes the current round, results included. Asks first. */
@@ -504,7 +547,7 @@ export default function LiveEventPage() {
             {EVENT_STATE_LABEL[eventState]}
           </Badge>
         }
-        subtitle={`${event.name} · round ${round} of ${event.rounds}`}
+        subtitle={`${event.name} · round ${round} of ${format.rounds}`}
         actions={
           <Link href={`/live/${event.slug}`} target="_blank" rel="noreferrer">
             <Button variant="secondary" icon={<Radio className="size-4" />}>
@@ -512,6 +555,42 @@ export default function LiveEventPage() {
             </Button>
           </Link>
         }
+      />
+
+      {/*
+        The two decisions of the morning and the one button that acts on them. Above
+        everything else because on the day this is the only control most rounds need.
+      */}
+      <RunTheDay
+        format={format}
+        round={round}
+        phase={eventState}
+        boardsTotal={boards.totalBoards}
+        busy={publishing}
+        onFormat={async (next) => {
+          const out = await saveFormat(next);
+          if (!out.ok) {
+            app.toast({ title: "Not saved", description: out.message, tone: "critical" });
+            return;
+          }
+          /* The local store too, so this screen's own controls agree immediately. */
+          events.updateEvent(event.id, { rounds: next.rounds, roundMinutes: next.roundMinutes });
+        }}
+        onStart={startTheRound}
+        onFinishAfterThis={async () => {
+          const out = await saveFormat({ ...format, rounds: round });
+          if (!out.ok) {
+            app.toast({ title: "Not saved", description: out.message, tone: "critical" });
+            return;
+          }
+          events.updateEvent(event.id, { rounds: round });
+          app.toast({
+            title: `Round ${round} is now the last`,
+            description:
+              "Once every board is in, the event goes to final review instead of pairing again.",
+            tone: "success",
+          });
+        }}
       />
 
       {/*
@@ -571,7 +650,7 @@ export default function LiveEventPage() {
             subtitle={
               timer?.extensions.length
                 ? `Extended by ${timer.extensions.reduce((s, e) => s + e.minutes, 0)} minutes`
-                : `${event.roundMinutes} minutes planned`
+                : `${format.roundMinutes} minutes planned`
             }
             icon={<Timer className="size-4.5" />}
           />
@@ -790,13 +869,13 @@ export default function LiveEventPage() {
                   variant="primary"
                   className="w-full"
                   icon={<ArrowRight className="size-4" />}
-                  disabled={round >= event.rounds}
+                  disabled={round >= format.rounds}
                   onClick={() => {
                     live.setRound(event.id, round + 1);
                     void setState("check-in-closed");
                   }}
                 >
-                  {round >= event.rounds ? "Final round complete" : `Prepare round ${round + 1}`}
+                  {round >= format.rounds ? "Final round complete" : `Prepare round ${round + 1}`}
                 </Button>
               ) : null}
 
@@ -839,7 +918,7 @@ export default function LiveEventPage() {
       */}
       <AutoRun
         round={games.round}
-        totalRounds={event.rounds}
+        totalRounds={format.rounds}
         boardsTotal={games.progress.totalBoards}
         boardsVerified={games.progress.verified}
         /*
@@ -848,7 +927,7 @@ export default function LiveEventPage() {
          * null simply never fires, which is exactly what happened.
          */
         phase={eventState}
-        onPublish={publishPairings}
+        onPublish={() => void publishPairings()}
         onPhase={setState}
       />
 

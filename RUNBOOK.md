@@ -123,6 +123,22 @@ checked in, and seats them at their division's tables. If a division has more pa
 tables it refuses and says so, rather than putting two games at one table. That check only
 runs when a table plan is set; without one, boards are simply numbered from one.
 
+### The one button
+
+At the top of **`/app/live-event`**: **round length** — 20 or 25 minutes — and **rounds** —
+4 or 5. Set them on the morning, once you have seen the room.
+
+Then one press. It pairs the round if it needs pairing, starts the clock at the length you
+chose, and moves every phone and the television onto it. The wall counts down from the
+number set here; nothing else needs pressing.
+
+**Finish after this one** ends the tournament at the round being played. Use it when the
+afternoon has run long: once the last board is in, the event goes to final review instead of
+pairing another round, and the standings, certificates and wall all agree it is over.
+
+The choices are stored on the event, not in a browser, so the television and your phone can
+never disagree about how long a round is.
+
 ### 3. The round
 
 Set the phase to **Round Active** and the clock starts — on the wall and on every phone at
