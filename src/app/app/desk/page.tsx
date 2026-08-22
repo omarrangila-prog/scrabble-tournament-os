@@ -119,6 +119,21 @@ export default function DeskPage() {
     });
   };
 
+  /*
+   * The cash box, counted from the roster every time it is shown.
+   *
+   * A volunteer working a queue needs one question answered — who has not paid yet — and a
+   * running total they can reconcile against the money in the tin. Nothing is stored: these
+   * are the same records the desk is changing, added up.
+   */
+  const owing = roster.registrations.filter(
+    (r) => r.paymentStatus !== "verified" && r.paymentStatus !== "complimentary",
+  );
+  const owed = owing.reduce((sum, r) => sum + (numberField(r, "amountDue") ?? 0), 0);
+  const collected = roster.registrations
+    .filter((r) => r.paymentStatus === "verified")
+    .reduce((sum, r) => sum + (numberField(r, "amountDue") ?? 0), 0);
+
   return (
     <div className="mx-auto max-w-[720px]">
       <PageHeader
@@ -138,13 +153,72 @@ export default function DeskPage() {
         />
 
         {!term ? (
-          <Card className="mt-4">
-            <EmptyState
-              icon={<Search className="size-5" />}
-              title="Who are you looking for?"
-              description="Type a player number — 117 — or part of a name or mobile number."
-            />
-          </Card>
+          <>
+            {/*
+              What is left to collect, before anybody types anything.
+              A volunteer's real question is "who still owes", not "where is this one person",
+              and an empty screen asking them to search cannot answer it.
+            */}
+            <Card className="mt-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <p className="text-[14px] font-bold text-ink">
+                  {owing.length === 0
+                    ? "Everybody has paid"
+                    : `${owing.length} still to pay`}
+                </p>
+                <p className="num text-[13px] text-muted">
+                  {money(collected, "PKR")} in · {money(owed, "PKR")} to come
+                </p>
+              </div>
+
+              {owing.length > 0 ? (
+                <div className="mt-3 space-y-1.5">
+                  {owing.map((r) => {
+                    const number =
+                      importField(r, "playerNumber") ?? field(r, "playerNumber") ?? "—";
+                    const amount = numberField(r, "amountDue");
+                    const working = busy === r.id;
+
+                    return (
+                      <div
+                        key={r.id}
+                        className="flex items-center gap-3 rounded-control bg-[rgb(var(--c-surface-soft))] px-3 py-2.5"
+                      >
+                        <span
+                          className="num shrink-0 rounded-control px-2 py-0.5 text-[13px] font-extrabold"
+                          style={{ background: "rgba(216,172,90,0.18)", color: "#8A6A1F" }}
+                        >
+                          {number}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-ink">
+                          {r.fullName}
+                        </span>
+                        <span className="num shrink-0 text-[13px] text-muted">
+                          {amount === null ? "—" : money(amount, r.currency)}
+                        </span>
+                        <Button
+                          variant="secondary"
+                          disabled={working}
+                          onClick={() => void takeCash(r.id, r.fullName, amount)}
+                          className="shrink-0"
+                        >
+                          {working ? "…" : "Paid"}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </Card>
+
+            <Card className="mt-3">
+              <EmptyState
+                icon={<Search className="size-5" />}
+                title="Or find one person"
+                description="Type a player number — 117 — or part of a name or mobile number."
+              />
+            </Card>
+          </>
         ) : found.length === 0 ? (
           <Card className="mt-4">
             <EmptyState

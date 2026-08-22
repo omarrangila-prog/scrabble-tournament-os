@@ -112,7 +112,12 @@ Three ways in, all equivalent:
 
 Checking somebody in twice is safe. The second attempt keeps the original arrival time.
 
-**Somebody paying cash** shows on the desk as *owes* an amount. Take the money, press
+**The cash box.** Opening **`/app/desk`** now shows everybody who still owes, with a running
+total — *"53 still to pay · PKR 15,150 in · PKR 52,800 to come"* — and a **Paid** button
+beside each name. Work down the list, or search for one person. The totals are counted from
+the records each time, so they cannot drift from what has actually been taken.
+
+**Somebody paying cash** also shows as *owes* an amount when searched. Take the money, press
 **Cash received**, then **Check in**. Both are one tap and both are reversible from
 Payments.
 
