@@ -718,6 +718,12 @@ export function paymentInstructions(
  * So a receipt is a claim again. It marks `receipt-uploaded`, the desk settles it, and the
  * revenue figure means money somebody confirmed. Turning this back on only makes sense once
  * the image is actually kept somewhere a person can look at it.
+ *
+ * The server side of this took two attempts. Migration 0037 rewrote
+ * `promote_receipt_to_verified`, which migration 0008 had already replaced with
+ * `promote_receipt_after_insert` — so the fix landed on dead code and receipts carried on
+ * promoting themselves for another evening. 0041 fixes the function the trigger actually
+ * calls. If this is ever re-enabled, check which function the trigger points at first.
  */
 export const AUTO_VERIFY_ON_UPLOAD = false;
 
