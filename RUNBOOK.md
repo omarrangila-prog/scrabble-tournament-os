@@ -129,6 +129,28 @@ your phone for that to happen — it is the screen watching the clock.
 
 The wall shows the clock and nothing else. In the last minute it turns and pulses.
 
+### One QR for the whole day
+
+The wall carries a single code from the moment boards go up. It opens
+**`/events/alphabattle-23-august/play`**, and that page is everything a participant needs:
+
+- **Find yourself** by name — spelling does not have to be exact, "khan lodhi" finds
+  *Rayyan hussain khan lodhi* — or by player number. Then the last four digits of your
+  mobile, once, and the phone remembers you.
+- **Your table, seat and opponent**, with a button per round.
+- **Enter your result**, two numbers and nothing else.
+- **Confirm or dispute** the score your opponent sent.
+- **Your day so far**, every round with its score and result.
+
+Nobody types anything personal on the television. The wall shows the code and the public
+board list; who you are is settled on the phone in your hand.
+
+When you publish the next round, everybody's page moves to it by itself within about
+fifteen seconds. There is no new link to hand out.
+
+Somebody who scans before checking in is offered **Check me in** on the same page — unless
+their payment is unsettled, in which case it sends them to the desk.
+
 ### 4. Scores
 
 When the round ends, the wall shows a QR: **submit your result**.

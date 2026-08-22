@@ -137,7 +137,16 @@ export default function LiveDisplayPage() {
 
   const base = `${origin}/events/${ACTIVE_EVENT.slug}`;
   const checkInUrl = origin ? `${base}/check-in` : "";
-  const submitUrl = origin ? `${base}/submit-score` : "";
+
+  /*
+   * One code for the whole day, after check-in.
+   *
+   * Tables, opponent, scores, the result to confirm and the next round all live on the same
+   * page, so the wall never has to explain which QR is which — and a player who scanned it
+   * an hour ago does not need a new one. Nothing personal is ever typed on the television:
+   * the code is public, and who you are is settled on the phone in your hand.
+   */
+  const playUrl = origin ? `${base}/play` : "";
 
   const minutesLeft = Math.max(0, Math.floor(clock.remaining / 60000));
   const lastMinute = clock.phase === "running" && clock.remaining > 0 && clock.remaining <= 60_000;
@@ -194,7 +203,7 @@ export default function LiveDisplayPage() {
             <Headline sub="Scan to find your table, or look for your name on the boards.">
               {round > 0 ? `Round ${round} — tables are up` : "Getting the first round ready"}
             </Headline>
-            {round > 0 ? <Qr url={checkInUrl} /> : null}
+            {round > 0 ? <Qr url={playUrl} /> : null}
           </>
         ) : null}
 
@@ -234,7 +243,7 @@ export default function LiveDisplayPage() {
             <Headline sub="One player per board. You will need your player number.">
               Round {round} complete — submit your result
             </Headline>
-            <Qr url={submitUrl} />
+            <Qr url={playUrl} />
             <p className="mt-[2vh] text-[2.2vw] font-bold" style={{ color: EMERALD }}>
               {games.progress.verified}
               <span style={{ color: `${IVORY}66` }}> / {games.progress.totalBoards} boards in</span>
