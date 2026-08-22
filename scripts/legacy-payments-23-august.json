@@ -11,28 +11,28 @@
     "name": "Salah Sohail",
     "age": 15,
     "phone": "0321 2586691",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review",
-    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Shiza Sohail",
     "age": 11,
     "phone": "0321 2586691",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review",
-    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Muzammil Sohail",
     "age": 9,
     "phone": "0321 2586691",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review",
-    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Muhammad Ashar Narinja",
@@ -62,9 +62,10 @@
     "name": "Sehaan Owais",
     "age": 20,
     "phone": "03132923013",
-    "promo": "Early Bird",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Mohammed Hazil",
@@ -79,27 +80,28 @@
     "name": "Muhammad Yadaan",
     "age": 16,
     "phone": "03452615517",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": 950,
-    "paymentStatus": "Needs Review",
-    "note": "Taken off the paid list: nobody confirmed this payment. The sheet said Online, but that rested on a screenshot filename and the image was never stored."
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Raamiz Ahmed",
     "age": 9,
     "phone": "03238099507",
-    "promo": "Early Bird",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Muhammad Hashir",
     "age": 17,
     "phone": "03162386809",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review",
-    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Iman umair",
@@ -114,9 +116,10 @@
     "name": "Mohammed Hazil Sami",
     "age": 8,
     "phone": "0323 2877434",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review"
+    "promo": "Song",
+    "amount": 0,
+    "paymentStatus": "Promo / Complimentary",
+    "note": "VVIP pass — complimentary entry for the song round."
   },
   {
     "name": "Huzaifa Amir",
@@ -131,9 +134,10 @@
     "name": "Khizr Hussain Khan",
     "age": 9,
     "phone": "0345-9266647",
-    "promo": "Early Bird",
+    "promo": "Pay at venue",
     "amount": 800,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Yazdan lodhi",
@@ -166,60 +170,64 @@
     "name": "sharimkizoja123°",
     "age": 18,
     "phone": "03353976286",
-    "promo": "Needs Classification",
+    "promo": "Pay at venue",
     "amount": 1000,
-    "paymentStatus": "Needs Review",
-    "note": "Taken off the paid list on 22 August: the organizer confirmed a specific list of fifteen payments and this was not among them."
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Khizrakhan",
     "age": 18,
     "phone": "03353976286",
-    "promo": "Special Discount",
+    "promo": "Pay at venue",
     "amount": 1000,
-    "paymentStatus": "Needs Review"
+    "paymentStatus": "Cash on Site",
+    "note": "To be collected in cash at the venue."
   },
   {
     "name": "Rabia Naveed",
     "age": 37,
     "phone": "03238099507",
     "promo": "Pay at venue",
-    "amount": null,
-    "paymentStatus": "Cash on Site"
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Rohaan Ali",
     "age": 19,
     "phone": "03328200774",
     "promo": "Pay at venue",
-    "amount": null,
-    "paymentStatus": "Cash on Site"
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Abiha",
     "age": 18,
     "phone": "03133259591",
     "promo": "Pay at venue",
-    "amount": null,
-    "paymentStatus": "Cash on Site"
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Raanya Fazil 8AUG",
     "age": 16,
     "phone": "03055330654",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "Name as submitted carries the tag '8AUG'. No amount was supplied on the form."
+    "promo": "Pay at venue",
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Hania (free)",
     "age": 12,
     "phone": "03313537401",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "Name as submitted contains '(free)'. Recorded, but not classified as complimentary until the organizer confirms it."
+    "promo": "Pay at venue",
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Hammad",
@@ -306,45 +314,45 @@
     "name": "Zaki Abbas Somani ",
     "age": 12,
     "phone": "03702861522",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied with this registration."
+    "promo": "Pay at venue",
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Hamza",
     "age": 13,
     "phone": "0300-2769282 ",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied with this registration."
+    "promo": "Pay at venue",
+    "amount": 900,
+    "paymentStatus": "Cash on Site",
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Murtaza ",
     "age": 17,
     "phone": "0329-1438053",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied with this registration."
+    "promo": "Organizer Confirmed",
+    "amount": 1000,
+    "paymentStatus": "Paid",
+    "note": "Confirmed paid PKR 1,000 by the organizer."
   },
   {
     "name": "Mohammed aabid",
     "age": 13,
     "phone": "03323012919",
     "promo": "Pay at venue",
-    "amount": null,
+    "amount": 900,
     "paymentStatus": "Cash on Site",
-    "note": "Paying cash at the venue. Amount to be agreed at the desk."
+    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
   },
   {
     "name": "Muhammad Ebaad Hasan",
     "age": 13,
     "phone": "0319 8463396",
-    "promo": "Needs Classification",
-    "amount": null,
-    "paymentStatus": "Needs Review",
-    "note": "No amount was supplied with this registration."
+    "promo": "Pay at venue",
+    "amount": 950,
+    "paymentStatus": "Cash on Site",
+    "note": "Will pay PKR 950 in cash at the venue."
   }
 ]
