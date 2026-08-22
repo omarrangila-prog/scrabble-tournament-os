@@ -199,10 +199,16 @@ export function playerCodeEmail(input: PlayerCodeEmail): Composed {
 }
 
 export function certificateEmail(input: CertificateEmail): Composed {
-  const subject = `Your certificate — ${input.eventName}`;
+  /*
+   * The subject is the one line most people will ever read, so it carries what this person
+   * actually did rather than the word "certificate". "Champion — Beginner · Blufy's
+   * AlphaBattle" is worth opening; "Your certificate" is worth ignoring.
+   */
+  const subject = `${input.statement} · ${input.eventName}`;
 
   const html = wrap("Your certificate", [
-    `<p style="margin:0;">Congratulations, ${escape(input.recipientName)}.</p>`,
+    `<p style="margin:0;font-size:16px;">Congratulations, ${escape(input.recipientName)}.</p>`,
+    `<p style="margin:10px 0 0;color:rgba(62,47,35,0.75);">Thank you for playing at ${escape(input.eventName)}. Every result below came from the boards you played and was confirmed by the person across the table from you.</p>`,
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;border:2px solid ${GOLD};border-radius:12px;background:#FFFDF6;">`,
     `<tr><td style="padding:22px;text-align:center;">`,
     `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.eventName)}</p>`,
@@ -225,6 +231,9 @@ export function certificateEmail(input: CertificateEmail): Composed {
     `Your certificate — ${input.eventName}`,
     ``,
     `Congratulations, ${input.recipientName}.`,
+    ``,
+    `Thank you for playing at ${input.eventName}. Every result below came from the boards`,
+    `you played and was confirmed by the person across the table from you.`,
     ``,
     `${input.eventName}`,
     `${input.eventDate}`,

@@ -50,6 +50,7 @@ import { announceBoardsChanged } from "@/lib/supabase/realtime";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
 import { AutoRun } from "@/components/organizer/AutoRun";
+import { FinalResults } from "@/components/organizer/FinalResults";
 import { generateRound } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
@@ -511,6 +512,12 @@ export default function LiveEventPage() {
           </Link>
         }
       />
+
+      {/*
+        The closing, at the top where it is looked for at the end of the day rather than
+        buried under the controls used all afternoon.
+      */}
+      <FinalResults eventId={ACTIVE_EVENT_ID} by={app.currentUser?.name ?? "Tournament director"} />
 
       {/* Metrics --------------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">

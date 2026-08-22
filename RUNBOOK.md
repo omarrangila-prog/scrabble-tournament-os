@@ -194,7 +194,26 @@ wall says, and a room reads "lunch" very differently from "back shortly".
 Set the phase to **Completed**. The wall counts out third place, then the runner-up, then
 the champion, and leaves the podium up.
 
-### 7. Certificates
+### 7. Final results, certificates and the emails
+
+At the top of **`/app/live-event`** there is **Final results**. It shows the standings first —
+top three in each division, ranked by wins then spread, the same order the wall uses — so the
+names can be read out before anything is sent.
+
+Then one button: **Issue and email all N certificates**. It gives every player a certificate
+and emails it to them, one at a time, reporting each outcome by name.
+
+**Every title is arithmetic, not a judgement.** Champion, Runner-up and Third place come from
+the ranking. Beyond that each person gets the truest thing about their own day — highest score
+of the day, biggest winning margin, best total spread, unbeaten, a winning record — and
+everybody else is credited with the games they played. Ties keep every holder; nothing invents
+a tiebreak to make a sentence read better.
+
+Each email's subject is that person's own title, and the body carries their record: played,
+won, lost, spread, and their best game with the opponent's name. A verification code that
+anyone can check at **`/verify`** goes with it.
+
+### 8. Certificates by hand
 
 At **`/app/certificates`**: **Prepare from standings**, then **Issue**. Placement
 certificates stay drafts until the phase is Final Review or Completed, so none can claim a
