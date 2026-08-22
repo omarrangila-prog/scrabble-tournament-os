@@ -63,9 +63,14 @@ participants' phones.
 
 ### Set up once, before people arrive
 
-**Put the wall up.** Open **`/live/display`** on the television and leave it. It follows
-the event by itself — check-in, then tables, then the clock, then results, then the
-winner. Nobody touches it again.
+**Put the wall up.** Open **`/live/display`** on the television and leave it. It follows the
+event by itself — check-in, then tables, then the clock, then results, then the winner.
+Nobody touches it again.
+
+**There is one QR, and it is on screen all day.** The same code checks people in, shows them
+their table, takes their score and asks them to confirm their opponent's. During a round it
+shrinks into the corner so the clock owns the screen, but it is still there for anybody who
+arrives late or finishes early. Participants never need a second link.
 
 **Set the tables — optional, and worth doing.** On **`/app/live-event`**, under **Table
 plan**, say which tables each division sits at: `1-5` for Beginner, `6-12` for Recreational,

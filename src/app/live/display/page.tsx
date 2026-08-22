@@ -147,15 +147,18 @@ export default function LiveDisplayPage() {
   const expected = arrivals.expected;
 
   const base = `${origin}/events/${ACTIVE_EVENT.slug}`;
-  const checkInUrl = origin ? `${base}/check-in` : "";
+
 
   /*
-   * One code for the whole day, after check-in.
+   * One code, all day, in every scene.
    *
-   * Tables, opponent, scores, the result to confirm and the next round all live on the same
-   * page, so the wall never has to explain which QR is which — and a player who scanned it
-   * an hour ago does not need a new one. Nothing personal is ever typed on the television:
-   * the code is public, and who you are is settled on the phone in your hand.
+   * There used to be two — one for check-in and one for everything after — and a room does
+   * not track which QR is which. The same page now finds you by name, offers to check you in
+   * if you have not, shows your table when the boards go up, takes your score, and asks you
+   * to confirm your opponent's. Somebody who scanned it at the door never needs another.
+   *
+   * Nothing personal is ever typed on the television: the code is public, and who you are is
+   * settled on the phone in your hand.
    */
   const playUrl = origin ? `${base}/play` : "";
 
@@ -164,7 +167,7 @@ export default function LiveDisplayPage() {
 
   return (
     <main
-      className="flex min-h-dvh flex-col px-[4vw] py-[3vh]"
+      className="relative flex min-h-dvh flex-col px-[4vw] py-[3vh]"
       style={{
         background: `radial-gradient(120% 80% at 50% -10%, ${FELT} 0%, ${NIGHT} 72%)`,
         color: IVORY,
@@ -193,10 +196,10 @@ export default function LiveDisplayPage() {
         {/* ---- Come in and check in ------------------------------------- */}
         {scene === "check-in" ? (
           <>
-            <Headline sub="Scan with your phone, then enter your player number.">
+            <Headline sub="Scan with your phone. Find your name, and you are in.">
               Welcome — check in
             </Headline>
-            <Qr url={checkInUrl} />
+            <Qr url={playUrl} />
             {/*
               The count is the one number worth putting on a wall during check-in: it tells
               the room whether it is waiting for ten people or for one.
@@ -214,7 +217,7 @@ export default function LiveDisplayPage() {
             <Headline sub="Scan to find your table, or look for your name on the boards.">
               {round > 0 ? `Round ${round} — tables are up` : "Getting the first round ready"}
             </Headline>
-            {round > 0 ? <Qr url={playUrl} /> : null}
+            <Qr url={playUrl} />
           </>
         ) : null}
 
@@ -245,6 +248,26 @@ export default function LiveDisplayPage() {
                   ? "One minute remaining"
                   : `${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`}
             </p>
+
+            {/*
+              The same code, small, in the corner.
+              The clock owns this screen while a round is on — but somebody who arrives late,
+              or whose game finished early, still needs the one address that does everything.
+              Making them wait for the round to end is how a person ends up at the desk.
+            */}
+            <div className="absolute bottom-[3vh] right-[3vw] text-center">
+              {/* A data URI generated in the page — next/image has nothing to optimise. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrToDataUri(playUrl, { size: 360 })}
+                alt=""
+                aria-hidden
+                className="size-[7vw] rounded-[0.6vw]"
+              />
+              <p className="mt-[0.6vh] text-[0.9vw] font-semibold" style={{ color: `${IVORY}66` }}>
+                Scan any time
+              </p>
+            </div>
           </>
         ) : null}
 
