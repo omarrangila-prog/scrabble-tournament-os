@@ -2,9 +2,23 @@
 
 import * as React from "react";
 
-/** Vic Mann's 25-minute countdown: a beep and the time remaining at each minute, no ads. */
-export const TIMER_VIDEO_ID = "XVQKcNivCYw";
-export const TIMER_VIDEO_MINUTES = 25;
+/**
+ * A countdown video for each round length the event offers.
+ *
+ * Keyed by minutes, because that is the only thing that makes one correct and another wrong.
+ * A length with no video simply shows the app's own clock — which is the normal state, and
+ * why this can be added to one at a time without the wall ever being left counting the wrong
+ * thing.
+ *
+ * Both are Vic Mann's, from the same series: a beep and the time remaining called at each
+ * minute, and no advertisements during the countdown. Each identifier was checked against
+ * the video's own title before being put here, because an identifier that is one character
+ * out is a wall counting down the wrong length with nothing to show that it is wrong.
+ */
+export const TIMER_VIDEOS: Record<number, string> = {
+  20: "xZPoZM5u1C4",
+  25: "XVQKcNivCYw",
+};
 
 /**
  * A countdown video on the wall, instead of the app's own clock face.
@@ -22,9 +36,9 @@ export const TIMER_VIDEO_MINUTES = 25;
  * Two honesty rules follow from that, and both are enforced here rather than left to whoever
  * set the television up:
  *
- * It refuses to appear unless the round really is twenty-five minutes long. The video is a
- * fixed length, and a wall counting down twenty-five minutes over a twenty-minute round is
- * not a decoration, it is a lie the room will act on.
+ * It refuses to appear unless there is a video of exactly this round's length. Each video is
+ * a fixed length, and a wall counting down twenty-five minutes over a twenty-minute round is
+ * not a decoration, it is something the room will act on.
  *
  * And it seeks to the true elapsed time when it loads, so a wall that was opened late — or
  * reloaded halfway through — starts where the round actually is rather than at the beginning.
@@ -45,11 +59,13 @@ export function RoundVideoTimer({
    */
   const [startAt] = React.useState(() => Math.max(0, Math.floor(elapsedMs / 1000)));
 
-  if (roundMinutes !== TIMER_VIDEO_MINUTES) {
+  const videoId = TIMER_VIDEOS[roundMinutes];
+
+  if (!videoId) {
     return (
       <p className="mt-[2vh] text-[1.4vw]" style={{ color: "#F4EFE499" }}>
-        The countdown video is twenty-five minutes long and this round is {roundMinutes}. The
-        clock above is the real one.
+        No countdown video is set for a {roundMinutes}-minute round. The clock above is the
+        real one.
       </p>
     );
   }
@@ -57,7 +73,7 @@ export function RoundVideoTimer({
   if (!running) return null;
 
   const src =
-    `https://www.youtube-nocookie.com/embed/${TIMER_VIDEO_ID}` +
+    `https://www.youtube-nocookie.com/embed/${videoId}` +
     `?autoplay=1&start=${startAt}&controls=0&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3`;
 
   return (

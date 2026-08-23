@@ -192,13 +192,14 @@ their payment is unsettled, in which case it sends them to the desk.
 
 ### The countdown video, if you want it
 
-Open the wall as **`/live/display?video=1`** and a twenty-five-minute countdown plays under
-the clock during each round — it beeps and calls the time at every minute, which a room
-notices in a way a silent number does not.
+Open the wall as **`/live/display?video=1`** and a countdown plays under the clock during
+each round — it beeps and calls the time at every minute, which a room notices in a way a
+silent number does not. There is one for **20 minutes** and one for **25**, so whichever
+length you set is the one that plays.
 
-**Only when the round really is twenty-five minutes.** On a twenty-minute round it refuses
-and says so, because a wall counting down the wrong length is not a decoration, it is
-something the room will act on.
+**Only ever the matching length.** If a round is some other length the wall says so and shows
+nothing, because a countdown of the wrong length is not a decoration — it is something the
+room will act on, and nothing on screen would reveal it was wrong.
 
 It is off by default and the ordinary address is unchanged. The app's own clock stays on
 screen above it and remains the authority: that one is counted from an instant in the
