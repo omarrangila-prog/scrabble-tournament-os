@@ -273,6 +273,14 @@ names can be read out before anything is sent.
 Then one button: **Issue and email all N certificates**. It gives every player a certificate
 and emails it to them, one at a time, reporting each outcome by name.
 
+**Half of each category wins.** Take the number who played in a category and divide by two,
+rounded down — 49 beginners is 24 winners, 19 advanced is 9, 14 recreational is 7. The top
+three in each are named Champion, Runner-up and Third place; the rest of the winning half are
+titled **Winner**, with their placing in the line beneath.
+
+Counted from the people who actually played, not from the entry list, so nobody who never sat
+down is awarded anything.
+
 **Every title is arithmetic, not a judgement.** Champion, Runner-up and Third place come from
 the ranking. Beyond that each person gets the truest thing about their own day — highest score
 of the day, biggest winning margin, best total spread, unbeaten, a winning record — and
