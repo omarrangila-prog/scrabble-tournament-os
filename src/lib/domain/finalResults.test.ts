@@ -7,7 +7,6 @@ import {
   ordinal,
   signed,
   superlatives,
-  winnersIn,
 } from "./finalResults";
 
 const p = (over: Partial<FinalPlayer> = {}): FinalPlayer => ({
@@ -61,11 +60,11 @@ describe("superlatives", () => {
 });
 
 describe("the title each player is given", () => {
-  it("names the top three by place and division", () => {
+  it("names the winner and the runner-up, and nobody below them", () => {
     const field = [p({ id: "a", rank: 1 }), p({ id: "b", rank: 2 }), p({ id: "c", rank: 3 })];
-    expect(awardFor(field[0], field).title).toBe("Champion — Beginner");
+    expect(awardFor(field[0], field).title).toBe("Winner — Beginner");
     expect(awardFor(field[1], field).title).toBe("Runner-up — Beginner");
-    expect(awardFor(field[2], field).title).toBe("Third place — Beginner");
+    expect(awardFor(field[2], field).kind).not.toBe("placement");
   });
 
   it("says so when somebody won everything", () => {
@@ -133,18 +132,16 @@ describe("wording", () => {
   });
 });
 
-describe("half of each category wins", () => {
+describe("two placings a category, and nothing further down", () => {
   /**
-   * The organizer's rule: take the number of people in a category and divide by two. It is a
-   * rule about the room rather than the game — at an event this young, half the field going
-   * home with something recognised is the point.
+   * This moved about — half the field, then three, then two. Pinned because a placing quietly
+   * reappearing is the kind of change nobody notices until certificates have gone out.
    */
-  const field = (count: number, division = "beginner") =>
+  const field = (count: number) =>
     Array.from({ length: count }, (_, i) =>
       p({
         id: `p${i}`,
         number: String(101 + i),
-        division,
         rank: i + 1,
         played: 3,
         wins: Math.max(0, 3 - i),
@@ -154,59 +151,21 @@ describe("half of each category wins", () => {
       }),
     );
 
-  it("rounds down, so the winners can never be more than half", () => {
-    expect(winnersIn(49)).toBe(24);
-    expect(winnersIn(19)).toBe(9);
-    expect(winnersIn(14)).toBe(7);
-    expect(winnersIn(2)).toBe(1);
+  it("names exactly two, however large the category", () => {
+    const all = field(49);
+    const placements = all.filter((x) => awardFor(x, all).kind === "placement");
+    expect(placements).toHaveLength(2);
+    expect(placements.map((x) => awardFor(x, all).title)).toEqual([
+      "Winner — Beginner",
+      "Runner-up — Beginner",
+    ]);
   });
 
-  it("still recognises somebody in a category of one", () => {
-    /* Floor would give zero winners, which would leave the only player with nothing. */
-    expect(winnersIn(1)).toBe(1);
-  });
-
-  it("names the top three and calls the rest of the half winners", () => {
+  it("gives third place something true rather than a prize", () => {
     const all = field(19);
-    const titles = all.map((x) => awardFor(x, all).title);
-
-    expect(titles[0]).toBe("Champion — Beginner");
-    expect(titles[1]).toBe("Runner-up — Beginner");
-    expect(titles[2]).toBe("Third place — Beginner");
-    expect(titles[3]).toBe("Winner — Beginner");
-    /* Nine winners in a field of nineteen: ranks one to nine. */
-    expect(titles[8]).toBe("Winner — Beginner");
-    expect(titles[9]).not.toContain("Winner");
-  });
-
-  it("counts only the people who actually played", () => {
-    /*
-     * The precondition: a prize list built from the registration list would award somebody
-     * who never sat down, so the half is taken from those with games.
-     */
-    const played = field(8);
-    const absent = Array.from({ length: 12 }, (_, i) =>
-      p({ id: `a${i}`, number: String(200 + i), rank: 99, played: 0, wins: 0, losses: 0 }),
-    );
-    const all = [...played, ...absent];
-
-    expect(all).toHaveLength(20);
-    /* Four winners, from the eight who played — not ten from the twenty entered. */
-    expect(awardFor(played[3], all).title).toBe("Winner — Beginner");
-    expect(awardFor(played[4], all).title).not.toContain("Winner");
-  });
-
-  it("keeps a superlative rather than replacing it with the generic line", () => {
-    const all = field(19);
-    const award = awardFor(all[3], all);
-    expect(award.title).toBe("Winner — Beginner");
-    expect(award.note).toBeTruthy();
-  });
-
-  it("tells somebody outside the half what they did, not where they came", () => {
-    const all = field(19);
-    const award = awardFor(all[15], all);
-    expect(award.title).toContain("Played");
-    expect(award.title).not.toContain("Winner");
+    const third = awardFor(all[2], all);
+    expect(third.kind).not.toBe("placement");
+    expect(third.title).not.toContain("Winner");
+    expect(third.title).not.toContain("Third place");
   });
 });

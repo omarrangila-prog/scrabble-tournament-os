@@ -46,21 +46,14 @@ export function divisionName(raw: string): string {
   return DIVISION[raw] ?? (raw ? raw[0].toUpperCase() + raw.slice(1) : "Open");
 }
 
-const PLACE = ["Champion", "Runner-up", "Third place"];
-
 /**
- * How many of a category win something: half of it, rounded down.
+ * The placings a category awards: two.
  *
- * The organizer's rule, and it is a rule about the room rather than about the game — at an
- * event this young, half the field going home with something recognised is the point.
- *
- * Rounded down so it can never be more than half: nineteen players is nine winners, not ten.
- * Counted from the players who actually played, because a prize list built from the
- * registration list would award somebody who never sat down.
+ * Winner and runner-up, and nothing below. This moved about — half the field, then three,
+ * then two — so it is one list in one place, and the branch below counts from its length
+ * rather than from a number written twice.
  */
-export function winnersIn(playersInDivision: number): number {
-  return Math.max(1, Math.floor(playersInDivision / 2));
-}
+const PLACE = ["Winner", "Runner-up"];
 
 /** "+142" or "−87": a spread reads as a direction before it reads as a number. */
 export function signed(n: number): string {
@@ -149,29 +142,11 @@ export function awardFor(p: FinalPlayer, all: FinalPlayer[], sup = superlatives(
     return null;
   })();
 
-  /*
-   * The top three are named; the rest of the winning half are told they are in it.
-   *
-   * "Fourth in Beginner" and "a winner in Beginner" are the same fact, and only one of them
-   * reads like something worth keeping.
-   */
-  const inDivision = all.filter((x) => x.division === p.division && x.played > 0).length;
-  const winners = winnersIn(inDivision);
-
-  if (p.rank <= 3) {
+  if (p.rank <= PLACE.length) {
     return {
       title: `${PLACE[p.rank - 1]} — ${division}`,
       summary,
       note,
-      kind: "placement",
-    };
-  }
-
-  if (p.rank <= winners) {
-    return {
-      title: `Winner — ${division}`,
-      summary,
-      note: note ?? `Finished ${ordinal(p.rank)} of ${inDivision}, in the winning half.`,
       kind: "placement",
     };
   }
