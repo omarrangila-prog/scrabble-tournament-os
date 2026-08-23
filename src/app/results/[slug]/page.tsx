@@ -4,13 +4,11 @@ import { notFound } from "next/navigation";
 
 import { Certificate } from "@/components/results/Certificate";
 import {
-  EVENT,
   allPlayers,
   findPlayer,
   formatRecord,
-  citationFor,
-  ordinal,
   margin,
+  ordinal,
   withSign,
 } from "@/lib/domain/eventRecord";
 
@@ -33,10 +31,10 @@ export async function generateMetadata({
 }
 
 const VERDICT: Record<string, { label: string; colour: string }> = {
-  won: { label: "Won", colour: "#4FA87A" },
-  lost: { label: "Lost", colour: "#D08A7A" },
-  drew: { label: "Drew", colour: "#C89B3C" },
-  bye: { label: "No game", colour: "#8A8A8A" },
+  won: { label: "Won", colour: "#2F7D52" },
+  lost: { label: "Lost", colour: "#A85541" },
+  drew: { label: "Drew", colour: "#A97B3F" },
+  bye: { label: "No game", colour: "#8A7568" },
 };
 
 /**
@@ -57,29 +55,37 @@ export default async function PlayerRecordPage({
 
   const { player, division } = entry;
   const rankedCount = division.players.filter((p) => p.ranked).length;
+  /* The design turns into an achievement certificate when a placement is passed to it. */
+  const placement =
+    player.ranked && player.rank! <= 2
+      ? `${ordinal(player.rank!)} place, ${division.name} division`
+      : undefined;
 
   return (
     <main
       className="min-h-dvh px-5 py-10 sm:px-8 sm:py-16"
-      style={{
-        background:
-          "radial-gradient(120% 70% at 50% -10%, #16241C 0%, #0E1512 70%)",
-        color: "#F4EFE4",
-      }}
+      style={{ background: "#FBF7EE", color: "#4A2E2A" }}
     >
       <div className="mx-auto max-w-3xl">
         <Link
           href="/results"
-          className="text-sm text-white/50 underline hover:text-white"
+          className="text-sm underline"
+          style={{ color: "#8A7568" }}
         >
           All results
         </Link>
 
-        <header className="mt-6 border-b border-white/10 pb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#C89B3C]">
+        <header
+          className="mt-6 border-b pb-8"
+          style={{ borderColor: "rgba(199,154,91,0.35)" }}
+        >
+          <p
+            className="text-xs font-bold uppercase tracking-[0.24em]"
+            style={{ color: "#A97B3F" }}
+          >
             {division.name} Division · 23 August 2026
           </p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="font-display mt-3 text-4xl font-black tracking-tight sm:text-5xl">
             {player.name}
           </h1>
 
@@ -98,7 +104,10 @@ export default async function PlayerRecordPage({
         </header>
 
         <section className="mt-10">
-          <h2 className="text-lg font-extrabold uppercase tracking-[0.14em] text-[#4FA87A]">
+          <h2
+            className="text-sm font-bold uppercase tracking-[0.18em]"
+            style={{ color: "#A97B3F" }}
+          >
             Every round
           </h2>
 
@@ -109,11 +118,14 @@ export default async function PlayerRecordPage({
               return (
                 <li
                   key={round.round}
-                  className="rounded-xl border border-white/10 p-4"
-                  style={{ background: "rgba(255,255,255,0.03)" }}
+                  className="rounded-xl border bg-white p-4"
+                  style={{ borderColor: "rgba(199,154,91,0.4)" }}
                 >
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/45">
+                    <p
+                      className="text-xs font-bold uppercase tracking-[0.16em]"
+                      style={{ color: "#9A867A" }}
+                    >
                       Round {round.round}
                     </p>
                     <p
@@ -124,7 +136,10 @@ export default async function PlayerRecordPage({
                       {gap !== null &&
                       round.result !== "bye" &&
                       round.result !== "drew" ? (
-                        <span className="font-semibold text-white/45">
+                        <span
+                          className="font-semibold"
+                          style={{ color: "#9A867A" }}
+                        >
                           by {Math.abs(gap)}
                         </span>
                       ) : null}
@@ -132,26 +147,32 @@ export default async function PlayerRecordPage({
                   </div>
 
                   {round.result === "bye" ? (
-                    <p className="mt-2 text-white/60">
+                    <p className="mt-2" style={{ color: "#6B5A50" }}>
                       No game this round — {player.name.split(" ")[0]} sat the
                       round out.
                     </p>
                   ) : (
-                    <div className="mt-2 flex items-center gap-4">
-                      <p className="min-w-0 flex-1">
-                        <span className="block text-2xl font-extrabold tabular-nums">
-                          {round.scoreFor}
-                          <span className="mx-2 text-white/30">&ndash;</span>
-                          {round.scoreAgainst}
+                    <p className="mt-2">
+                      <span className="font-display block text-2xl font-black tabular-nums">
+                        {round.scoreFor}
+                        <span className="mx-2" style={{ color: "#C79A5B" }}>
+                          &ndash;
                         </span>
-                        <span className="mt-1 block text-sm text-white/60">
-                          against{" "}
-                          <span className="font-semibold text-white/85">
-                            {round.opponent ?? "an opponent"}
-                          </span>
+                        {round.scoreAgainst}
+                      </span>
+                      <span
+                        className="mt-1 block text-sm"
+                        style={{ color: "#6B5A50" }}
+                      >
+                        against{" "}
+                        <span
+                          className="font-semibold"
+                          style={{ color: "#4A2E2A" }}
+                        >
+                          {round.opponent ?? "an opponent"}
                         </span>
-                      </p>
-                    </div>
+                      </span>
+                    </p>
                   )}
                 </li>
               );
@@ -160,22 +181,19 @@ export default async function PlayerRecordPage({
         </section>
 
         <section className="mt-12">
-          <h2 className="text-lg font-extrabold uppercase tracking-[0.14em] text-[#4FA87A]">
+          <h2
+            className="text-sm font-bold uppercase tracking-[0.18em]"
+            style={{ color: "#A97B3F" }}
+          >
             Certificate
           </h2>
           <Certificate
             name={player.name}
-            citation={citationFor(player, division)}
-            division={division.name}
-            position={
-              player.ranked
-                ? `${ordinal(player.rank!)} of ${rankedCount}`
-                : null
-            }
+            placement={placement}
             document={{
               name: player.name,
               division: division.name,
-              citation: citationFor(player, division),
+              placement,
               position: player.ranked
                 ? `${ordinal(player.rank!)} of ${rankedCount}`
                 : null,
@@ -186,7 +204,10 @@ export default async function PlayerRecordPage({
           />
         </section>
 
-        <nav className="mt-12 border-t border-white/10 pt-6 text-sm text-white/50">
+        <nav
+          className="mt-12 border-t pt-6 text-sm"
+          style={{ borderColor: "rgba(199,154,91,0.35)", color: "#8A7568" }}
+        >
           <p>
             Same division:{" "}
             {division.players
@@ -195,18 +216,14 @@ export default async function PlayerRecordPage({
               .map((p, i) => (
                 <span key={p.slug}>
                   {i > 0 ? " · " : ""}
-                  <Link
-                    href={`/results/${p.slug}`}
-                    className="underline hover:text-white"
-                  >
+                  <Link href={`/results/${p.slug}`} className="underline">
                     {p.name}
                   </Link>
                 </span>
               ))}
           </p>
           <p className="mt-3">
-            Scores as published by the Pakistan Scrabble Association for{" "}
-            {EVENT.name}, unchanged.
+            Scores as published by the Pakistan Scrabble Association, unchanged.
           </p>
         </nav>
       </div>
@@ -217,10 +234,13 @@ export default async function PlayerRecordPage({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="rounded-xl border border-white/10 px-3 py-3"
-      style={{ background: "rgba(255,255,255,0.03)" }}
+      className="rounded-xl border bg-white px-3 py-3"
+      style={{ borderColor: "rgba(199,154,91,0.4)" }}
     >
-      <dt className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-white/45">
+      <dt
+        className="text-[0.65rem] font-bold uppercase tracking-[0.16em]"
+        style={{ color: "#9A867A" }}
+      >
         {label}
       </dt>
       <dd className="mt-1 text-lg font-extrabold tabular-nums">{value}</dd>

@@ -94,14 +94,15 @@ export function FileList({ rows }: { rows: FileRow[] }) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for your name"
           aria-label="Search for your name"
-          className="w-full rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-base outline-none placeholder:text-white/35 focus:border-[#C89B3C] sm:max-w-sm"
+          className="w-full rounded-lg border bg-white px-4 py-3 text-base outline-none placeholder:text-[#A89A8E] focus:border-[#C79A5B] sm:max-w-sm"
+          style={{ borderColor: "rgba(199,154,91,0.5)", color: "#4A2E2A" }}
         />
         <button
           type="button"
           onClick={downloadEverything}
           disabled={all !== null}
-          className="rounded-lg px-4 py-3 text-sm font-bold transition hover:opacity-90 disabled:opacity-60"
-          style={{ background: "#C89B3C", color: "#0E1512" }}
+          className="rounded-lg px-4 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+          style={{ background: "#4A2E2A" }}
         >
           {all
             ? `Building ${all.made} of ${all.of}…`
@@ -109,17 +110,23 @@ export function FileList({ rows }: { rows: FileRow[] }) {
         </button>
       </div>
 
-      <p className="mt-3 text-sm text-white/45">
+      <p className="mt-3 text-sm" style={{ color: "#8A7568" }}>
         {shown.length} of {rows.length} files
       </p>
 
-      <ul className="mt-3 divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
-        {shown.map((row) => {
+      <ul
+        className="mt-3 overflow-hidden rounded-xl border bg-white"
+        style={{ borderColor: "rgba(199,154,91,0.4)" }}
+      >
+        {shown.map((row, i) => {
           const working = busy === row.slug;
           return (
             <li
               key={row.slug}
-              className="flex items-center gap-3 px-3 py-3 transition hover:bg-white/[0.04] sm:px-4"
+              className="flex items-center gap-3 px-3 py-3 transition hover:bg-[#FBF3E4] sm:px-4"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(199,154,91,0.22)",
+              }}
             >
               <FileIcon />
 
@@ -132,7 +139,10 @@ export function FileList({ rows }: { rows: FileRow[] }) {
                 <span className="block truncate text-[0.95rem] font-bold">
                   {row.name}
                 </span>
-                <span className="block truncate text-xs text-white/45">
+                <span
+                  className="block truncate text-xs"
+                  style={{ color: "#9A867A" }}
+                >
                   {row.division}
                   {row.position ? ` · ${row.position}` : " · not ranked"} · PDF,
                   2 pages
@@ -141,7 +151,11 @@ export function FileList({ rows }: { rows: FileRow[] }) {
 
               <Link
                 href={`/results/${row.slug}`}
-                className="hidden shrink-0 rounded-lg border border-white/15 px-3 py-2 text-xs font-bold text-white/70 transition hover:bg-white/5 sm:block"
+                className="hidden shrink-0 rounded-lg border px-3 py-2 text-xs font-bold transition hover:bg-[#F3EADA] sm:block"
+                style={{
+                  borderColor: "rgba(199,154,91,0.5)",
+                  color: "#7A6558",
+                }}
               >
                 Open
               </Link>
@@ -150,8 +164,8 @@ export function FileList({ rows }: { rows: FileRow[] }) {
                 type="button"
                 onClick={() => downloadOne(row)}
                 disabled={working}
-                className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition hover:opacity-90 disabled:opacity-60"
-                style={{ background: "#C89B3C", color: "#0E1512" }}
+                className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+                style={{ background: "#4A2E2A" }}
               >
                 {working ? "…" : done.has(row.slug) ? "Again" : "Download"}
               </button>
@@ -161,7 +175,7 @@ export function FileList({ rows }: { rows: FileRow[] }) {
       </ul>
 
       {shown.length === 0 ? (
-        <p className="mt-6 text-center text-white/55">
+        <p className="mt-6 text-center" style={{ color: "#8A7568" }}>
           No name matches &ldquo;{query}&rdquo;. Try a shorter part of it.
         </p>
       ) : null}
@@ -174,7 +188,7 @@ function FileIcon() {
     <span
       aria-hidden
       className="grid size-9 shrink-0 place-items-center rounded-lg text-[0.6rem] font-extrabold"
-      style={{ background: "rgba(200,155,60,0.18)", color: "#C89B3C" }}
+      style={{ background: "#F3EADA", color: "#A97B3F" }}
     >
       PDF
     </span>

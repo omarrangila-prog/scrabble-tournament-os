@@ -4,8 +4,8 @@ import Link from "next/link";
 import {
   EVENT,
   formatRecord,
-  withSign,
   playedRounds,
+  withSign,
 } from "@/lib/domain/eventRecord";
 
 export const metadata: Metadata = {
@@ -20,6 +20,9 @@ export const metadata: Metadata = {
  * Placements, records and scores are the official ones published by the Pakistan Scrabble
  * Association; nothing here is recomputed, so this page and the ranking report cannot
  * disagree. Names and scores only — the same things already on the public report.
+ *
+ * On the certificate's own paper colours rather than the app's dark chrome, because this is
+ * the part of the product a participant keeps.
  */
 export default function ResultsPage() {
   const played = EVENT.divisions.reduce(
@@ -31,21 +34,26 @@ export default function ResultsPage() {
   return (
     <main
       className="min-h-dvh px-5 py-10 sm:px-8 sm:py-16"
-      style={{
-        background:
-          "radial-gradient(120% 70% at 50% -10%, #16241C 0%, #0E1512 70%)",
-        color: "#F4EFE4",
-      }}
+      style={{ background: "#FBF7EE", color: "#4A2E2A" }}
     >
-      <div className="mx-auto max-w-5xl">
-        <header className="border-b border-white/10 pb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#C89B3C]">
-            23 August 2026 · Karachi
+      <div className="mx-auto max-w-4xl">
+        <header
+          className="border-b pb-8"
+          style={{ borderColor: "rgba(199,154,91,0.35)" }}
+        >
+          <p
+            className="text-xs font-bold uppercase tracking-[0.24em]"
+            style={{ color: "#A97B3F" }}
+          >
+            23 August 2026 · Chai Chatt, Karachi
           </p>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="font-display mt-3 text-4xl font-black tracking-tight sm:text-5xl">
             Blufy&rsquo;s AlphaBattle
           </h1>
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-white/70">
+          <p
+            className="mt-3 max-w-2xl text-base leading-relaxed"
+            style={{ color: "#6B5A50" }}
+          >
             The complete event record: three rounds,{" "}
             {EVENT.divisions.reduce((n, d) => n + d.players.length, 0)} players,{" "}
             {Math.round(played / 2)} games played. Open your name to see every
@@ -55,8 +63,8 @@ export default function ResultsPage() {
 
           <Link
             href="/results/files"
-            className="mt-6 inline-block rounded-lg px-5 py-3 text-sm font-bold transition hover:opacity-90"
-            style={{ background: "#C89B3C", color: "#0E1512" }}
+            className="mt-6 inline-block rounded-lg px-5 py-3 text-sm font-bold text-white transition hover:opacity-90"
+            style={{ background: "#4A2E2A" }}
           >
             Download your results and certificate
           </Link>
@@ -68,29 +76,38 @@ export default function ResultsPage() {
 
           return (
             <section key={division.code} className="mt-12">
-              <h2 className="text-2xl font-extrabold tracking-tight text-[#4FA87A]">
+              <h2 className="font-display text-2xl font-black tracking-tight">
                 {division.name}
-                <span className="ml-2 text-base font-semibold text-white/40">
+                <span
+                  className="ml-2 text-base font-semibold"
+                  style={{ color: "#9A867A" }}
+                >
                   {ranked.length} players
                 </span>
               </h2>
 
-              <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
-                {ranked.map((player) => (
-                  <li key={player.slug}>
+              <ul
+                className="mt-4 overflow-hidden rounded-xl border bg-white"
+                style={{ borderColor: "rgba(199,154,91,0.4)" }}
+              >
+                {ranked.map((player, i) => (
+                  <li
+                    key={player.slug}
+                    style={{
+                      borderTop:
+                        i === 0 ? "none" : "1px solid rgba(199,154,91,0.22)",
+                    }}
+                  >
                     <Link
                       href={`/results/${player.slug}`}
-                      className="flex items-center gap-3 px-3 py-3 transition hover:bg-white/5 sm:gap-4 sm:px-4"
+                      className="flex items-center gap-3 px-3 py-3 transition hover:bg-[#FBF3E4] sm:gap-4 sm:px-4"
                     >
                       <span
                         className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-extrabold tabular-nums"
                         style={
                           player.rank! <= 2
-                            ? { background: "#C89B3C", color: "#0E1512" }
-                            : {
-                                background: "rgba(255,255,255,0.07)",
-                                color: "#F4EFE4",
-                              }
+                            ? { background: "#C79A5B", color: "#FFFDF7" }
+                            : { background: "#F3EADA", color: "#7A6558" }
                         }
                       >
                         {player.rank}
@@ -100,13 +117,22 @@ export default function ResultsPage() {
                           {player.name}
                         </span>
                         {player.rank! <= 2 ? (
-                          <span className="text-xs font-bold uppercase tracking-wider text-[#C89B3C]">
+                          <span
+                            className="text-xs font-bold uppercase tracking-wider"
+                            style={{ color: "#A97B3F" }}
+                          >
                             {player.rank === 1 ? "1st place" : "2nd place"}
                           </span>
                         ) : null}
                       </span>
-                      <span className="shrink-0 text-right text-sm tabular-nums text-white/70">
-                        <span className="block font-bold text-white">
+                      <span
+                        className="shrink-0 text-right text-sm tabular-nums"
+                        style={{ color: "#7A6558" }}
+                      >
+                        <span
+                          className="block font-bold"
+                          style={{ color: "#4A2E2A" }}
+                        >
                           {formatRecord(player)}
                         </span>
                         <span className="block text-xs">
@@ -119,15 +145,12 @@ export default function ResultsPage() {
               </ul>
 
               {unranked.length > 0 ? (
-                <p className="mt-3 text-sm text-white/50">
+                <p className="mt-3 text-sm" style={{ color: "#8A7568" }}>
                   Also played, not ranked in the final standings:{" "}
                   {unranked.map((p, i) => (
                     <span key={p.slug}>
                       {i > 0 ? ", " : ""}
-                      <Link
-                        href={`/results/${p.slug}`}
-                        className="underline hover:text-white"
-                      >
+                      <Link href={`/results/${p.slug}`} className="underline">
                         {p.name}
                       </Link>
                     </span>
@@ -139,7 +162,10 @@ export default function ResultsPage() {
           );
         })}
 
-        <footer className="mt-14 border-t border-white/10 pt-6 text-sm text-white/45">
+        <footer
+          className="mt-14 border-t pt-6 text-sm"
+          style={{ borderColor: "rgba(199,154,91,0.35)", color: "#8A7568" }}
+        >
           Results as published by the Pakistan Scrabble Association. Every score
           on this site is taken from that report unchanged.
         </footer>
