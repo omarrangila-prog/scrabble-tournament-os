@@ -268,3 +268,36 @@ export async function publicStandings(eventId: string): Promise<PublicStanding[]
     spread: Number(row.out_spread ?? 0),
   }));
 }
+
+/** One arrival on the wall's list: what a badge already says, and nothing more. */
+export interface PublicArrival {
+  number: string;
+  name: string;
+  division: string;
+  at: string | null;
+}
+
+/**
+ * Everybody who has checked in, readable without an account.
+ *
+ * The wall's list of arrivals came from the staff roster, so on a television it was empty
+ * while the desk's laptop — signed in — showed it correctly. Same mistake, same place, third
+ * time: anything a screen with no account has to show needs a read that expects no account.
+ *
+ * A name, a category and a player number. All three are on the badge and on the pairing
+ * sheet; no phone number, no payment state, nothing a person did not bring into the room.
+ */
+export async function publicArrivals(eventId: string): Promise<PublicArrival[]> {
+  const db = supabase();
+  if (!db) return [];
+
+  const { data, error } = await db.rpc("event_checked_in", { p_event_id: eventId });
+  if (error || !Array.isArray(data)) return [];
+
+  return (data as Record<string, unknown>[]).map((row) => ({
+    number: String(row.out_number ?? ""),
+    name: String(row.out_name ?? ""),
+    division: String(row.out_division ?? ""),
+    at: (row.out_at as string | null) ?? null,
+  }));
+}
