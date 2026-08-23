@@ -1,0 +1,2004 @@
+{
+  "name": "Blufy's AlphaBattle",
+  "date": "2026-08-23",
+  "divisions": [
+    {
+      "code": "A",
+      "name": "Advanced",
+      "players": [
+        {
+          "seed": 4,
+          "name": "Hassan Hadi",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 565,
+              "scoreAgainst": 220,
+              "opponent": "Huzaifa Amir",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 559,
+              "scoreAgainst": 365,
+              "opponent": "Ali Rashid",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 470,
+              "scoreAgainst": 356,
+              "opponent": "Affan Salman",
+              "result": "won"
+            }
+          ],
+          "rank": 1,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 653,
+          "rating": 1230,
+          "slug": "hassan-hadi-a4",
+          "ranked": true
+        },
+        {
+          "seed": 1,
+          "name": "Muhammad Yadaan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 395,
+              "scoreAgainst": 345,
+              "opponent": "Iman Umair",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 483,
+              "scoreAgainst": 379,
+              "opponent": "Ebaad Hasan",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 516,
+              "scoreAgainst": 266,
+              "opponent": "Affan Muhammad",
+              "result": "won"
+            }
+          ],
+          "rank": 2,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 404,
+          "rating": 1230,
+          "slug": "muhammad-yadaan-a1",
+          "ranked": true
+        },
+        {
+          "seed": 7,
+          "name": "Ali Rashid",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 441,
+              "scoreAgainst": 435,
+              "opponent": "Ebaad Hasan",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 365,
+              "scoreAgainst": 559,
+              "opponent": "Hassan Hadi",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 460,
+              "scoreAgainst": 277,
+              "opponent": "Anjum Aziz",
+              "result": "won"
+            }
+          ],
+          "rank": 3,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": -5,
+          "rating": 1210,
+          "slug": "ali-rashid-a7",
+          "ranked": true
+        },
+        {
+          "seed": 10,
+          "name": "Anjum Aziz",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 366,
+              "scoreAgainst": 318,
+              "opponent": "Hani Garib",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 366,
+              "scoreAgainst": 249,
+              "opponent": "Iman Umair",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 277,
+              "scoreAgainst": 460,
+              "opponent": "Ali Rashid",
+              "result": "lost"
+            }
+          ],
+          "rank": 4,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": -18,
+          "rating": 1210,
+          "slug": "anjum-aziz-a10",
+          "ranked": true
+        },
+        {
+          "seed": 6,
+          "name": "Affan Muhammad",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 458,
+              "scoreAgainst": 336,
+              "opponent": "Khizer Hassan",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 444,
+              "scoreAgainst": 436,
+              "opponent": "Affan Salman",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 266,
+              "scoreAgainst": 516,
+              "opponent": "Muhammad Yadaan",
+              "result": "lost"
+            }
+          ],
+          "rank": 5,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": -120,
+          "rating": 1210,
+          "slug": "affan-muhammad-a6",
+          "ranked": true
+        },
+        {
+          "seed": 5,
+          "name": "Huzaifa Amir",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 220,
+              "scoreAgainst": 565,
+              "opponent": "Hassan Hadi",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 159,
+              "scoreAgainst": 144,
+              "opponent": "Hani Garib",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 335,
+              "scoreAgainst": 275,
+              "opponent": "Faheem Naqvi",
+              "result": "won"
+            }
+          ],
+          "rank": 6,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": -270,
+          "rating": 1210,
+          "slug": "huzaifa-amir-a5",
+          "ranked": true
+        },
+        {
+          "seed": 9,
+          "name": "Ebaad Hasan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 435,
+              "scoreAgainst": 441,
+              "opponent": "Ali Rashid",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 379,
+              "scoreAgainst": 483,
+              "opponent": "Muhammad Yadaan",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 495,
+              "scoreAgainst": 236,
+              "opponent": "Khizer Hassan",
+              "result": "won"
+            }
+          ],
+          "rank": 7,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": 149,
+          "rating": 1190,
+          "slug": "ebaad-hasan-a9",
+          "ranked": true
+        },
+        {
+          "seed": 3,
+          "name": "Affan Salman",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 515,
+              "scoreAgainst": 281,
+              "opponent": "Faheem Naqvi",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 436,
+              "scoreAgainst": 444,
+              "opponent": "Affan Muhammad",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 356,
+              "scoreAgainst": 470,
+              "opponent": "Hassan Hadi",
+              "result": "lost"
+            }
+          ],
+          "rank": 8,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": 112,
+          "rating": 1190,
+          "slug": "affan-salman-a3",
+          "ranked": true
+        },
+        {
+          "seed": 12,
+          "name": "Iman Umair",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 345,
+              "scoreAgainst": 395,
+              "opponent": "Muhammad Yadaan",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 249,
+              "scoreAgainst": 366,
+              "opponent": "Anjum Aziz",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 150,
+              "scoreAgainst": 50,
+              "opponent": "Hani Garib",
+              "result": "won"
+            }
+          ],
+          "rank": 9,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -67,
+          "rating": 1190,
+          "slug": "iman-umair-a12",
+          "ranked": true
+        },
+        {
+          "seed": 8,
+          "name": "Khizer Hassan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 336,
+              "scoreAgainst": 458,
+              "opponent": "Affan Muhammad",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 351,
+              "scoreAgainst": 296,
+              "opponent": "Faheem Naqvi",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 236,
+              "scoreAgainst": 495,
+              "opponent": "Ebaad Hasan",
+              "result": "lost"
+            }
+          ],
+          "rank": 10,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -326,
+          "rating": 1190,
+          "slug": "khizer-hassan-a8",
+          "ranked": true
+        },
+        {
+          "seed": 2,
+          "name": "Hani Garib",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 318,
+              "scoreAgainst": 366,
+              "opponent": "Anjum Aziz",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 144,
+              "scoreAgainst": 159,
+              "opponent": "Huzaifa Amir",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 150,
+              "opponent": "Iman Umair",
+              "result": "lost"
+            }
+          ],
+          "rank": 11,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -163,
+          "rating": 1170,
+          "slug": "hani-garib-a2",
+          "ranked": true
+        },
+        {
+          "seed": 11,
+          "name": "Faheem Naqvi",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 281,
+              "scoreAgainst": 515,
+              "opponent": "Affan Salman",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 296,
+              "scoreAgainst": 351,
+              "opponent": "Khizer Hassan",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 275,
+              "scoreAgainst": 335,
+              "opponent": "Huzaifa Amir",
+              "result": "lost"
+            }
+          ],
+          "rank": 12,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -349,
+          "rating": 1170,
+          "slug": "faheem-naqvi-a11",
+          "ranked": true
+        }
+      ]
+    },
+    {
+      "code": "B",
+      "name": "Beginner",
+      "players": [
+        {
+          "seed": 6,
+          "name": "Manahil Fatima",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 249,
+              "scoreAgainst": 137,
+              "opponent": "Umer Muhammad Ali",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 255,
+              "scoreAgainst": 95,
+              "opponent": "Muhammad Salahuddin",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 305,
+              "scoreAgainst": 118,
+              "opponent": "Khizr Hussain",
+              "result": "won"
+            }
+          ],
+          "rank": 1,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 459,
+          "rating": 1230,
+          "slug": "manahil-fatima-b6",
+          "ranked": true
+        },
+        {
+          "seed": 4,
+          "name": "Anamta Khan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 146,
+              "scoreAgainst": 91,
+              "opponent": "Kiflain",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 260,
+              "scoreAgainst": 97,
+              "opponent": "Abdul Basit",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 130,
+              "scoreAgainst": 46,
+              "opponent": "Salah Sohail",
+              "result": "won"
+            }
+          ],
+          "rank": 2,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 302,
+          "rating": 1230,
+          "slug": "anamta-khan-b4",
+          "ranked": true
+        },
+        {
+          "seed": 7,
+          "name": "Wania Fatima",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 204,
+              "scoreAgainst": 109,
+              "opponent": "Muhammad Suleman",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 131,
+              "scoreAgainst": 31,
+              "opponent": "Zulfiqar Ali",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 198,
+              "scoreAgainst": 116,
+              "opponent": "Muhammad Soban",
+              "result": "won"
+            }
+          ],
+          "rank": 3,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 277,
+          "rating": 1230,
+          "slug": "wania-fatima-b7",
+          "ranked": true
+        },
+        {
+          "seed": 28,
+          "name": "Jazim Hussain",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 147,
+              "scoreAgainst": 106,
+              "opponent": "Ashar Narinja",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 150,
+              "scoreAgainst": 50,
+              "opponent": "Khizr Hussain",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 92,
+              "scoreAgainst": 43,
+              "opponent": "Muzammil Sohail",
+              "result": "won"
+            }
+          ],
+          "rank": 4,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 190,
+          "rating": 1230,
+          "slug": "jazim-hussain-b28",
+          "ranked": true
+        },
+        {
+          "seed": 19,
+          "name": "Muhammad Haider",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 181,
+              "scoreAgainst": 105,
+              "opponent": "Sakina Rameen",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 181,
+              "scoreAgainst": 180,
+              "opponent": "Moosa Sarosh",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 81,
+              "scoreAgainst": 47,
+              "opponent": "Muhammad Salahuddin",
+              "result": "won"
+            }
+          ],
+          "rank": 5,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 111,
+          "rating": 1230,
+          "slug": "muhammad-haider-b19",
+          "ranked": true
+        },
+        {
+          "seed": 18,
+          "name": "Muhammad Sameed",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 117,
+              "scoreAgainst": 56,
+              "opponent": "Salah Sohail",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 163,
+              "scoreAgainst": 125,
+              "opponent": "Muhammad Suleman",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 104,
+              "scoreAgainst": 93,
+              "opponent": "Umer Muhammad Ali",
+              "result": "won"
+            }
+          ],
+          "rank": 6,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 110,
+          "rating": 1230,
+          "slug": "muhammad-sameed-b18",
+          "ranked": true
+        },
+        {
+          "seed": 16,
+          "name": "Abdul Ahad",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 341,
+              "scoreAgainst": 207,
+              "opponent": "Murtaza",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 336,
+              "scoreAgainst": 204,
+              "opponent": "Umer Muhammad Ali",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Yazdaan Zeeshan",
+              "result": "drew"
+            }
+          ],
+          "rank": 7,
+          "wins": 2.5,
+          "losses": 0.5,
+          "spread": 266,
+          "rating": 1220,
+          "slug": "abdul-ahad-b16",
+          "ranked": true
+        },
+        {
+          "seed": 1,
+          "name": "Zainab Zuberi",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 142,
+              "scoreAgainst": 60,
+              "opponent": "Zulfiqar Ali",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 203,
+              "scoreAgainst": 109,
+              "opponent": "Zaki Abbas",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Hamza Azeem",
+              "result": "drew"
+            }
+          ],
+          "rank": 8,
+          "wins": 2.5,
+          "losses": 0.5,
+          "spread": 176,
+          "rating": 1220,
+          "slug": "zainab-zuberi-b1",
+          "ranked": true
+        },
+        {
+          "seed": 15,
+          "name": "Yazdaan Zeeshan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 100,
+              "scoreAgainst": 50,
+              "opponent": "Ramlah Hashim",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Abdul Ahad",
+              "result": "drew"
+            }
+          ],
+          "rank": 9,
+          "wins": 2.5,
+          "losses": 0.5,
+          "spread": 100,
+          "rating": 1210,
+          "slug": "yazdaan-zeeshan-b15",
+          "ranked": true
+        },
+        {
+          "seed": 32,
+          "name": "Hamza Azeem",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 111,
+              "scoreAgainst": 89,
+              "opponent": "Essa Sarosh",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 145,
+              "scoreAgainst": 125,
+              "opponent": "Haris Javed",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Zainab Zuberi",
+              "result": "drew"
+            }
+          ],
+          "rank": 10,
+          "wins": 2.5,
+          "losses": 0.5,
+          "spread": 42,
+          "rating": 1220,
+          "slug": "hamza-azeem-b32",
+          "ranked": true
+        },
+        {
+          "seed": 13,
+          "name": "Moosa Sarosh",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 163,
+              "scoreAgainst": 106,
+              "opponent": "Raamiz Ahmed",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 180,
+              "scoreAgainst": 181,
+              "opponent": "Muhammad Haider",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 203,
+              "scoreAgainst": 93,
+              "opponent": "Abdul Basit",
+              "result": "won"
+            }
+          ],
+          "rank": 11,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 166,
+          "rating": 1210,
+          "slug": "moosa-sarosh-b13",
+          "ranked": true
+        },
+        {
+          "seed": 3,
+          "name": "Kiflain",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 91,
+              "scoreAgainst": 146,
+              "opponent": "Anamta Khan",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 165,
+              "scoreAgainst": 70,
+              "opponent": "hamza",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 106,
+              "scoreAgainst": 36,
+              "opponent": "Zaki Abbas",
+              "result": "won"
+            }
+          ],
+          "rank": 12,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 110,
+          "rating": 1210,
+          "slug": "kiflain-b3",
+          "ranked": true
+        },
+        {
+          "seed": 27,
+          "name": "Haris Javed",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 100,
+              "scoreAgainst": 50,
+              "opponent": "Muhammad Salahuddin",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 125,
+              "scoreAgainst": 145,
+              "opponent": "Hamza Azeem",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 107,
+              "scoreAgainst": 57,
+              "opponent": "Muhammad Suleman",
+              "result": "won"
+            }
+          ],
+          "rank": 13,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 80,
+          "rating": 1210,
+          "slug": "haris-javed-b27",
+          "ranked": true
+        },
+        {
+          "seed": 33,
+          "name": "Ramlah Hashim",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 50,
+              "scoreAgainst": 100,
+              "opponent": "Yazdaan Zeeshan",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 150,
+              "scoreAgainst": 50,
+              "opponent": "Aariz Hussain",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 101,
+              "scoreAgainst": 88,
+              "opponent": "Shiza Sohail",
+              "result": "won"
+            }
+          ],
+          "rank": 14,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 63,
+          "rating": 1210,
+          "slug": "ramlah-hashim-b33",
+          "ranked": true
+        },
+        {
+          "seed": 31,
+          "name": "Shiza Sohail",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 165,
+              "scoreAgainst": 159,
+              "opponent": "Khizr Hussain",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 137,
+              "scoreAgainst": 76,
+              "opponent": "Salah Sohail",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 88,
+              "scoreAgainst": 101,
+              "opponent": "Ramlah Hashim",
+              "result": "lost"
+            }
+          ],
+          "rank": 15,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 54,
+          "rating": 1210,
+          "slug": "shiza-sohail-b31",
+          "ranked": true
+        },
+        {
+          "seed": 14,
+          "name": "Raamiz Ahmed",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 106,
+              "scoreAgainst": 163,
+              "opponent": "Moosa Sarosh",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 126,
+              "scoreAgainst": 75,
+              "opponent": "Sakina Rameen",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 100,
+              "scoreAgainst": 62,
+              "opponent": "Essa Sarosh",
+              "result": "won"
+            }
+          ],
+          "rank": 16,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 32,
+          "rating": 1210,
+          "slug": "raamiz-ahmed-b14",
+          "ranked": true
+        },
+        {
+          "seed": 17,
+          "name": "Murtaza",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 207,
+              "scoreAgainst": 341,
+              "opponent": "Abdul Ahad",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 233,
+              "scoreAgainst": 61,
+              "opponent": "Muzammil Sohail",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "hamza",
+              "result": "drew"
+            }
+          ],
+          "rank": 17,
+          "wins": 1.5,
+          "losses": 1.5,
+          "spread": 38,
+          "rating": 1200,
+          "slug": "murtaza-b17",
+          "ranked": true
+        },
+        {
+          "seed": 9,
+          "name": "hamza",
+          "rounds": [
+            {
+              "round": 2,
+              "scoreFor": 70,
+              "scoreAgainst": 165,
+              "opponent": "Kiflain",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Murtaza",
+              "result": "drew"
+            }
+          ],
+          "rank": 18,
+          "wins": 1.5,
+          "losses": 1.5,
+          "spread": -45,
+          "rating": 1190,
+          "slug": "hamza-b9",
+          "ranked": true
+        },
+        {
+          "seed": 29,
+          "name": "Ashar Narinja",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 106,
+              "scoreAgainst": 147,
+              "opponent": "Jazim Hussain",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 90,
+              "scoreAgainst": 115,
+              "opponent": "Essa Sarosh",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 72,
+              "scoreAgainst": 19,
+              "opponent": "Mohammad Hazil",
+              "result": "won"
+            }
+          ],
+          "rank": 19,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -13,
+          "rating": 1190,
+          "slug": "ashar-narinja-b29",
+          "ranked": true
+        },
+        {
+          "seed": 10,
+          "name": "Essa Sarosh",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 89,
+              "scoreAgainst": 111,
+              "opponent": "Hamza Azeem",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 115,
+              "scoreAgainst": 90,
+              "opponent": "Ashar Narinja",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 62,
+              "scoreAgainst": 100,
+              "opponent": "Raamiz Ahmed",
+              "result": "lost"
+            }
+          ],
+          "rank": 20,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -35,
+          "rating": 1190,
+          "slug": "essa-sarosh-b10",
+          "ranked": true
+        },
+        {
+          "seed": 21,
+          "name": "Mohammad Hazil",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 28,
+              "scoreAgainst": 45,
+              "opponent": "Zaki Abbas",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 50,
+              "scoreAgainst": 43,
+              "opponent": "Muhammad Soban",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 19,
+              "scoreAgainst": 72,
+              "opponent": "Ashar Narinja",
+              "result": "lost"
+            }
+          ],
+          "rank": 21,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -63,
+          "rating": 1190,
+          "slug": "mohammad-hazil-b21",
+          "ranked": true
+        },
+        {
+          "seed": 25,
+          "name": "Muhammad Soban",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 47,
+              "scoreAgainst": 44,
+              "opponent": "Muzammil Sohail",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 43,
+              "scoreAgainst": 50,
+              "opponent": "Mohammad Hazil",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 116,
+              "scoreAgainst": 198,
+              "opponent": "Wania Fatima",
+              "result": "lost"
+            }
+          ],
+          "rank": 22,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -86,
+          "rating": 1190,
+          "slug": "muhammad-soban-b25",
+          "ranked": true
+        },
+        {
+          "seed": 11,
+          "name": "Aariz Hussain",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 60,
+              "scoreAgainst": 60,
+              "opponent": "Abdul Basit",
+              "result": "drew"
+            },
+            {
+              "round": 2,
+              "scoreFor": 50,
+              "scoreAgainst": 150,
+              "opponent": "Ramlah Hashim",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Sakina Rameen",
+              "result": "drew"
+            }
+          ],
+          "rank": 23,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -100,
+          "rating": 1190,
+          "slug": "aariz-hussain-b11",
+          "ranked": true
+        },
+        {
+          "seed": 2,
+          "name": "Zulfiqar Ali",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 60,
+              "scoreAgainst": 142,
+              "opponent": "Zainab Zuberi",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 31,
+              "scoreAgainst": 131,
+              "opponent": "Wania Fatima",
+              "result": "lost"
+            }
+          ],
+          "rank": 24,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -132,
+          "rating": 1180,
+          "slug": "zulfiqar-ali-b2",
+          "ranked": true
+        },
+        {
+          "seed": 22,
+          "name": "Zaki Abbas",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 45,
+              "scoreAgainst": 28,
+              "opponent": "Mohammad Hazil",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 109,
+              "scoreAgainst": 203,
+              "opponent": "Zainab Zuberi",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 36,
+              "scoreAgainst": 106,
+              "opponent": "Kiflain",
+              "result": "lost"
+            }
+          ],
+          "rank": 25,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -147,
+          "rating": 1190,
+          "slug": "zaki-abbas-b22",
+          "ranked": true
+        },
+        {
+          "seed": 20,
+          "name": "Sakina Rameen",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 105,
+              "scoreAgainst": 181,
+              "opponent": "Muhammad Haider",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 75,
+              "scoreAgainst": 126,
+              "opponent": "Raamiz Ahmed",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
+              "opponent": "Aariz Hussain",
+              "result": "drew"
+            }
+          ],
+          "rank": 26,
+          "wins": 0.5,
+          "losses": 2.5,
+          "spread": -127,
+          "rating": 1180,
+          "slug": "sakina-rameen-b20",
+          "ranked": true
+        },
+        {
+          "seed": 12,
+          "name": "Abdul Basit",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 60,
+              "scoreAgainst": 60,
+              "opponent": "Aariz Hussain",
+              "result": "drew"
+            },
+            {
+              "round": 2,
+              "scoreFor": 97,
+              "scoreAgainst": 260,
+              "opponent": "Anamta Khan",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 93,
+              "scoreAgainst": 203,
+              "opponent": "Moosa Sarosh",
+              "result": "lost"
+            }
+          ],
+          "rank": 27,
+          "wins": 0.5,
+          "losses": 2.5,
+          "spread": -273,
+          "rating": 1180,
+          "slug": "abdul-basit-b12",
+          "ranked": true
+        },
+        {
+          "seed": 5,
+          "name": "Muhammad Suleman",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 109,
+              "scoreAgainst": 204,
+              "opponent": "Wania Fatima",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 125,
+              "scoreAgainst": 163,
+              "opponent": "Muhammad Sameed",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 57,
+              "scoreAgainst": 107,
+              "opponent": "Haris Javed",
+              "result": "lost"
+            }
+          ],
+          "rank": 28,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -183,
+          "rating": 1170,
+          "slug": "muhammad-suleman-b5",
+          "ranked": true
+        },
+        {
+          "seed": 23,
+          "name": "Salah Sohail",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 56,
+              "scoreAgainst": 117,
+              "opponent": "Muhammad Sameed",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 76,
+              "scoreAgainst": 137,
+              "opponent": "Shiza Sohail",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 46,
+              "scoreAgainst": 130,
+              "opponent": "Anamta Khan",
+              "result": "lost"
+            }
+          ],
+          "rank": 29,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -206,
+          "rating": 1170,
+          "slug": "salah-sohail-b23",
+          "ranked": true
+        },
+        {
+          "seed": 24,
+          "name": "Muzammil Sohail",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 44,
+              "scoreAgainst": 47,
+              "opponent": "Muhammad Soban",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 61,
+              "scoreAgainst": 233,
+              "opponent": "Murtaza",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 43,
+              "scoreAgainst": 92,
+              "opponent": "Jazim Hussain",
+              "result": "lost"
+            }
+          ],
+          "rank": 30,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -224,
+          "rating": 1170,
+          "slug": "muzammil-sohail-b24",
+          "ranked": true
+        },
+        {
+          "seed": 26,
+          "name": "Muhammad Salahuddin",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 50,
+              "scoreAgainst": 100,
+              "opponent": "Haris Javed",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 95,
+              "scoreAgainst": 255,
+              "opponent": "Manahil Fatima",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 47,
+              "scoreAgainst": 81,
+              "opponent": "Muhammad Haider",
+              "result": "lost"
+            }
+          ],
+          "rank": 31,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -244,
+          "rating": 1170,
+          "slug": "muhammad-salahuddin-b26",
+          "ranked": true
+        },
+        {
+          "seed": 8,
+          "name": "Umer Muhammad Ali",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 137,
+              "scoreAgainst": 249,
+              "opponent": "Manahil Fatima",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 204,
+              "scoreAgainst": 336,
+              "opponent": "Abdul Ahad",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 93,
+              "scoreAgainst": 104,
+              "opponent": "Muhammad Sameed",
+              "result": "lost"
+            }
+          ],
+          "rank": 32,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -255,
+          "rating": 1170,
+          "slug": "umer-muhammad-ali-b8",
+          "ranked": true
+        },
+        {
+          "seed": 30,
+          "name": "Khizr Hussain",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 159,
+              "scoreAgainst": 165,
+              "opponent": "Shiza Sohail",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 50,
+              "scoreAgainst": 150,
+              "opponent": "Jazim Hussain",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 118,
+              "scoreAgainst": 305,
+              "opponent": "Manahil Fatima",
+              "result": "lost"
+            }
+          ],
+          "rank": 33,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -293,
+          "rating": 1170,
+          "slug": "khizr-hussain-b30",
+          "ranked": true
+        }
+      ]
+    },
+    {
+      "code": "R",
+      "name": "Recreational",
+      "players": [
+        {
+          "seed": 12,
+          "name": "Aayan Khan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 455,
+              "scoreAgainst": 367,
+              "opponent": "Haadiyah Ahmed",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 486,
+              "scoreAgainst": 320,
+              "opponent": "Abdul Wasay",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 270,
+              "scoreAgainst": 224,
+              "opponent": "Affan Imran",
+              "result": "won"
+            }
+          ],
+          "rank": 1,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 300,
+          "rating": 1230,
+          "slug": "aayan-khan-r12",
+          "ranked": true
+        },
+        {
+          "seed": 2,
+          "name": "Muhammad Hashir",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 373,
+              "scoreAgainst": 282,
+              "opponent": "Omema Shoaib",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 372,
+              "scoreAgainst": 325,
+              "opponent": "Hareem Omar",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 337,
+              "scoreAgainst": 256,
+              "opponent": "Hareem Omar",
+              "result": "won"
+            }
+          ],
+          "rank": 2,
+          "wins": 3.0,
+          "losses": 0.0,
+          "spread": 219,
+          "rating": 1230,
+          "slug": "muhammad-hashir-r2",
+          "ranked": true
+        },
+        {
+          "seed": 5,
+          "name": "Affan Imran",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 302,
+              "scoreAgainst": 216,
+              "opponent": "Dhuha Alvi",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 322,
+              "scoreAgainst": 238,
+              "opponent": "Aiza Saad",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 224,
+              "scoreAgainst": 270,
+              "opponent": "Aayan Khan",
+              "result": "lost"
+            }
+          ],
+          "rank": 3,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 124,
+          "rating": 1210,
+          "slug": "affan-imran-r5",
+          "ranked": true
+        },
+        {
+          "seed": 9,
+          "name": "Abdul Wasay",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 351,
+              "scoreAgainst": 161,
+              "opponent": "Ramlah Hashim",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 320,
+              "scoreAgainst": 486,
+              "opponent": "Aayan Khan",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 237,
+              "scoreAgainst": 150,
+              "opponent": "Rayyan Lodhi",
+              "result": "won"
+            }
+          ],
+          "rank": 4,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 111,
+          "rating": 1210,
+          "slug": "abdul-wasay-r9",
+          "ranked": true
+        },
+        {
+          "seed": 14,
+          "name": "Yazdan Lodhi",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 326,
+              "scoreAgainst": 303,
+              "opponent": "Rayyan Lodhi",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 150,
+              "scoreAgainst": 50,
+              "opponent": "Ramlah Hashim",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 329,
+              "scoreAgainst": 377,
+              "opponent": "Haadiyah Ahmed",
+              "result": "lost"
+            }
+          ],
+          "rank": 5,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 75,
+          "rating": 1210,
+          "slug": "yazdan-lodhi-r14",
+          "ranked": true
+        },
+        {
+          "seed": 3,
+          "name": "Haadiyah Ahmed",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 367,
+              "scoreAgainst": 455,
+              "opponent": "Aayan Khan",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 306,
+              "scoreAgainst": 239,
+              "opponent": "Dhuha Alvi",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 377,
+              "scoreAgainst": 329,
+              "opponent": "Yazdan Lodhi",
+              "result": "won"
+            }
+          ],
+          "rank": 6,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": 27,
+          "rating": 1210,
+          "slug": "haadiyah-ahmed-r3",
+          "ranked": true
+        },
+        {
+          "seed": 10,
+          "name": "Aiza Saad",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 199,
+              "scoreAgainst": 190,
+              "opponent": "Qazi Amaan",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 238,
+              "scoreAgainst": 322,
+              "opponent": "Affan Imran",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 175,
+              "scoreAgainst": 174,
+              "opponent": "Omema Shoaib",
+              "result": "won"
+            }
+          ],
+          "rank": 7,
+          "wins": 2.0,
+          "losses": 1.0,
+          "spread": -74,
+          "rating": 1210,
+          "slug": "aiza-saad-r10",
+          "ranked": true
+        },
+        {
+          "seed": 13,
+          "name": "Rayyan Lodhi",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 303,
+              "scoreAgainst": 326,
+              "opponent": "Yazdan Lodhi",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 450,
+              "scoreAgainst": 261,
+              "opponent": "Qazi Amaan",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 150,
+              "scoreAgainst": 237,
+              "opponent": "Abdul Wasay",
+              "result": "lost"
+            }
+          ],
+          "rank": 8,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": 79,
+          "rating": 1190,
+          "slug": "rayyan-lodhi-r13",
+          "ranked": true
+        },
+        {
+          "seed": 7,
+          "name": "Ibtehaj Khan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 166,
+              "scoreAgainst": 219,
+              "opponent": "Hareem Omar",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 246,
+              "scoreAgainst": 177,
+              "opponent": "Omema Shoaib",
+              "result": "won"
+            },
+            {
+              "round": 3,
+              "scoreFor": 113,
+              "scoreAgainst": 168,
+              "opponent": "Qazi Amaan",
+              "result": "lost"
+            }
+          ],
+          "rank": 9,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -39,
+          "rating": 1190,
+          "slug": "ibtehaj-khan-r7",
+          "ranked": true
+        },
+        {
+          "seed": 4,
+          "name": "Dhuha Alvi",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 216,
+              "scoreAgainst": 302,
+              "opponent": "Affan Imran",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 239,
+              "scoreAgainst": 306,
+              "opponent": "Haadiyah Ahmed",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 150,
+              "scoreAgainst": 50,
+              "opponent": "Ramlah Hashim",
+              "result": "won"
+            }
+          ],
+          "rank": 10,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -53,
+          "rating": 1190,
+          "slug": "dhuha-alvi-r4",
+          "ranked": true
+        },
+        {
+          "seed": 6,
+          "name": "Hareem Omar",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 219,
+              "scoreAgainst": 166,
+              "opponent": "Ibtehaj Khan",
+              "result": "won"
+            },
+            {
+              "round": 2,
+              "scoreFor": 325,
+              "scoreAgainst": 372,
+              "opponent": "Muhammad Hashir",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 256,
+              "scoreAgainst": 337,
+              "opponent": "Muhammad Hashir",
+              "result": "lost"
+            }
+          ],
+          "rank": 11,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -75,
+          "rating": 1190,
+          "slug": "hareem-omar-r6",
+          "ranked": true
+        },
+        {
+          "seed": 11,
+          "name": "Qazi Amaan",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 190,
+              "scoreAgainst": 199,
+              "opponent": "Aiza Saad",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 261,
+              "scoreAgainst": 450,
+              "opponent": "Rayyan Lodhi",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 168,
+              "scoreAgainst": 113,
+              "opponent": "Ibtehaj Khan",
+              "result": "won"
+            }
+          ],
+          "rank": 12,
+          "wins": 1.0,
+          "losses": 2.0,
+          "spread": -143,
+          "rating": 1190,
+          "slug": "qazi-amaan-r11",
+          "ranked": true
+        },
+        {
+          "seed": 1,
+          "name": "Omema Shoaib",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 282,
+              "scoreAgainst": 373,
+              "opponent": "Muhammad Hashir",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 177,
+              "scoreAgainst": 246,
+              "opponent": "Ibtehaj Khan",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 174,
+              "scoreAgainst": 175,
+              "opponent": "Aiza Saad",
+              "result": "lost"
+            }
+          ],
+          "rank": 13,
+          "wins": 0.0,
+          "losses": 3.0,
+          "spread": -161,
+          "rating": 1170,
+          "slug": "omema-shoaib-r1",
+          "ranked": true
+        },
+        {
+          "seed": 8,
+          "name": "Ramlah Hashim",
+          "rounds": [
+            {
+              "round": 1,
+              "scoreFor": 161,
+              "scoreAgainst": 351,
+              "opponent": "Abdul Wasay",
+              "result": "lost"
+            },
+            {
+              "round": 2,
+              "scoreFor": 50,
+              "scoreAgainst": 150,
+              "opponent": "Yazdan Lodhi",
+              "result": "lost"
+            },
+            {
+              "round": 3,
+              "scoreFor": 50,
+              "scoreAgainst": 150,
+              "opponent": "Dhuha Alvi",
+              "result": "lost"
+            }
+          ],
+          "slug": "ramlah-hashim-r8",
+          "ranked": false
+        }
+      ]
+    }
+  ]
+}
