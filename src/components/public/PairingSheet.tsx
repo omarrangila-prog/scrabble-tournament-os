@@ -114,17 +114,21 @@ function BoardSheet({ boards }: { boards: PublicBoard[] }) {
   })).filter((g) => g.played.length > 0 || g.byes.length > 0);
 
   return (
-    <div
-      className="mt-[1.4vh] grid gap-[1.2vw]"
-      style={{ gridTemplateColumns: `repeat(${Math.max(1, groups.length)}, minmax(0, 1fr))` }}
-    >
+    <div className="mt-[1.2vh] space-y-[1vh]">
       {groups.map(({ division, played, byes }) => (
         <section key={division}>
-          <Heading label={LABEL[division] ?? division} note={`${played.length} ${played.length === 1 ? "board" : "boards"}`} />
-          {/* A long category flows into two narrow columns rather than off the bottom of the screen. */}
+          <Heading
+            label={LABEL[division] ?? division}
+            note={`${played.length} ${played.length === 1 ? "board" : "boards"}`}
+          />
+          {/*
+           * Two wide columns rather than three narrow ones. A board is two people facing each
+           * other across a table, so the row is written that way — one name each side of the
+           * table number — and that needs room for two long names on one line.
+           */}
           <ul
-            className="mt-[0.7vh] space-y-[0.45vh]"
-            style={played.length > 13 ? { columns: 2, columnGap: "0.7vw" } : undefined}
+            className="mt-[0.5vh] grid gap-[0.4vw]"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(42vw, 1fr))" }}
           >
             {played.map((b) => (
               <BoardRow key={b.board} board={b} />
@@ -146,42 +150,69 @@ function BoardRow({ board }: { board: PublicBoard }) {
 
   return (
     <li
-      className="mb-[0.45vh] flex break-inside-avoid items-center gap-[0.6vw] rounded-[0.45vw] px-[0.6vw] py-[0.45vh]"
+      className="flex items-center gap-[0.6vw] rounded-[0.45vw] px-[0.6vw] py-[0.5vh]"
       style={{ background: "rgba(255,255,255,0.05)" }}
     >
-      {/* The table number leads, because it is the thing somebody is hunting for. */}
+      <Side name={board.playerA} score={board.scoreA} won={aWon} align="right" />
+      {/* The table number sits between them, where the table itself does. */}
       <span
         className="grid shrink-0 place-items-center rounded-[0.35vw] text-[1.5vw] font-extrabold tabular-nums"
-        style={{ background: BRASS, color: NIGHT, width: "2.8vw", height: "2.8vw" }}
+        style={{ background: BRASS, color: NIGHT, width: "2.9vw", height: "2.9vw" }}
       >
         {board.board}
       </span>
-      <span className="min-w-0 flex-1">
-        <Side name={board.playerA} score={board.scoreA} won={aWon} />
-        <Side name={board.playerB ?? ""} score={board.scoreB} won={bWon} />
-      </span>
+      <Side name={board.playerB ?? ""} score={board.scoreB} won={bWon} align="left" />
     </li>
   );
 }
 
-/** One player's line: the name, and the score only once there is one. */
-function Side({ name, score, won }: { name: string; score: number | null; won: boolean }) {
-  return (
-    <span className="flex items-baseline gap-[0.5vw]">
+/** One side of a table: the name, and the score only once there is one. */
+function Side({
+  name,
+  score,
+  won,
+  align,
+}: {
+  name: string;
+  score: number | null;
+  won: boolean;
+  align: "left" | "right";
+}) {
+  const nameEl = (
+    <span
+      className="min-w-0 flex-1 truncate text-[1.15vw]"
+      style={{
+        fontWeight: won ? 800 : 600,
+        color: won ? EMERALD : IVORY,
+        textAlign: align === "right" ? "right" : "left",
+      }}
+    >
+      {name}
+    </span>
+  );
+  const scoreEl =
+    score !== null ? (
       <span
-        className="min-w-0 flex-1 truncate text-[1.1vw]"
-        style={{ fontWeight: won ? 800 : 600, color: won ? EMERALD : IVORY }}
+        className="shrink-0 text-[1.15vw] font-extrabold tabular-nums"
+        style={{ color: won ? EMERALD : `${IVORY}AA`, width: "2.6vw", textAlign: "center" }}
       >
-        {name}
+        {score}
       </span>
-      {score !== null ? (
-        <span
-          className="shrink-0 text-[1.1vw] font-extrabold tabular-nums"
-          style={{ color: won ? EMERALD : `${IVORY}AA` }}
-        >
-          {score}
-        </span>
-      ) : null}
+    ) : null;
+
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-[0.4vw]">
+      {align === "right" ? (
+        <>
+          {nameEl}
+          {scoreEl}
+        </>
+      ) : (
+        <>
+          {scoreEl}
+          {nameEl}
+        </>
+      )}
     </span>
   );
 }
@@ -189,21 +220,24 @@ function Side({ name, score, won }: { name: string; score: number | null; won: b
 function ByeRow({ name }: { name: string }) {
   return (
     <li
-      className="mb-[0.45vh] flex break-inside-avoid items-center gap-[0.6vw] rounded-[0.45vw] px-[0.6vw] py-[0.45vh]"
+      className="flex items-center gap-[0.6vw] rounded-[0.45vw] px-[0.6vw] py-[0.5vh]"
       style={{ background: "rgba(255,255,255,0.03)" }}
     >
+      <span
+        className="min-w-0 flex-1 truncate text-[1.15vw] font-bold"
+        style={{ textAlign: "right" }}
+      >
+        {name}
+      </span>
       {/* A bye has no table, so it is not given anything that looks like a table number. */}
       <span
         className="grid shrink-0 place-items-center rounded-[0.35vw] text-[1.3vw] font-extrabold"
-        style={{ background: "rgba(255,255,255,0.1)", color: `${IVORY}88`, width: "2.8vw", height: "2.8vw" }}
+        style={{ background: "rgba(255,255,255,0.1)", color: `${IVORY}88`, width: "2.9vw", height: "2.9vw" }}
       >
         &mdash;
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[1.1vw] font-bold">{name}</span>
-        <span className="block text-[1vw]" style={{ color: `${IVORY}99` }}>
-          Bye &mdash; no game this round
-        </span>
+      <span className="min-w-0 flex-1 text-[1.05vw]" style={{ color: `${IVORY}99` }}>
+        Bye &mdash; no game this round
       </span>
     </li>
   );
