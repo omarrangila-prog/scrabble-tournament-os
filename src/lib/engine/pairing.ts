@@ -24,6 +24,20 @@ export interface PairingInput {
   round: number;
   /** Pairings the director locked; carried through untouched. */
   locked?: Pairing[];
+  /**
+   * A source of randomness for the opening round.
+   *
+   * With no results yet, every player's record is identical, so the ranking rules fall
+   * through to their last tie-break and the queue comes out in a fixed order — near enough
+   * alphabetical. Folding that queue seats the two people whose names sort next to each
+   * other opposite one another, which at a family event means brothers playing brothers on
+   * board one.
+   *
+   * Pass `Math.random` to shuffle the opening queue instead. Later rounds ignore this
+   * entirely: once games have been played the order is the standings, and that must not be
+   * disturbed. Omitted, nothing changes — which is what keeps the engine's tests exact.
+   */
+  random?: () => number;
 }
 
 export interface PairingResult {
@@ -151,6 +165,16 @@ function explain(
   return `${parts.join(", ")}. No active pairing restrictions apply.`;
 }
 
+/** Fisher-Yates, on a copy, with the caller's own source of randomness. */
+function shuffled<T>(items: T[], random: () => number): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 /**
  * Pairs an ordered queue so no two players who have already met are put
  * together. Backtracks when a greedy choice would strand the tail; if the
@@ -228,7 +252,12 @@ export function generateRound(input: PairingInput): PairingResult {
       .sort((x, y) => compareByRules(records.get(x.id)!, records.get(y.id)!, tournament.rankingRules, ctx));
 
     const rankOf = new Map(pool.map((p, i) => [p.id, i + 1]));
-    const queue = [...pool];
+    /*
+     * Nothing has been played yet, so there is no standing to respect and the fixed order
+     * is an accident of the tie-breaks rather than a seeding. Shuffle it.
+     */
+    const opening = input.random && !pairings.some((x) => x.round < round);
+    const queue = opening ? shuffled(pool, input.random!) : [...pool];
 
     // Bye first: lowest-ranked eligible player who has not had one.
     if (queue.length % 2 === 1) {

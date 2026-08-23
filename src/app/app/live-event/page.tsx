@@ -394,6 +394,12 @@ export default function LiveEventPage() {
       pairings: games.pairings,
       tournament: app.tournament,
       round: nextRound,
+      /*
+       * The opening round is drawn at random. Without it the queue comes out close to
+       * alphabetical, which seats siblings — who share a surname — against each other.
+       * From round two on the engine ignores this and pairs on the standings.
+       */
+      random: Math.random,
     });
 
     const numbered: BoardPlan[] = generated.pairings.map((pairing) => ({
