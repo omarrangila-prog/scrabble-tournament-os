@@ -72,7 +72,7 @@ export function PairingSheet({ eventId }: { eventId: string }) {
 
   return (
     <main
-      className="min-h-dvh px-[1.6vw] py-[1.6vh]"
+      className="min-h-dvh px-[1.4vw] py-[0.9vh]"
       style={{
         background: `radial-gradient(120% 80% at 50% -10%, ${FELT} 0%, ${NIGHT} 72%)`,
         color: IVORY,
@@ -114,7 +114,7 @@ function BoardSheet({ boards }: { boards: PublicBoard[] }) {
   })).filter((g) => g.played.length > 0 || g.byes.length > 0);
 
   return (
-    <div className="mt-[1.2vh] space-y-[1vh]">
+    <div className="mt-[0.6vh] space-y-[0.5vh]">
       {groups.map(({ division, played, byes }) => (
         <section key={division}>
           <Heading
@@ -127,7 +127,7 @@ function BoardSheet({ boards }: { boards: PublicBoard[] }) {
            * table number — and that needs room for two long names on one line.
            */}
           <ul
-            className="mt-[0.5vh] grid gap-[0.4vw]"
+            className="mt-[0.4vh] grid gap-[0.3vw]"
             style={{ gridTemplateColumns: "repeat(auto-fill, minmax(42vw, 1fr))" }}
           >
             {played.map((b) => (
@@ -150,14 +150,14 @@ function BoardRow({ board }: { board: PublicBoard }) {
 
   return (
     <li
-      className="flex items-center gap-[0.6vw] rounded-[0.45vw] px-[0.6vw] py-[0.5vh]"
+      className="flex items-center gap-[0.5vw] rounded-[0.4vw] px-[0.5vw] py-[0.25vh]"
       style={{ background: "rgba(255,255,255,0.05)" }}
     >
       <Side name={board.playerA} score={board.scoreA} won={aWon} align="right" />
       {/* The table number sits between them, where the table itself does. */}
       <span
-        className="grid shrink-0 place-items-center rounded-[0.35vw] text-[1.5vw] font-extrabold tabular-nums"
-        style={{ background: BRASS, color: NIGHT, width: "2.9vw", height: "2.9vw" }}
+        className="grid shrink-0 place-items-center rounded-[0.3vw] text-[1.35vw] font-extrabold tabular-nums"
+        style={{ background: BRASS, color: NIGHT, width: "2.5vw", height: "2.5vw" }}
       >
         {board.board}
       </span>
@@ -180,7 +180,7 @@ function Side({
 }) {
   const nameEl = (
     <span
-      className="min-w-0 flex-1 truncate text-[1.15vw]"
+      className="min-w-0 flex-1 truncate text-[1.05vw]"
       style={{
         fontWeight: won ? 800 : 600,
         color: won ? EMERALD : IVORY,
@@ -193,7 +193,7 @@ function Side({
   const scoreEl =
     score !== null ? (
       <span
-        className="shrink-0 text-[1.15vw] font-extrabold tabular-nums"
+        className="shrink-0 text-[1.05vw] font-extrabold tabular-nums"
         style={{ color: won ? EMERALD : `${IVORY}AA`, width: "2.6vw", textAlign: "center" }}
       >
         {score}
@@ -220,11 +220,11 @@ function Side({
 function ByeRow({ name }: { name: string }) {
   return (
     <li
-      className="flex items-center gap-[0.6vw] rounded-[0.45vw] px-[0.6vw] py-[0.5vh]"
+      className="flex items-center gap-[0.5vw] rounded-[0.4vw] px-[0.5vw] py-[0.25vh]"
       style={{ background: "rgba(255,255,255,0.03)" }}
     >
       <span
-        className="min-w-0 flex-1 truncate text-[1.15vw] font-bold"
+        className="min-w-0 flex-1 truncate text-[1.05vw] font-bold"
         style={{ textAlign: "right" }}
       >
         {name}
@@ -232,7 +232,7 @@ function ByeRow({ name }: { name: string }) {
       {/* A bye has no table, so it is not given anything that looks like a table number. */}
       <span
         className="grid shrink-0 place-items-center rounded-[0.35vw] text-[1.3vw] font-extrabold"
-        style={{ background: "rgba(255,255,255,0.1)", color: `${IVORY}88`, width: "2.9vw", height: "2.9vw" }}
+        style={{ background: "rgba(255,255,255,0.1)", color: `${IVORY}88`, width: "2.5vw", height: "2.5vw" }}
       >
         &mdash;
       </span>
