@@ -85,21 +85,24 @@ export interface RegistrationEmail {
 export function registrationEmail(input: RegistrationEmail): Composed {
   const subject = `You are registered — check-in code ${input.checkInCode}`;
 
-  const html = wrap("You are registered", [
-    `<p style="margin:0;">Thank you, ${escape(input.fullName)}. Your place at ${escape(input.eventName)} is confirmed.</p>`,
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;background:${CREAM};border-radius:12px;">`,
-    `<tr><td style="padding:16px;text-align:center;">`,
-    `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:rgba(62,47,35,0.6);">Your check-in code</p>`,
-    `<p style="margin:6px 0 0;font-size:32px;font-weight:800;letter-spacing:5px;color:${BROWN};">${escape(input.checkInCode)}</p>`,
-    `</td></tr></table>`,
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">`,
-    `<tr><td style="padding:3px 0;">Date</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.eventDate)}</td></tr>`,
-    `<tr><td style="padding:3px 0;">Venue</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.venue)}</td></tr>`,
-    `<tr><td style="padding:3px 0;">Amount</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.amount)}</td></tr>`,
-    `</table>`,
-    button(input.checkInUrl, "Check in on the day"),
-    `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Keep this email. The code above is what you enter at the venue, and the button is a one-tap version of it.</p>`,
-  ].join(""));
+  const html = wrap(
+    "You are registered",
+    [
+      `<p style="margin:0;">Thank you, ${escape(input.fullName)}. Your place at ${escape(input.eventName)} is confirmed.</p>`,
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;background:${CREAM};border-radius:12px;">`,
+      `<tr><td style="padding:16px;text-align:center;">`,
+      `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:rgba(62,47,35,0.6);">Your check-in code</p>`,
+      `<p style="margin:6px 0 0;font-size:32px;font-weight:800;letter-spacing:5px;color:${BROWN};">${escape(input.checkInCode)}</p>`,
+      `</td></tr></table>`,
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">`,
+      `<tr><td style="padding:3px 0;">Date</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.eventDate)}</td></tr>`,
+      `<tr><td style="padding:3px 0;">Venue</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.venue)}</td></tr>`,
+      `<tr><td style="padding:3px 0;">Amount</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.amount)}</td></tr>`,
+      `</table>`,
+      button(input.checkInUrl, "Check in on the day"),
+      `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Keep this email. The code above is what you enter at the venue, and the button is a one-tap version of it.</p>`,
+    ].join(""),
+  );
 
   const text = [
     `You are registered — ${input.eventName}`,
@@ -164,21 +167,24 @@ export interface PlayerCodeEmail {
 export function playerCodeEmail(input: PlayerCodeEmail): Composed {
   const subject = `You are player ${input.playerNumber} — ${input.eventName}`;
 
-  const html = wrap("Your player number", [
-    `<p style="margin:0;">${escape(input.fullName)}, here is everything you need for the day.</p>`,
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;background:${CREAM};border-radius:12px;">`,
-    `<tr><td style="padding:18px;text-align:center;">`,
-    `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:rgba(62,47,35,0.6);">Your player number</p>`,
-    `<p style="margin:6px 0 0;font-size:44px;font-weight:800;letter-spacing:4px;color:${BROWN};">${escape(input.playerNumber)}</p>`,
-    `</td></tr></table>`,
-    `<p style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">At the door, scan the code on the screen and type <strong>${escape(input.playerNumber)}</strong>. You will also be asked for the <strong>last four digits of your mobile number</strong>, to confirm it is you. After that your phone remembers you for the rest of the day.</p>`,
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">`,
-    `<tr><td style="padding:3px 0;">Date</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.eventDate)}</td></tr>`,
-    `<tr><td style="padding:3px 0;">Venue</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.venue)}</td></tr>`,
-    `</table>`,
-    button(input.checkInUrl, "Check in on the day"),
-    `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Keep this message. If you lose your number, the desk can find you by name.</p>`,
-  ].join(""));
+  const html = wrap(
+    "Your player number",
+    [
+      `<p style="margin:0;">${escape(input.fullName)}, here is everything you need for the day.</p>`,
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;background:${CREAM};border-radius:12px;">`,
+      `<tr><td style="padding:18px;text-align:center;">`,
+      `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:rgba(62,47,35,0.6);">Your player number</p>`,
+      `<p style="margin:6px 0 0;font-size:44px;font-weight:800;letter-spacing:4px;color:${BROWN};">${escape(input.playerNumber)}</p>`,
+      `</td></tr></table>`,
+      `<p style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">At the door, scan the code on the screen and type <strong>${escape(input.playerNumber)}</strong>. You will also be asked for the <strong>last four digits of your mobile number</strong>, to confirm it is you. After that your phone remembers you for the rest of the day.</p>`,
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0 0;font-size:14px;color:rgba(62,47,35,0.85);">`,
+      `<tr><td style="padding:3px 0;">Date</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.eventDate)}</td></tr>`,
+      `<tr><td style="padding:3px 0;">Venue</td><td style="padding:3px 0;text-align:right;font-weight:600;">${escape(input.venue)}</td></tr>`,
+      `</table>`,
+      button(input.checkInUrl, "Check in on the day"),
+      `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Keep this message. If you lose your number, the desk can find you by name.</p>`,
+    ].join(""),
+  );
 
   const text = [
     `${input.fullName}, here is everything you need for the day.`,
@@ -206,31 +212,34 @@ export function certificateEmail(input: CertificateEmail): Composed {
    */
   const subject = `${input.statement} · ${input.eventName}`;
 
-  const html = wrap("Your certificate", [
-    `<p style="margin:0;font-size:16px;">Congratulations, ${escape(input.recipientName)}.</p>`,
-    `<p style="margin:10px 0 0;color:rgba(62,47,35,0.75);">Thank you for playing at ${escape(input.eventName)}. Every result below came from the boards you played and was confirmed by the person across the table from you.</p>`,
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;border:2px solid ${GOLD};border-radius:12px;background:#FFFDF6;">`,
-    `<tr><td style="padding:22px;text-align:center;">`,
-    `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.eventName)}</p>`,
-    `<p style="margin:4px 0 0;font-size:12px;font-weight:600;color:rgba(62,47,35,0.6);">${escape(input.eventDate)}</p>`,
-    `<p style="margin:16px 0 0;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.statement)}</p>`,
-    /*
-     * Capitals inside the certificate block, matching the printed sheet — and written into
-     * the string rather than left to `text-transform`, which several mail clients drop.
-     * The greeting above stays as they wrote their name; only the certificate shouts.
-     */
-    `<p style="margin:6px 0 0;font-size:24px;font-weight:800;letter-spacing:0.5px;color:${BROWN};">${escape(input.recipientName.toUpperCase())}</p>`,
-    input.personalNote
-      ? `<p style="margin:10px 0 0;font-size:13.5px;color:rgba(62,47,35,0.78);">${escape(input.personalNote)}</p>`
-      : "",
-    input.detail
-      ? `<p style="margin:8px 0 0;font-size:13px;color:rgba(62,47,35,0.7);">${escape(input.detail)}</p>`
-      : "",
-    `<p style="margin:16px 0 0;font-size:11px;letter-spacing:1.2px;color:rgba(62,47,35,0.5);">VERIFICATION ${escape(input.code)}</p>`,
-    `</td></tr></table>`,
-    button(input.verifyUrl, "Verify this certificate"),
-    `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Anyone can open that link to confirm this certificate against our records.</p>`,
-  ].join(""));
+  const html = wrap(
+    "Your certificate",
+    [
+      `<p style="margin:0;font-size:16px;">Congratulations, ${escape(input.recipientName)}.</p>`,
+      `<p style="margin:10px 0 0;color:rgba(62,47,35,0.75);">Thank you for playing at ${escape(input.eventName)}. Every result below came from the boards you played and was confirmed by the person across the table from you.</p>`,
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;border:2px solid ${GOLD};border-radius:12px;background:#FFFDF6;">`,
+      `<tr><td style="padding:22px;text-align:center;">`,
+      `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.eventName)}</p>`,
+      `<p style="margin:4px 0 0;font-size:12px;font-weight:600;color:rgba(62,47,35,0.6);">${escape(input.eventDate)}</p>`,
+      `<p style="margin:16px 0 0;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.statement)}</p>`,
+      /*
+       * Capitals inside the certificate block, matching the printed sheet — and written into
+       * the string rather than left to `text-transform`, which several mail clients drop.
+       * The greeting above stays as they wrote their name; only the certificate shouts.
+       */
+      `<p style="margin:6px 0 0;font-size:24px;font-weight:800;letter-spacing:0.5px;color:${BROWN};">${escape(input.recipientName.toUpperCase())}</p>`,
+      input.personalNote
+        ? `<p style="margin:10px 0 0;font-size:13.5px;color:rgba(62,47,35,0.78);">${escape(input.personalNote)}</p>`
+        : "",
+      input.detail
+        ? `<p style="margin:8px 0 0;font-size:13px;color:rgba(62,47,35,0.7);">${escape(input.detail)}</p>`
+        : "",
+      `<p style="margin:16px 0 0;font-size:11px;letter-spacing:1.2px;color:rgba(62,47,35,0.5);">VERIFICATION ${escape(input.code)}</p>`,
+      `</td></tr></table>`,
+      button(input.verifyUrl, "Verify this certificate"),
+      `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Anyone can open that link to confirm this certificate against our records.</p>`,
+    ].join(""),
+  );
 
   const text = [
     `Your certificate — ${input.eventName}`,
@@ -253,6 +262,80 @@ export function certificateEmail(input: CertificateEmail): Composed {
   ]
     .filter((line) => line !== "")
     .join("\n");
+
+  return { subject, html, text };
+}
+
+/* -------------------------------------------------------------------------- */
+
+export interface EventRecordEmail {
+  fullName: string;
+  division: string;
+  /** "1st of 12", or null for a player the standings do not rank. */
+  position: string | null;
+  record: string;
+  spread: string;
+  /** The player's own page: match history and their certificate to download. */
+  recordUrl: string;
+}
+
+/**
+ * What each player is sent after the event.
+ *
+ * The subject carries their result rather than the word "results", because that is the line
+ * most people will ever read of it, and "8th of 33 · Beginner" is worth opening.
+ *
+ * Everything stated here comes from the official report — the position, the record, the
+ * spread. Nothing is added: this is the message that tells somebody how they did, and a
+ * sentence invented in a template would be the version they believe.
+ */
+export function eventRecordEmail(input: EventRecordEmail): Composed {
+  const standing = input.position
+    ? `${input.position} · ${input.division}`
+    : `${input.division} division`;
+  const subject = `Your results and certificate — ${standing}`;
+
+  const html = wrap(
+    "Your results and certificate",
+    [
+      `<p style="margin:0;font-size:16px;">Thank you for playing, ${escape(input.fullName)}.</p>`,
+      `<p style="margin:10px 0 0;color:rgba(62,47,35,0.75);">Your complete record from Blufy&rsquo;s AlphaBattle is ready. It shows every round you played, who you faced, your score in each game, and where you finished in your category &mdash; and your certificate is on the same page to download.</p>`,
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;border:2px solid ${GOLD};border-radius:12px;background:#FFFDF6;">`,
+      `<tr><td style="padding:20px;text-align:center;">`,
+      `<p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:rgba(62,47,35,0.6);">${escape(input.division)} Division &middot; 23 August 2026</p>`,
+      `<p style="margin:8px 0 0;font-size:22px;font-weight:800;color:${BROWN};">${escape(input.fullName)}</p>`,
+      input.position
+        ? `<p style="margin:10px 0 0;font-size:15px;font-weight:700;color:${GOLD};">Finished ${escape(input.position)}</p>`
+        : `<p style="margin:10px 0 0;font-size:14px;color:rgba(62,47,35,0.7);">Played, not ranked in the final standings.</p>`,
+      `<p style="margin:6px 0 0;font-size:14px;color:rgba(62,47,35,0.75);">Record ${escape(input.record)} &middot; Spread ${escape(input.spread)}</p>`,
+      `</td></tr></table>`,
+      button(input.recordUrl, "Open my record and certificate"),
+      `<p style="margin:16px 0 0;font-size:13px;color:rgba(62,47,35,0.6);">Scores are as published by the Pakistan Scrabble Association, unchanged. If anything on your page looks wrong, reply to this email and we will check it against the official report.</p>`,
+    ].join(""),
+  );
+
+  const text = [
+    `Your results and certificate — Blufy's AlphaBattle`,
+    ``,
+    `Thank you for playing, ${input.fullName}.`,
+    ``,
+    `Your complete record is ready. It shows every round you played, who you faced,`,
+    `your score in each game, and where you finished in your category — and your`,
+    `certificate is on the same page to download.`,
+    ``,
+    `${input.division} Division · 23 August 2026`,
+    input.position
+      ? `Finished ${input.position}`
+      : `Played, not ranked in the final standings.`,
+    `Record ${input.record} · Spread ${input.spread}`,
+    ``,
+    `Open your record and certificate:`,
+    input.recordUrl,
+    ``,
+    `Scores are as published by the Pakistan Scrabble Association, unchanged. If`,
+    `anything on your page looks wrong, reply to this email and we will check it`,
+    `against the official report.`,
+  ].join("\n");
 
   return { subject, html, text };
 }

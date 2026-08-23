@@ -51,3 +51,7 @@ contacts/
 *.vcf
 *.xlsx
 exports/
+
+# Matched participant addresses for the results mailing. Real emails — same rule as
+# the contact exports above: generated on demand, never committed.
+scripts/data/

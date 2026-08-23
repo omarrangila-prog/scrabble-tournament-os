@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { certificateEmail, registrationEmail } from "./templates";
+import {
+  certificateEmail,
+  eventRecordEmail,
+  registrationEmail,
+} from "./templates";
 
 const REGISTRATION = {
   fullName: "Ahmed Khan",
@@ -126,5 +130,44 @@ describe("the name on a certificate", () => {
 
   it("puts what they won in the subject rather than the word certificate", () => {
     expect(mail.subject).toBe("Champion — Recreational · Blufy's AlphaBattle");
+  });
+});
+
+describe("the results email", () => {
+  const base = {
+    fullName: "Zainab Zuberi",
+    division: "Beginner",
+    position: "8th of 33",
+    record: "2.5–0.5",
+    spread: "+176",
+    recordUrl: "https://example.test/results/zainab-zuberi-b1",
+  };
+
+  it("puts the result in the subject, not the word results", () => {
+    const mail = eventRecordEmail(base);
+    expect(mail.subject).toContain("8th of 33");
+    expect(mail.subject).toContain("Beginner");
+  });
+
+  it("states the same figures in both formats", () => {
+    const mail = eventRecordEmail(base);
+    for (const body of [mail.html, mail.text]) {
+      expect(body).toContain("2.5");
+      expect(body).toContain("+176");
+      expect(body).toContain(base.recordUrl);
+    }
+  });
+
+  it("claims no position for a player the standings do not rank", () => {
+    const mail = eventRecordEmail({ ...base, position: null });
+    expect(mail.subject).not.toMatch(/\dth of/);
+    expect(mail.html).toContain("not ranked");
+    expect(mail.text).toContain("not ranked");
+  });
+
+  it("escapes a name rather than trusting it as markup", () => {
+    const mail = eventRecordEmail({ ...base, fullName: 'A <b>"x"</b>' });
+    expect(mail.html).not.toContain("<b>");
+    expect(mail.html).toContain("&lt;b&gt;");
   });
 });
