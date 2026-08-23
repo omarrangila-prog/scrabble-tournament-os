@@ -50,3 +50,4 @@ __pycache__/
 contacts/
 *.vcf
 *.xlsx
+exports/

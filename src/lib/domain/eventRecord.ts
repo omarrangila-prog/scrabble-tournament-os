@@ -105,136 +105,43 @@ export function margin(round: PlayerRound): number | null {
   return round.scoreFor - round.scoreAgainst;
 }
 
-export interface Honour {
-  /** What goes on the certificate, under the name. */
-  title: string;
-  /** The sentence underneath it, which must be checkable against the record above. */
-  citation: string;
+/**
+ * What one player's certificate says about their day.
+ *
+ * There was a version of this that handed every player a different coined title — Nail-Biter,
+ * Personal Best, Strong Finish. Each was earned by something real, and the whole idea was
+ * still wrong: fifty-nine people holding fifty-nine different labels invites them to compare
+ * labels rather than results, and a coined phrase is not something the tournament actually
+ * awarded anybody.
+ *
+ * So every certificate now says the same kind of thing, and the only thing that differs
+ * between them is what the player did: the division, how many rounds they played, where they
+ * finished, their record and their spread. All of it is on the official report, and none of
+ * it is a name somebody invented afterwards.
+ */
+export function citationFor(player: PlayerRecord, division: DivisionRecord): string {
+  const rounds = player.rounds.length;
+  const games = `${rounds} round${rounds === 1 ? "" : "s"}`;
+
+  if (!player.ranked) {
+    return (
+      `played ${games} in the ${division.name} division at Blufy's AlphaBattle on ` +
+      `23 August 2026 in Karachi.`
+    );
+  }
+
+  const field = division.players.filter((p) => p.ranked).length;
+  return (
+    `played ${games} in the ${division.name} division at Blufy's AlphaBattle on ` +
+    `23 August 2026 in Karachi, finishing ${ordinal(player.rank!)} of ${field} ` +
+    `with a record of ${formatRecord(player)} and a spread of ${withSign(player.spread)}.`
+  );
 }
 
-const PLACE = ["Winner", "Runner-up"];
-
-/**
- * What one player's certificate says.
- *
- * Two rules held this apart from a participation slip that repeats everybody's name.
- *
- * Every title has to be earned by something in the table on the same page — a placement, an
- * unbeaten card, the division's highest game, a win by a margin nobody else beat. A reader
- * who scrolls up must be able to see why it says what it says.
- *
- * And nothing is invented to fill a gap. A player whose day holds no superlative gets a
- * title drawn from what they actually did — their best game, their closest finish, the round
- * they turned around — rather than an inflated one. The last resort names the event and the
- * fact of having played it, which is true of everybody it will be given to.
- */
-export function honourFor(player: PlayerRecord, division: DivisionRecord): Honour {
-  const played = playedRounds(player);
-  const games = played.length;
-  const wins = played.filter((r) => r.result === "won").length;
-
-  if (player.rank !== null && player.rank <= PLACE.length) {
-    return {
-      title: `${PLACE[player.rank - 1]} — ${division.name}`,
-      citation:
-        `Finished ${player.rank === 1 ? "first" : "second"} of ${division.players.filter((p) => p.ranked).length} ` +
-        `in the ${division.name} division with ${formatRecord(player)} and a spread of ${withSign(player.spread)}.`,
-    };
-  }
-
-  /*
-   * Unbeaten means no loss and no draw anywhere on the card, not merely none among the
-   * games that were played out. A player whose round 3 was drawn has a drawn round on the
-   * page above; calling them unbeaten two inches below it would read as a mistake, because
-   * it would be one.
-   */
-  const blemish = player.rounds.some((r) => r.result === "lost" || r.result === "drew");
-  if (games >= 2 && wins === games && !blemish) {
-    return {
-      title: "Unbeaten",
-      citation: `Won every game at Blufy's AlphaBattle — ${wins} from ${games}.`,
-    };
-  }
-
-  const best = bestGame(player);
-  const divisionHigh = highestGame(division);
-  if (best && divisionHigh && best.scoreFor === divisionHigh.score && best.scoreFor !== null) {
-    return {
-      title: `High Game of the ${division.name} Division`,
-      citation: `Scored ${best.scoreFor} in round ${best.round}, the highest single game in the division.`,
-    };
-  }
-
-  const widest = played.reduce<PlayerRound | null>(
-    (top, r) => (r.result === "won" && (margin(r) ?? 0) > (margin(top ?? r) ?? 0) ? r : top),
-    null,
-  );
-  if (widest && (margin(widest) ?? 0) >= 200) {
-    return {
-      title: "Decisive Victory",
-      citation:
-        `Won round ${widest.round} against ${widest.opponent ?? "an opponent"} by ${margin(widest)} points, ` +
-        `${widest.scoreFor}–${widest.scoreAgainst}.`,
-    };
-  }
-
-  const closest = played.reduce<PlayerRound | null>(
-    (tight, r) =>
-      tight === null || Math.abs(margin(r) ?? 999) < Math.abs(margin(tight) ?? 999) ? r : tight,
-    null,
-  );
-  if (closest && Math.abs(margin(closest) ?? 999) <= 10) {
-    return {
-      title: "Nail-Biter",
-      citation:
-        `Round ${closest.round} against ${closest.opponent ?? "an opponent"} was decided by ` +
-        `${Math.abs(margin(closest) ?? 0)} point${Math.abs(margin(closest) ?? 0) === 1 ? "" : "s"} — ` +
-        `${closest.scoreFor}–${closest.scoreAgainst}.`,
-    };
-  }
-
-  /* Lost the opening round and won after it: the day turned around. */
-  const first = played.find((r) => r.round === Math.min(...played.map((p) => p.round)));
-  const later = played.filter((r) => first && r.round > first.round);
-  if (first?.result === "lost" && later.length > 0 && later.every((r) => r.result === "won")) {
-    return {
-      title: "Strong Finish",
-      citation: `Lost the opening game and won every round after it, finishing ${formatRecord(player)}.`,
-    };
-  }
-
-  const last = played.length > 0 ? played[played.length - 1] : null;
-  if (last?.result === "won") {
-    return {
-      title: "Finished on a Win",
-      citation:
-        `Closed the day by beating ${last.opponent ?? "an opponent"} in round ${last.round}, ` +
-        `${last.scoreFor}\u2013${last.scoreAgainst}.`,
-    };
-  }
-
-  const firstWin = played.find((r) => r.result === "won");
-  if (firstWin && wins === 1) {
-    return {
-      title: "First Win",
-      citation:
-        `Beat ${firstWin.opponent ?? "an opponent"} in round ${firstWin.round}, ` +
-        `${firstWin.scoreFor}\u2013${firstWin.scoreAgainst}.`,
-    };
-  }
-
-  if (best && best.scoreFor !== null) {
-    return {
-      title: "Personal Best",
-      citation:
-        `Best game of the day: ${best.scoreFor} against ${best.opponent ?? "an opponent"} in round ${best.round}.`,
-    };
-  }
-
-  return {
-    title: "Player, Blufy's AlphaBattle",
-    citation: `Took part in the ${division.name} division on 23 August 2026 in Karachi.`,
-  };
+export function ordinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 }
 
 /** The highest single game played in a division, and who scored it. */

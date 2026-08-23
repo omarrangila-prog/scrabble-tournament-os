@@ -7,11 +7,13 @@ import {
   findPlayer,
   formatRecord,
   highestGame,
-  honourFor,
+  citationFor,
+  ordinal,
   playedRounds,
 } from "./eventRecord";
 
-const division = (code: string) => EVENT.divisions.find((d) => d.code === code)!;
+const division = (code: string) =>
+  EVENT.divisions.find((d) => d.code === code)!;
 
 describe("the official record", () => {
   it("holds every player from all three divisions", () => {
@@ -36,7 +38,9 @@ describe("the official record", () => {
       expect(player.rounds.map((r) => r.round)).toEqual(
         [...player.rounds.map((r) => r.round)].sort((a, b) => a - b),
       );
-      expect(Math.max(...player.rounds.map((r) => r.round))).toBeLessThanOrEqual(3);
+      expect(
+        Math.max(...player.rounds.map((r) => r.round)),
+      ).toBeLessThanOrEqual(3);
     }
   });
 
@@ -56,72 +60,69 @@ describe("the official record", () => {
 });
 
 describe("what a certificate says", () => {
-  it("names the winner and the runner-up from the official standings", () => {
-    for (const div of EVENT.divisions) {
-      const ranked = div.players.filter((p) => p.ranked).sort((a, b) => a.rank! - b.rank!);
-      expect(honourFor(ranked[0], div).title).toBe(`Winner — ${div.name}`);
-      expect(honourFor(ranked[1], div).title).toBe(`Runner-up — ${div.name}`);
+  it("says the same kind of thing for everybody", () => {
+    for (const { player, division } of allPlayers()) {
+      const citation = citationFor(player, division);
+      expect(citation).toContain(division.name);
+      expect(citation).toContain("23 August 2026");
+      expect(citation.trim().length).toBeGreaterThan(0);
     }
   });
 
-  it("never leaves anybody without a title", () => {
-    for (const { player, division: div } of allPlayers()) {
-      const honour = honourFor(player, div);
-      expect(honour.title.trim().length).toBeGreaterThan(0);
-      expect(honour.citation.trim().length).toBeGreaterThan(0);
-    }
+  it("states a ranked player's finishing position, record and spread", () => {
+    const winner = findPlayer("hassan-hadi-a4")!;
+    const citation = citationFor(winner.player, winner.division);
+    expect(citation).toContain("1st of 12");
+    expect(citation).toContain("3–0");
+    expect(citation).toContain("+653");
   });
 
-  it("does not call a forfeit somebody's best game", () => {
+  it("claims no position for a player the standings do not rank", () => {
+    const withdrawn = findPlayer("ramlah-hashim-r8")!;
+    expect(withdrawn.player.ranked).toBe(false);
+    expect(withdrawn.player.rank).toBeNull();
+    const citation = citationFor(withdrawn.player, withdrawn.division);
+    expect(citation).not.toMatch(/finishing/);
+    expect(citation).toContain("played 3 rounds");
+  });
+
+  it("does not count a walkover as a game played", () => {
     /* TSH writes a walkover as 150-50 and a double walkover as 50-50. */
     const forfeited = allPlayers().find(({ player }) =>
       player.rounds.some((r) => r.scoreFor === 150 && r.scoreAgainst === 50),
     );
     expect(forfeited).toBeDefined();
-    const best = bestGame(forfeited!.player);
-    expect(best?.scoreFor).not.toBe(150);
+    expect(bestGame(forfeited!.player)?.scoreFor).not.toBe(150);
     expect(playedRounds(forfeited!.player).length).toBeLessThan(
       forfeited!.player.rounds.length,
     );
   });
 
   it("awards the division's high game to the player who actually scored it", () => {
-    const advanced = division("A");
+    const advanced = EVENT.divisions.find((d) => d.code === "A")!;
     const top = highestGame(advanced)!;
     expect(top.score).toBe(565);
     expect(top.by).toBe("Hassan Hadi");
   });
 
   it("reads a half point as a draw", () => {
-    const drawn = division("B").players.find((p) => p.name === "Zainab Zuberi")!;
+    const beginner = EVENT.divisions.find((d) => d.code === "B")!;
+    const drawn = beginner.players.find((p) => p.name === "Zainab Zuberi")!;
     expect(formatRecord(drawn)).toBe("2.5–0.5");
     expect(drawn.rounds.some((r) => r.result === "drew")).toBe(true);
   });
 
-  it("leaves a withdrawn player unranked rather than inventing a place", () => {
-    const withdrawn = findPlayer("ramlah-hashim-r8");
-    expect(withdrawn).not.toBeNull();
-    expect(withdrawn!.player.ranked).toBe(false);
-    expect(withdrawn!.player.rank).toBeNull();
-    expect(honourFor(withdrawn!.player, withdrawn!.division).title).not.toMatch(/Winner|Runner/);
-  });
-});
-
-describe("a drawn round", () => {
-  it("keeps a player who drew from being called unbeaten", () => {
-    const drawn = findPlayer("zainab-zuberi-b1")!;
-    expect(drawn.player.rounds.some((r) => r.result === "drew")).toBe(true);
-    expect(honourFor(drawn.player, drawn.division).title).not.toBe("Unbeaten");
-  });
-
-  it("still calls a player with three straight wins unbeaten", () => {
-    const clean = allPlayers().find(
-      ({ player }) =>
-        player.rank !== null &&
-        player.rank > 2 &&
-        player.rounds.length === 3 &&
-        player.rounds.every((r) => r.result === "won"),
-    );
-    if (clean) expect(honourFor(clean.player, clean.division).title).toBe("Unbeaten");
+  it("writes an ordinal the way a person would read it", () => {
+    expect([1, 2, 3, 4, 11, 12, 13, 21, 33].map(ordinal)).toEqual([
+      "1st",
+      "2nd",
+      "3rd",
+      "4th",
+      "11th",
+      "12th",
+      "13th",
+      "21st",
+      "33rd",
+    ]);
   });
 });

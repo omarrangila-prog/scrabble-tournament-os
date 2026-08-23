@@ -8,7 +8,8 @@ import {
   allPlayers,
   findPlayer,
   formatRecord,
-  honourFor,
+  citationFor,
+  ordinal,
   margin,
   withSign,
 } from "@/lib/domain/eventRecord";
@@ -55,7 +56,6 @@ export default async function PlayerRecordPage({
   if (!entry) notFound();
 
   const { player, division } = entry;
-  const honour = honourFor(player, division);
   const rankedCount = division.players.filter((p) => p.ranked).length;
 
   return (
@@ -121,7 +121,9 @@ export default async function PlayerRecordPage({
                       style={{ color: verdict.colour }}
                     >
                       {verdict.label}{" "}
-                      {gap !== null && round.result !== "bye" && round.result !== "drew" ? (
+                      {gap !== null &&
+                      round.result !== "bye" &&
+                      round.result !== "drew" ? (
                         <span className="font-semibold text-white/45">
                           by {Math.abs(gap)}
                         </span>
@@ -163,9 +165,13 @@ export default async function PlayerRecordPage({
           </h2>
           <Certificate
             name={player.name}
-            title={honour.title}
-            citation={honour.citation}
+            citation={citationFor(player, division)}
             division={division.name}
+            position={
+              player.ranked
+                ? `${ordinal(player.rank!)} of ${rankedCount}`
+                : null
+            }
           />
         </section>
 

@@ -1,41 +1,44 @@
 "use client";
 
 /**
- * The certificate itself, on the page and on paper.
+ * The certificate, on the page and on paper.
  *
- * Rendered rather than generated as an image so it prints at the printer's resolution and
- * reads on a phone, and so the name is real text — a participant can select it, and a
- * screen reader can say it.
+ * Rendered rather than drawn as an image, so it prints at the printer's resolution, reads on
+ * a phone, and the name is real text a person can select and a screen reader can say.
  *
- * The print rule hides the rest of the page and puts this alone on one landscape sheet.
+ * Printing takes the whole page — the round-by-round table and then the certificate — because
+ * the certificate's only claim is the record above it, and a person saving this wants the
+ * evidence in the same file as the statement.
  */
 export function Certificate({
   name,
-  title,
   citation,
   division,
+  position,
 }: {
   name: string;
-  title: string;
   citation: string;
   division: string;
+  /** "1st of 33", or null for a player the standings do not rank. */
+  position: string | null;
 }) {
   return (
     <>
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .certificate, .certificate * { visibility: visible; }
-          .certificate {
-            position: absolute; inset: 0; margin: 0;
-            width: 100%; border-radius: 0; box-shadow: none;
-            background: #FFFDF7 !important; color: #14261C !important;
-          }
-          .certificate .rule { background: #C89B3C !important; }
-          .certificate .muted { color: #5B6B60 !important; }
-          .certificate .accent { color: #8A6A1E !important; }
           .no-print { display: none !important; }
-          @page { size: A4 landscape; margin: 12mm; }
+          html, body { background: #FFFDF7 !important; color: #14261C !important; }
+          main { background: none !important; color: #14261C !important; padding: 0 !important; }
+          main * { color: #14261C !important; }
+          .certificate {
+            break-before: page;
+            background: #FFFDF7 !important;
+            border-color: #C89B3C !important;
+          }
+          .certificate .accent, .accent { color: #8A6A1E !important; }
+          .certificate .rule { background: #C89B3C !important; }
+          .muted { color: #5B6B60 !important; }
+          @page { margin: 14mm; }
         }
       `}</style>
 
@@ -60,13 +63,15 @@ export function Certificate({
         </p>
         <p className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">{name}</p>
 
-        <p className="accent mt-6 text-lg font-extrabold uppercase tracking-[0.12em] text-[#C89B3C] sm:text-2xl">
-          {title}
-        </p>
-
-        <p className="muted mx-auto mt-4 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
+        <p className="muted mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
           {citation}
         </p>
+
+        {position ? (
+          <p className="accent mt-6 text-lg font-extrabold uppercase tracking-[0.12em] text-[#C89B3C]">
+            Final position: {position}
+          </p>
+        ) : null}
 
         <div className="rule mx-auto mt-8 h-px w-16" style={{ background: "#C89B3C" }} />
         <figcaption className="muted mt-4 text-xs text-white/40">
@@ -77,10 +82,10 @@ export function Certificate({
       <button
         type="button"
         onClick={() => window.print()}
-        className="no-print mt-4 rounded-lg px-4 py-2 text-sm font-bold transition hover:opacity-90"
+        className="no-print mt-4 w-full rounded-lg px-4 py-3 text-sm font-bold transition hover:opacity-90 sm:w-auto"
         style={{ background: "#C89B3C", color: "#0E1512" }}
       >
-        Print or save as PDF
+        Download this page &mdash; results and certificate
       </button>
     </>
   );

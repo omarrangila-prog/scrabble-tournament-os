@@ -93,7 +93,7 @@ export default function ResultsPage() {
                         </span>
                         {player.rank! <= 2 ? (
                           <span className="text-xs font-bold uppercase tracking-wider text-[#C89B3C]">
-                            {player.rank === 1 ? "Winner" : "Runner-up"}
+                            {player.rank === 1 ? "1st place" : "2nd place"}
                           </span>
                         ) : null}
                       </span>
