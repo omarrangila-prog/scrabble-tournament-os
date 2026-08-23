@@ -13,6 +13,7 @@ import {
   field,
   importField,
   numberField,
+  setDivision,
   staffCheckIn,
 } from "@/lib/supabase/organizer";
 import { money } from "@/lib/engine/finance";
@@ -97,6 +98,32 @@ export default function DeskPage() {
         amount === null
           ? "Recorded as paid. No amount was on file — set one on Payments."
           : `${money(amount, "PKR")} recorded against your name.`,
+      tone: "success",
+    });
+  };
+
+  const moveDivision = async (
+    recordId: string,
+    name: string,
+    division: "beginner" | "recreational" | "advanced",
+  ) => {
+    setBusy(recordId);
+    const written = await setDivision(
+      recordId,
+      division,
+      app.currentUser?.name ?? roster.signedInAs ?? "Desk",
+    );
+    setBusy(null);
+
+    if (!written.ok) {
+      app.toast({ title: "Not changed", description: written.message, tone: "critical" });
+      return;
+    }
+
+    roster.reload();
+    app.toast({
+      title: `${name} is now ${division}`,
+      description: "Change it again before the round is paired if that is wrong.",
       tone: "success",
     });
   };
@@ -336,6 +363,46 @@ export default function DeskPage() {
                         Already checked in
                       </span>
                     )}
+                  </div>
+
+                  {/*
+                    Their category, changeable here.
+
+                    A nine-year-old entered as Recreational, or an adult who has clearly been
+                    playing for years sitting in Beginner — the organizer sees that in the
+                    room, and needs to fix it before pairing rather than after.
+
+                    Only before they are paired: a category that changes mid-tournament makes
+                    the games already played belong to a division the player is no longer in,
+                    and the standings then describe nobody.
+                  */}
+                  <div className="mt-3 border-t border-line pt-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+                      Category
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {(["beginner", "recreational", "advanced"] as const).map((d) => {
+                        const current = (field(r, "confirmedDivision") ?? field(r, "preferredDivision")) === d;
+                        return (
+                          <button
+                            key={d}
+                            type="button"
+                            disabled={working || current}
+                            onClick={() => void moveDivision(r.id, r.fullName, d)}
+                            className={cn(
+                              "rounded-control border-2 px-3 py-1.5 text-[12.5px] font-bold capitalize transition-colors",
+                              current
+                                ? "border-primary bg-primary text-white"
+                                : "border-line bg-white text-ink hover:border-primary/45",
+                              working && "opacity-50",
+                            )}
+                            aria-pressed={current}
+                          >
+                            {d}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </Card>
               );

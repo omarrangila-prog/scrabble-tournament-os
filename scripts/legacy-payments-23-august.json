@@ -215,10 +215,10 @@
     "name": "Raanya Fazil 8AUG",
     "age": 16,
     "phone": "03055330654",
-    "promo": "Pay at venue",
-    "amount": 900,
-    "paymentStatus": "Cash on Site",
-    "note": "Amount confirmed at PKR 900 by the organizer. To be collected in cash at the venue."
+    "promo": "VVIP",
+    "amount": 0,
+    "paymentStatus": "Promo / Complimentary",
+    "note": "VVIP pass — free entry granted by the organizer."
   },
   {
     "name": "Hania (free)",
@@ -350,9 +350,9 @@
     "name": "Muhammad Ebaad Hasan",
     "age": 13,
     "phone": "0319 8463396",
-    "promo": "Pay at venue",
-    "amount": 950,
-    "paymentStatus": "Cash on Site",
-    "note": "Will pay PKR 950 in cash at the venue."
+    "promo": "VVIP",
+    "amount": 0,
+    "paymentStatus": "Promo / Complimentary",
+    "note": "VVIP pass — free entry granted by the organizer."
   }
 ]

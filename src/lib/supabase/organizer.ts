@@ -383,3 +383,34 @@ export async function verifyPayment(recordId: string, by: string): Promise<boole
   });
   return !error && data === true;
 }
+
+
+/**
+ * Moving somebody between categories.
+ *
+ * Written to `confirmedDivision` as well as `preferredDivision`, because every read already
+ * prefers the confirmed one — what the participant asked for stays on the record, and the
+ * organizer's decision sits beside it rather than erasing the answer they gave.
+ */
+export async function setDivision(
+  recordId: string,
+  division: "beginner" | "recreational" | "advanced",
+  by: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { error } = await db.rpc("staff_set_division", {
+    p_record_id: recordId,
+    p_division: division,
+    p_by: by,
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("could not find the function")) {
+      return { ok: false, message: "Changing a category needs migration 0045 applied." };
+    }
+    return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
+  }
+  return { ok: true };
+}
