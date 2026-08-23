@@ -12,6 +12,7 @@ import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { useStore } from "@/lib/store/useStore";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { SongRound } from "@/components/public/SongRound";
+import { RoundVideoTimer } from "@/components/public/RoundVideoTimer";
 import { useRoundProgress } from "@/lib/supabase/useRoundProgress";
 import { cn } from "@/lib/utils";
 
@@ -162,6 +163,19 @@ export default function LiveDisplayPage() {
    */
   const playUrl = origin ? `${base}/play` : "";
 
+  /*
+   * The countdown video, opt-in by opening the wall as `/live/display?video=1`.
+   *
+   * Off by default: this is the screen a hall looks up at, and the app's own clock is counted
+   * from an instant in the database and matches every phone. Reopening without the parameter
+   * brings it straight back if the video misbehaves.
+   */
+  const wantsVideo = React.useSyncExternalStore(
+    React.useCallback(() => () => {}, []),
+    () => new URLSearchParams(window.location.search).get("video") === "1",
+    () => false,
+  );
+
   const minutesLeft = Math.max(0, Math.floor(clock.remaining / 60000));
   const lastMinute = clock.phase === "running" && clock.remaining > 0 && clock.remaining <= 60_000;
 
@@ -248,6 +262,24 @@ export default function LiveDisplayPage() {
                   ? "One minute remaining"
                   : `${minutesLeft} minute${minutesLeft === 1 ? "" : "s"} remaining`}
             </p>
+
+            {/*
+              The countdown video, under the real clock rather than instead of it. It beeps
+              each minute, which a room notices; the number above it is still the authority.
+            */}
+            {wantsVideo && clock.timer ? (
+              /*
+                Measured against the clock that is actually running, not the setting.
+                Those two can disagree — a round started before the length was changed keeps
+                the length it started with — and the first version checked the setting, so it
+                offered a twenty-five minute video over a twenty minute round.
+              */
+              <RoundVideoTimer
+                roundMinutes={clock.timer.plannedMinutes}
+                elapsedMs={Math.max(0, clock.timer.plannedMinutes * 60_000 - clock.remaining)}
+                running={clock.phase === "running"}
+              />
+            ) : null}
 
             {/*
               The same code, small, in the corner.
