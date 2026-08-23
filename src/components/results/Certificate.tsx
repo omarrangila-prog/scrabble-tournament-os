@@ -1,5 +1,13 @@
 "use client";
 
+import * as React from "react";
+
+import {
+  buildCertificatePdf,
+  certificateFileName,
+  type CertificateDoc,
+} from "@/lib/results/certificatePdf";
+
 /**
  * The certificate, on the page and on paper.
  *
@@ -15,13 +23,43 @@ export function Certificate({
   citation,
   division,
   position,
+  document: doc,
 }: {
   name: string;
   citation: string;
   division: string;
   /** "1st of 33", or null for a player the standings do not rank. */
   position: string | null;
+  /** Everything the downloaded file needs, so the button works with no server. */
+  document: CertificateDoc;
 }) {
+  const [state, setState] = React.useState<"idle" | "working" | "failed">(
+    "idle",
+  );
+
+  async function download() {
+    setState("working");
+    try {
+      const blob = await buildCertificatePdf(doc);
+      const url = URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = certificateFileName(name);
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+      /* Let the browser start the save before the blob is thrown away. */
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setState("idle");
+    } catch {
+      /*
+       * A browser that will not build the file still has one it can print, so the fallback
+       * is offered rather than an apology.
+       */
+      setState("failed");
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -56,12 +94,17 @@ export function Certificate({
           {division} Division · 23 August 2026 · Karachi
         </p>
 
-        <div className="rule mx-auto mt-6 h-px w-16" style={{ background: "#C89B3C" }} />
+        <div
+          className="rule mx-auto mt-6 h-px w-16"
+          style={{ background: "#C89B3C" }}
+        />
 
         <p className="muted mt-6 text-sm uppercase tracking-[0.2em] text-white/50">
           This certifies that
         </p>
-        <p className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">{name}</p>
+        <p className="mt-3 text-3xl font-extrabold tracking-tight sm:text-5xl">
+          {name}
+        </p>
 
         <p className="muted mx-auto mt-5 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">
           {citation}
@@ -73,20 +116,43 @@ export function Certificate({
           </p>
         ) : null}
 
-        <div className="rule mx-auto mt-8 h-px w-16" style={{ background: "#C89B3C" }} />
+        <div
+          className="rule mx-auto mt-8 h-px w-16"
+          style={{ background: "#C89B3C" }}
+        />
         <figcaption className="muted mt-4 text-xs text-white/40">
           Issued from the official tournament record.
         </figcaption>
       </figure>
 
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="no-print mt-4 w-full rounded-lg px-4 py-3 text-sm font-bold transition hover:opacity-90 sm:w-auto"
-        style={{ background: "#C89B3C", color: "#0E1512" }}
-      >
-        Download this page &mdash; results and certificate
-      </button>
+      <div className="no-print mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={download}
+          disabled={state === "working"}
+          className="w-full rounded-lg px-4 py-3 text-sm font-bold transition hover:opacity-90 disabled:opacity-60 sm:w-auto"
+          style={{ background: "#C89B3C", color: "#0E1512" }}
+        >
+          {state === "working"
+            ? "Preparing your file…"
+            : "Download my results and certificate (PDF)"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="w-full rounded-lg border border-white/20 px-4 py-3 text-sm font-bold text-white/80 transition hover:bg-white/5 sm:w-auto"
+        >
+          Print instead
+        </button>
+      </div>
+
+      {state === "failed" ? (
+        <p className="no-print mt-3 text-sm text-white/60">
+          This browser could not build the file. Use &ldquo;Print instead&rdquo;
+          and choose Save as PDF.
+        </p>
+      ) : null}
     </>
   );
 }

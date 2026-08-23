@@ -172,6 +172,17 @@ export default async function PlayerRecordPage({
                 ? `${ordinal(player.rank!)} of ${rankedCount}`
                 : null
             }
+            document={{
+              name: player.name,
+              division: division.name,
+              citation: citationFor(player, division),
+              position: player.ranked
+                ? `${ordinal(player.rank!)} of ${rankedCount}`
+                : null,
+              record: formatRecord(player),
+              spread: withSign(player.spread),
+              rounds: player.rounds,
+            }}
           />
         </section>
 
