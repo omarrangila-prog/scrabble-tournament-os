@@ -52,6 +52,14 @@ export default function ResultsPage() {
             opponent you faced, your score in each game, and where you finished
             in your category.
           </p>
+
+          <Link
+            href="/results/files"
+            className="mt-6 inline-block rounded-lg px-5 py-3 text-sm font-bold transition hover:opacity-90"
+            style={{ background: "#C89B3C", color: "#0E1512" }}
+          >
+            Download your results and certificate
+          </Link>
         </header>
 
         {EVENT.divisions.map((division) => {
