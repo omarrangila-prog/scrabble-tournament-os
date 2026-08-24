@@ -8,7 +8,7 @@
       "players": [
         {
           "seed": 4,
-          "name": "Hassan Hadi",
+          "name": "Hassan Hadi Khan",
           "rounds": [
             {
               "round": 1,
@@ -21,7 +21,7 @@
               "round": 2,
               "scoreFor": 559,
               "scoreAgainst": 365,
-              "opponent": "Ali Rashid",
+              "opponent": "Ali Rashid Khan",
               "result": "won"
             },
             {
@@ -55,14 +55,14 @@
               "round": 2,
               "scoreFor": 483,
               "scoreAgainst": 379,
-              "opponent": "Ebaad Hasan",
+              "opponent": "Muhammad Ebaad Hasan",
               "result": "won"
             },
             {
               "round": 3,
               "scoreFor": 516,
               "scoreAgainst": 266,
-              "opponent": "Affan Muhammad",
+              "opponent": "Affan Muhammad Ali",
               "result": "won"
             }
           ],
@@ -76,20 +76,20 @@
         },
         {
           "seed": 7,
-          "name": "Ali Rashid",
+          "name": "Ali Rashid Khan",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 441,
               "scoreAgainst": 435,
-              "opponent": "Ebaad Hasan",
+              "opponent": "Muhammad Ebaad Hasan",
               "result": "won"
             },
             {
               "round": 2,
               "scoreFor": 365,
               "scoreAgainst": 559,
-              "opponent": "Hassan Hadi",
+              "opponent": "Hassan Hadi Khan",
               "result": "lost"
             },
             {
@@ -130,7 +130,7 @@
               "round": 3,
               "scoreFor": 277,
               "scoreAgainst": 460,
-              "opponent": "Ali Rashid",
+              "opponent": "Ali Rashid Khan",
               "result": "lost"
             }
           ],
@@ -144,13 +144,13 @@
         },
         {
           "seed": 6,
-          "name": "Affan Muhammad",
+          "name": "Affan Muhammad Ali",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 458,
               "scoreAgainst": 336,
-              "opponent": "Khizer Hassan",
+              "opponent": "Syed Khizer Hassan",
               "result": "won"
             },
             {
@@ -184,7 +184,7 @@
               "round": 1,
               "scoreFor": 220,
               "scoreAgainst": 565,
-              "opponent": "Hassan Hadi",
+              "opponent": "Hassan Hadi Khan",
               "result": "lost"
             },
             {
@@ -198,7 +198,7 @@
               "round": 3,
               "scoreFor": 335,
               "scoreAgainst": 275,
-              "opponent": "Faheem Naqvi",
+              "opponent": "Syed Mohammed Faheem Naqvi",
               "result": "won"
             }
           ],
@@ -212,13 +212,13 @@
         },
         {
           "seed": 9,
-          "name": "Ebaad Hasan",
+          "name": "Muhammad Ebaad Hasan",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 435,
               "scoreAgainst": 441,
-              "opponent": "Ali Rashid",
+              "opponent": "Ali Rashid Khan",
               "result": "lost"
             },
             {
@@ -232,7 +232,7 @@
               "round": 3,
               "scoreFor": 495,
               "scoreAgainst": 236,
-              "opponent": "Khizer Hassan",
+              "opponent": "Syed Khizer Hassan",
               "result": "won"
             }
           ],
@@ -252,21 +252,21 @@
               "round": 1,
               "scoreFor": 515,
               "scoreAgainst": 281,
-              "opponent": "Faheem Naqvi",
+              "opponent": "Syed Mohammed Faheem Naqvi",
               "result": "won"
             },
             {
               "round": 2,
               "scoreFor": 436,
               "scoreAgainst": 444,
-              "opponent": "Affan Muhammad",
+              "opponent": "Affan Muhammad Ali",
               "result": "lost"
             },
             {
               "round": 3,
               "scoreFor": 356,
               "scoreAgainst": 470,
-              "opponent": "Hassan Hadi",
+              "opponent": "Hassan Hadi Khan",
               "result": "lost"
             }
           ],
@@ -314,27 +314,27 @@
         },
         {
           "seed": 8,
-          "name": "Khizer Hassan",
+          "name": "Syed Khizer Hassan",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 336,
               "scoreAgainst": 458,
-              "opponent": "Affan Muhammad",
+              "opponent": "Affan Muhammad Ali",
               "result": "lost"
             },
             {
               "round": 2,
               "scoreFor": 351,
               "scoreAgainst": 296,
-              "opponent": "Faheem Naqvi",
+              "opponent": "Syed Mohammed Faheem Naqvi",
               "result": "won"
             },
             {
               "round": 3,
               "scoreFor": 236,
               "scoreAgainst": 495,
-              "opponent": "Ebaad Hasan",
+              "opponent": "Muhammad Ebaad Hasan",
               "result": "lost"
             }
           ],
@@ -382,7 +382,7 @@
         },
         {
           "seed": 11,
-          "name": "Faheem Naqvi",
+          "name": "Syed Mohammed Faheem Naqvi",
           "rounds": [
             {
               "round": 1,
@@ -395,7 +395,7 @@
               "round": 2,
               "scoreFor": 296,
               "scoreAgainst": 351,
-              "opponent": "Khizer Hassan",
+              "opponent": "Syed Khizer Hassan",
               "result": "lost"
             },
             {
@@ -442,7 +442,7 @@
               "round": 3,
               "scoreFor": 305,
               "scoreAgainst": 118,
-              "opponent": "Khizr Hussain",
+              "opponent": "Khizr Hussain Khan",
               "result": "won"
             }
           ],
@@ -469,7 +469,7 @@
               "round": 2,
               "scoreFor": 260,
               "scoreAgainst": 97,
-              "opponent": "Abdul Basit",
+              "opponent": "Abdul Basit Lodhi",
               "result": "won"
             },
             {
@@ -496,21 +496,21 @@
               "round": 1,
               "scoreFor": 204,
               "scoreAgainst": 109,
-              "opponent": "Muhammad Suleman",
+              "opponent": "Muhammad Suleman Rehman",
               "result": "won"
             },
             {
               "round": 2,
               "scoreFor": 131,
               "scoreAgainst": 31,
-              "opponent": "Zulfiqar Ali",
+              "opponent": "Syed Zulfiqar Ali Shah",
               "result": "won"
             },
             {
               "round": 3,
               "scoreFor": 198,
               "scoreAgainst": 116,
-              "opponent": "Muhammad Soban",
+              "opponent": "Muhammad Soban Sheikh",
               "result": "won"
             }
           ],
@@ -524,20 +524,20 @@
         },
         {
           "seed": 28,
-          "name": "Jazim Hussain",
+          "name": "Jazim Hussain Khan",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 147,
               "scoreAgainst": 106,
-              "opponent": "Ashar Narinja",
+              "opponent": "Muhammad Ashar Narinja",
               "result": "won"
             },
             {
               "round": 2,
               "scoreFor": 150,
               "scoreAgainst": 50,
-              "opponent": "Khizr Hussain",
+              "opponent": "Khizr Hussain Khan",
               "result": "won"
             },
             {
@@ -571,7 +571,7 @@
               "round": 2,
               "scoreFor": 181,
               "scoreAgainst": 180,
-              "opponent": "Moosa Sarosh",
+              "opponent": "Muhammad Moosa Sarosh",
               "result": "won"
             },
             {
@@ -592,7 +592,7 @@
         },
         {
           "seed": 18,
-          "name": "Muhammad Sameed",
+          "name": "Muhammad Sameed Bin Saad",
           "rounds": [
             {
               "round": 1,
@@ -605,7 +605,7 @@
               "round": 2,
               "scoreFor": 163,
               "scoreAgainst": 125,
-              "opponent": "Muhammad Suleman",
+              "opponent": "Muhammad Suleman Rehman",
               "result": "won"
             },
             {
@@ -666,14 +666,14 @@
               "round": 1,
               "scoreFor": 142,
               "scoreAgainst": 60,
-              "opponent": "Zulfiqar Ali",
+              "opponent": "Syed Zulfiqar Ali Shah",
               "result": "won"
             },
             {
               "round": 2,
               "scoreFor": 203,
               "scoreAgainst": 109,
-              "opponent": "Zaki Abbas",
+              "opponent": "Zaki Abbas Somani",
               "result": "won"
             },
             {
@@ -727,7 +727,7 @@
               "round": 1,
               "scoreFor": 111,
               "scoreAgainst": 89,
-              "opponent": "Essa Sarosh",
+              "opponent": "Muhammad Essa Sarosh",
               "result": "won"
             },
             {
@@ -755,7 +755,7 @@
         },
         {
           "seed": 13,
-          "name": "Moosa Sarosh",
+          "name": "Muhammad Moosa Sarosh",
           "rounds": [
             {
               "round": 1,
@@ -775,7 +775,7 @@
               "round": 3,
               "scoreFor": 203,
               "scoreAgainst": 93,
-              "opponent": "Abdul Basit",
+              "opponent": "Abdul Basit Lodhi",
               "result": "won"
             }
           ],
@@ -802,14 +802,14 @@
               "round": 2,
               "scoreFor": 165,
               "scoreAgainst": 70,
-              "opponent": "hamza",
+              "opponent": "Hamza",
               "result": "won"
             },
             {
               "round": 3,
               "scoreFor": 106,
               "scoreAgainst": 36,
-              "opponent": "Zaki Abbas",
+              "opponent": "Zaki Abbas Somani",
               "result": "won"
             }
           ],
@@ -843,7 +843,7 @@
               "round": 3,
               "scoreFor": 107,
               "scoreAgainst": 57,
-              "opponent": "Muhammad Suleman",
+              "opponent": "Muhammad Suleman Rehman",
               "result": "won"
             }
           ],
@@ -870,7 +870,7 @@
               "round": 2,
               "scoreFor": 150,
               "scoreAgainst": 50,
-              "opponent": "Aariz Hussain",
+              "opponent": "Aariz Hussain Solangi",
               "result": "won"
             },
             {
@@ -897,7 +897,7 @@
               "round": 1,
               "scoreFor": 165,
               "scoreAgainst": 159,
-              "opponent": "Khizr Hussain",
+              "opponent": "Khizr Hussain Khan",
               "result": "won"
             },
             {
@@ -931,7 +931,7 @@
               "round": 1,
               "scoreFor": 106,
               "scoreAgainst": 163,
-              "opponent": "Moosa Sarosh",
+              "opponent": "Muhammad Moosa Sarosh",
               "result": "lost"
             },
             {
@@ -945,7 +945,7 @@
               "round": 3,
               "scoreFor": 100,
               "scoreAgainst": 62,
-              "opponent": "Essa Sarosh",
+              "opponent": "Muhammad Essa Sarosh",
               "result": "won"
             }
           ],
@@ -979,7 +979,7 @@
               "round": 3,
               "scoreFor": 50,
               "scoreAgainst": 50,
-              "opponent": "hamza",
+              "opponent": "Hamza",
               "result": "drew"
             }
           ],
@@ -993,7 +993,7 @@
         },
         {
           "seed": 9,
-          "name": "hamza",
+          "name": "Hamza",
           "rounds": [
             {
               "round": 2,
@@ -1020,20 +1020,20 @@
         },
         {
           "seed": 29,
-          "name": "Ashar Narinja",
+          "name": "Muhammad Ashar Narinja",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 106,
               "scoreAgainst": 147,
-              "opponent": "Jazim Hussain",
+              "opponent": "Jazim Hussain Khan",
               "result": "lost"
             },
             {
               "round": 2,
               "scoreFor": 90,
               "scoreAgainst": 115,
-              "opponent": "Essa Sarosh",
+              "opponent": "Muhammad Essa Sarosh",
               "result": "lost"
             },
             {
@@ -1054,7 +1054,7 @@
         },
         {
           "seed": 10,
-          "name": "Essa Sarosh",
+          "name": "Muhammad Essa Sarosh",
           "rounds": [
             {
               "round": 1,
@@ -1067,7 +1067,7 @@
               "round": 2,
               "scoreFor": 115,
               "scoreAgainst": 90,
-              "opponent": "Ashar Narinja",
+              "opponent": "Muhammad Ashar Narinja",
               "result": "won"
             },
             {
@@ -1094,21 +1094,21 @@
               "round": 1,
               "scoreFor": 28,
               "scoreAgainst": 45,
-              "opponent": "Zaki Abbas",
+              "opponent": "Zaki Abbas Somani",
               "result": "lost"
             },
             {
               "round": 2,
               "scoreFor": 50,
               "scoreAgainst": 43,
-              "opponent": "Muhammad Soban",
+              "opponent": "Muhammad Soban Sheikh",
               "result": "won"
             },
             {
               "round": 3,
               "scoreFor": 19,
               "scoreAgainst": 72,
-              "opponent": "Ashar Narinja",
+              "opponent": "Muhammad Ashar Narinja",
               "result": "lost"
             }
           ],
@@ -1122,7 +1122,7 @@
         },
         {
           "seed": 25,
-          "name": "Muhammad Soban",
+          "name": "Muhammad Soban Sheikh",
           "rounds": [
             {
               "round": 1,
@@ -1156,13 +1156,13 @@
         },
         {
           "seed": 11,
-          "name": "Aariz Hussain",
+          "name": "Aariz Hussain Solangi",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 60,
               "scoreAgainst": 60,
-              "opponent": "Abdul Basit",
+              "opponent": "Abdul Basit Lodhi",
               "result": "drew"
             },
             {
@@ -1190,7 +1190,7 @@
         },
         {
           "seed": 2,
-          "name": "Zulfiqar Ali",
+          "name": "Syed Zulfiqar Ali Shah",
           "rounds": [
             {
               "round": 1,
@@ -1217,7 +1217,7 @@
         },
         {
           "seed": 22,
-          "name": "Zaki Abbas",
+          "name": "Zaki Abbas Somani",
           "rounds": [
             {
               "round": 1,
@@ -1271,7 +1271,7 @@
               "round": 3,
               "scoreFor": 50,
               "scoreAgainst": 50,
-              "opponent": "Aariz Hussain",
+              "opponent": "Aariz Hussain Solangi",
               "result": "drew"
             }
           ],
@@ -1285,13 +1285,13 @@
         },
         {
           "seed": 12,
-          "name": "Abdul Basit",
+          "name": "Abdul Basit Lodhi",
           "rounds": [
             {
               "round": 1,
               "scoreFor": 60,
               "scoreAgainst": 60,
-              "opponent": "Aariz Hussain",
+              "opponent": "Aariz Hussain Solangi",
               "result": "drew"
             },
             {
@@ -1305,7 +1305,7 @@
               "round": 3,
               "scoreFor": 93,
               "scoreAgainst": 203,
-              "opponent": "Moosa Sarosh",
+              "opponent": "Muhammad Moosa Sarosh",
               "result": "lost"
             }
           ],
@@ -1319,7 +1319,7 @@
         },
         {
           "seed": 5,
-          "name": "Muhammad Suleman",
+          "name": "Muhammad Suleman Rehman",
           "rounds": [
             {
               "round": 1,
@@ -1332,7 +1332,7 @@
               "round": 2,
               "scoreFor": 125,
               "scoreAgainst": 163,
-              "opponent": "Muhammad Sameed",
+              "opponent": "Muhammad Sameed Bin Saad",
               "result": "lost"
             },
             {
@@ -1359,7 +1359,7 @@
               "round": 1,
               "scoreFor": 56,
               "scoreAgainst": 117,
-              "opponent": "Muhammad Sameed",
+              "opponent": "Muhammad Sameed Bin Saad",
               "result": "lost"
             },
             {
@@ -1393,7 +1393,7 @@
               "round": 1,
               "scoreFor": 44,
               "scoreAgainst": 47,
-              "opponent": "Muhammad Soban",
+              "opponent": "Muhammad Soban Sheikh",
               "result": "lost"
             },
             {
@@ -1407,7 +1407,7 @@
               "round": 3,
               "scoreFor": 43,
               "scoreAgainst": 92,
-              "opponent": "Jazim Hussain",
+              "opponent": "Jazim Hussain Khan",
               "result": "lost"
             }
           ],
@@ -1475,7 +1475,7 @@
               "round": 3,
               "scoreFor": 93,
               "scoreAgainst": 104,
-              "opponent": "Muhammad Sameed",
+              "opponent": "Muhammad Sameed Bin Saad",
               "result": "lost"
             }
           ],
@@ -1489,7 +1489,7 @@
         },
         {
           "seed": 30,
-          "name": "Khizr Hussain",
+          "name": "Khizr Hussain Khan",
           "rounds": [
             {
               "round": 1,
@@ -1502,7 +1502,7 @@
               "round": 2,
               "scoreFor": 50,
               "scoreAgainst": 150,
-              "opponent": "Jazim Hussain",
+              "opponent": "Jazim Hussain Khan",
               "result": "lost"
             },
             {
@@ -1542,7 +1542,7 @@
               "round": 2,
               "scoreFor": 486,
               "scoreAgainst": 320,
-              "opponent": "Abdul Wasay",
+              "opponent": "Abdul Wasay Narinja",
               "result": "won"
             },
             {
@@ -1631,7 +1631,7 @@
         },
         {
           "seed": 9,
-          "name": "Abdul Wasay",
+          "name": "Abdul Wasay Narinja",
           "rounds": [
             {
               "round": 1,
@@ -1651,7 +1651,7 @@
               "round": 3,
               "scoreFor": 237,
               "scoreAgainst": 150,
-              "opponent": "Rayyan Lodhi",
+              "opponent": "Rayyan Hussain Khan Lodhi",
               "result": "won"
             }
           ],
@@ -1671,7 +1671,7 @@
               "round": 1,
               "scoreFor": 326,
               "scoreAgainst": 303,
-              "opponent": "Rayyan Lodhi",
+              "opponent": "Rayyan Hussain Khan Lodhi",
               "result": "won"
             },
             {
@@ -1767,7 +1767,7 @@
         },
         {
           "seed": 13,
-          "name": "Rayyan Lodhi",
+          "name": "Rayyan Hussain Khan Lodhi",
           "rounds": [
             {
               "round": 1,
@@ -1787,7 +1787,7 @@
               "round": 3,
               "scoreFor": 150,
               "scoreAgainst": 237,
-              "opponent": "Abdul Wasay",
+              "opponent": "Abdul Wasay Narinja",
               "result": "lost"
             }
           ],
@@ -1916,7 +1916,7 @@
               "round": 2,
               "scoreFor": 261,
               "scoreAgainst": 450,
-              "opponent": "Rayyan Lodhi",
+              "opponent": "Rayyan Hussain Khan Lodhi",
               "result": "lost"
             },
             {
@@ -1977,7 +1977,7 @@
               "round": 1,
               "scoreFor": 161,
               "scoreAgainst": 351,
-              "opponent": "Abdul Wasay",
+              "opponent": "Abdul Wasay Narinja",
               "result": "lost"
             },
             {

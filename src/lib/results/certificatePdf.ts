@@ -370,10 +370,17 @@ function centred(
   const baseline = top + size * 0.3;
 
   if (options.spacing) {
-    doc.text(text, W / 2, baseline, {
-      align: "center",
-      charSpace: options.spacing,
-    });
+    /*
+     * jsPDF's own `align: "center"` measures the string *without* letter-spacing to find
+     * the centre point, then renders it *with* the spacing added between every character —
+     * so the drawn text is wider than what was centred, and every certificate came out
+     * shifted right of true centre by roughly half the tracking. Centring by hand — the
+     * real spaced width, split evenly on both sides of the midline — is what the on-screen
+     * certificate already does with ordinary CSS, and it never disagrees with the printed
+     * page.
+     */
+    const spacedWidth = doc.getTextWidth(text) + options.spacing * (text.length - 1);
+    doc.text(text, W / 2 - spacedWidth / 2, baseline, { charSpace: options.spacing });
   } else {
     doc.text(text, W / 2, baseline, { align: "center" });
   }

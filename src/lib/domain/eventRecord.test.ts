@@ -102,7 +102,7 @@ describe("what a certificate says", () => {
     const advanced = EVENT.divisions.find((d) => d.code === "A")!;
     const top = highestGame(advanced)!;
     expect(top.score).toBe(565);
-    expect(top.by).toBe("Hassan Hadi");
+    expect(top.by).toBe("Hassan Hadi Khan");
   });
 
   it("reads a half point as a draw", () => {
