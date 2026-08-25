@@ -528,3 +528,125 @@ describe("a full tournament, end to end", () => {
     expect(report.unassignedPlayers).toBe(0);
   });
 });
+
+/**
+ * The same invariants as above, swept across the field sizes a real event actually
+ * produces — including the ones a 64-player fixture never exercises: a field too small to
+ * avoid a repeat by round 3, a field of exactly 2, and byes recurring often enough in a
+ * small field to test that nobody sits out twice while an alternative exists.
+ *
+ * Phase 1 of the reliability rebuild asks for this sweep by name: every active player
+ * exactly once, the right match count, the right bye count, no duplicate table, nobody
+ * paired against themselves, and repeats only when the field has run out of legal
+ * opponents.
+ */
+describe("pairing engine — property sweep across field sizes", () => {
+  const SIZES = [2, 3, 4, 5, 7, 8, 17, 21, 42, 71];
+  const ROUNDS = 5;
+
+  for (const size of SIZES) {
+    it(`field of ${size}: every round is structurally sound for ${ROUNDS} rounds`, () => {
+      const players = makePlayers(size);
+      let pairings: Pairing[] = [];
+      const byeCounts = new Map<string, number>();
+      const everMet = new Map<string, Set<string>>();
+      let repeatsForced = 0;
+
+      for (let round = 1; round <= ROUNDS; round++) {
+        const { pairings: fresh, unpaired } = generateRound({
+          players,
+          pairings,
+          tournament: { ...tournament, currentRound: round },
+          round,
+        });
+
+        expect(unpaired).toHaveLength(0);
+        const seen = new Set<string>();
+        for (const p of fresh) {
+          for (const id of [p.playerAId, p.playerBId].filter(Boolean) as string[]) {
+            expect(seen.has(id)).toBe(false);
+            seen.add(id);
+          }
+        }
+        expect(seen.size).toBe(size);
+
+        const byes = fresh.filter((p) => p.playerBId === null);
+        expect(byes).toHaveLength(size % 2 === 0 ? 0 : 1);
+        for (const b of byes) {
+          byeCounts.set(b.playerAId, (byeCounts.get(b.playerAId) ?? 0) + 1);
+        }
+
+        const boards = fresh.map((p) => p.board);
+        expect(new Set(boards).size).toBe(boards.length);
+
+        for (const p of fresh) {
+          if (p.playerBId) expect(p.playerAId).not.toBe(p.playerBId);
+        }
+
+        for (const p of fresh.filter((x) => x.playerBId !== null)) {
+          const a = p.playerAId;
+          const b = p.playerBId!;
+          if (!everMet.has(a)) everMet.set(a, new Set());
+          if (!everMet.has(b)) everMet.set(b, new Set());
+          if (everMet.get(a)!.has(b)) {
+            repeatsForced++;
+            expect(p.conflicts.some((c) => c.kind === "repeat-opponent")).toBe(true);
+          }
+          everMet.get(a)!.add(b);
+          everMet.get(b)!.add(a);
+        }
+
+        pairings = [
+          ...pairings,
+          ...fresh.map((p, i) =>
+            p.playerBId === null
+              ? p
+              : {
+                  ...p,
+                  status: "verified" as const,
+                  scoreA: 400 + (i % 7) * 10,
+                  scoreB: 380 + ((i + 3) % 7) * 10,
+                },
+          ),
+        ];
+      }
+
+      if (size > ROUNDS) {
+        const max = Math.max(0, ...byeCounts.values());
+        expect(max).toBeLessThanOrEqual(1);
+      }
+
+      if (size >= 2 * ROUNDS) {
+        expect(repeatsForced).toBe(0);
+      }
+    });
+  }
+});
+
+describe("pairing engine — same-club conflict", () => {
+  /*
+   * `roster.ts` hardcodes `club: "—"` for every player read from the database — there is no
+   * real club/school field on a registration today. Before this guard, `a.club === b.club`
+   * matched every single pairing, because every unaffiliated player's placeholder was
+   * identical to every other one's.
+   */
+  it("does not flag two players who both have no club on file", () => {
+    const players = makePlayers(8).map((p) => ({ ...p, club: "—" }));
+    const { pairings } = generateRound({ players, pairings: [], tournament, round: 1 });
+    const flagged = pairings.filter((p) => p.conflicts.some((c) => c.kind === "same-club"));
+    expect(flagged).toHaveLength(0);
+  });
+
+  it("still flags two players who genuinely share a real club", () => {
+    const players = makePlayers(4).map((p, i) => ({ ...p, club: i < 2 ? "Same School" : "—" }));
+    const round: Pairing[] = [
+      {
+        id: "sc1", tournamentId: tournament.id, round: 1, division: "masters", board: 1,
+        playerAId: players[0].id, playerBId: players[1].id,
+        status: "scheduled", locked: false, reason: "", confidence: 90, conflicts: [],
+      },
+    ];
+    const withConflicts = annotateConflicts(round, players, tournament, new Map());
+    expect(withConflicts[0].conflicts.some((c) => c.kind === "same-club")).toBe(true);
+  });
+});

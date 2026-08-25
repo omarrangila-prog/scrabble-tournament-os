@@ -107,7 +107,21 @@ function detectConflicts(
       push("withdrawn-player", "critical", "A withdrawn player is included in this pairing.");
     }
 
-    if (constraints.avoidSameClub && a.club === b.club) {
+    /*
+     * `"—"` is the roster's placeholder for "no club on file" (`roster.ts`), not a club
+     * called dash. Two players with no club recorded are not thereby clubmates — before
+     * this guard, every pairing at all was flagged, because every unaffiliated player's
+     * placeholder matched every other one's. That went unnoticed only because nothing had
+     * ever rendered a conflict list to a human.
+     */
+    if (
+      constraints.avoidSameClub &&
+      a.club &&
+      b.club &&
+      a.club !== "—" &&
+      b.club !== "—" &&
+      a.club === b.club
+    ) {
       push(
         "same-club",
         "warning",
