@@ -53,6 +53,60 @@ export function eligiblePlayers(players: Player[]): Player[] {
   );
 }
 
+interface FirstBalance {
+  /** Times played first minus times played second. Negative means owed a first turn. */
+  net: number;
+  /** The most recent round this player went first, or -1 for never. */
+  lastFirstRound: number;
+}
+
+/**
+ * Each player's first/second balance, from every earlier round. A round with no decision
+ * made — start balancing was off, or the round was built by hand — contributes nothing
+ * either way, for either player in it.
+ */
+function buildFirstBalance(pairings: Pairing[], round: number): Map<string, FirstBalance> {
+  const balance = new Map<string, FirstBalance>();
+  const entry = (id: string): FirstBalance => {
+    let b = balance.get(id);
+    if (!b) {
+      b = { net: 0, lastFirstRound: -1 };
+      balance.set(id, b);
+    }
+    return b;
+  };
+
+  for (const pr of pairings) {
+    if (pr.round >= round || pr.playerBId === null || pr.aPlaysFirst == null) continue;
+    const firstId = pr.aPlaysFirst ? pr.playerAId : pr.playerBId;
+    const secondId = pr.aPlaysFirst ? pr.playerBId : pr.playerAId;
+    const first = entry(firstId);
+    first.net += 1;
+    first.lastFirstRound = Math.max(first.lastFirstRound, pr.round);
+    entry(secondId).net -= 1;
+  }
+
+  return balance;
+}
+
+/**
+ * Whether the player in slot A should play first.
+ *
+ * Balances net first/second advantage, not a raw first-count — a player who has played fewer
+ * games overall should not be treated as "owed" a first turn just because they have gone
+ * first zero times when they have also gone second zero times. Ties break on who went first
+ * longest ago (or never), not on slot A — a fixed "ties go to A" would systematically favour
+ * whoever the fold puts in that slot, which in this engine's Swiss convention is always the
+ * higher-ranked player of the pair. Over several rounds that quietly hands the tournament
+ * leader extra first turns for no reason connected to fairness at all.
+ */
+function decideFirst(balance: Map<string, FirstBalance>, aId: string, bId: string): boolean {
+  const a = balance.get(aId) ?? { net: 0, lastFirstRound: -1 };
+  const b = balance.get(bId) ?? { net: 0, lastFirstRound: -1 };
+  if (a.net !== b.net) return a.net < b.net;
+  return a.lastFirstRound <= b.lastFirstRound;
+}
+
 /**
  * Detects every rule violation on a single pairing. Kept pure so both the
  * generator and the manual-adjustment UI report conflicts identically.
@@ -260,6 +314,7 @@ function generateSwissRound(input: PairingInput): PairingResult {
   const { players, pairings, tournament, round } = input;
   const constraints = tournament.constraints;
   const playerMap = new Map(players.map((p) => [p.id, p]));
+  const firstBalance = buildFirstBalance(pairings, round);
 
   // Opponent history and byes from all previous rounds.
   const history = new Map<string, string[]>();
@@ -357,6 +412,7 @@ function generateSwissRound(input: PairingInput): PairingResult {
           100 - Math.abs((rankOf.get(a.id) ?? 0) - (rankOf.get(b.id) ?? 0)) * 4,
         ),
         conflicts: [],
+        aPlaysFirst: constraints.balanceStarts ? decideFirst(firstBalance, a.id, b.id) : null,
       };
       out.push(p);
       board += 1;
@@ -398,6 +454,7 @@ function circleArrangement<T>(seats: T[], round: number): T[] {
 function generateRoundRobinRound(input: PairingInput): PairingResult {
   const { players, pairings, tournament, round } = input;
   const roundConstraints = { ...tournament.constraints, avoidRepeatOpponents: false };
+  const firstBalance = buildFirstBalance(pairings, round);
 
   // Real prior-round history and bye counts, so every other conflict type — duplicate
   // assignment, a second bye, accessibility — still works correctly; only the repeat-opponent
@@ -472,6 +529,7 @@ function generateRoundRobinRound(input: PairingInput): PairingResult {
         reason: `Round robin, fixture ${fixtureRound} of ${needed}: this pairing happens exactly once across the schedule.`,
         confidence: 100,
         conflicts: [],
+        aPlaysFirst: roundConstraints.balanceStarts ? decideFirst(firstBalance, a.id, b.id) : null,
       });
       board += 1;
     }
@@ -493,6 +551,7 @@ function generateKothRound(input: PairingInput): PairingResult {
   const { players, pairings, tournament, round } = input;
   const roundConstraints = { ...tournament.constraints, avoidRepeatOpponents: false };
   const playerMap = new Map(players.map((p) => [p.id, p]));
+  const firstBalance = buildFirstBalance(pairings, round);
 
   // Real prior-round history and bye counts — used both to pick who sits out this round and,
   // below, so the final conflict pass can still catch a genuine second bye. Only the
@@ -568,6 +627,7 @@ function generateKothRound(input: PairingInput): PairingResult {
         reason: `King of the Hill: ${i + 1} plays ${i + 2} in the current standings.`,
         confidence: 100,
         conflicts: [],
+        aPlaysFirst: roundConstraints.balanceStarts ? decideFirst(firstBalance, a.id, b.id) : null,
       });
       board += 1;
     }

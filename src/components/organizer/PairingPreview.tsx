@@ -157,6 +157,7 @@ export function PairingPreview({
                   {p.board}
                 </span>
 
+                {p.aPlaysFirst === true ? <FirstBadge /> : null}
                 <button
                   type="button"
                   onClick={() => tap(p.playerAId)}
@@ -171,6 +172,7 @@ export function PairingPreview({
                 {p.playerBId ? (
                   <>
                     <span className="text-[11px] font-bold uppercase text-muted">v</span>
+                    {p.aPlaysFirst === false ? <FirstBadge /> : null}
                     <button
                       type="button"
                       onClick={() => tap(p.playerBId!)}
@@ -255,5 +257,14 @@ export function PairingPreview({
         </div>
       ) : null}
     </Modal>
+  );
+}
+
+/** Marks whichever name plays first — start balancing decided it, or it wasn't decided at all. */
+function FirstBadge() {
+  return (
+    <span className="shrink-0 rounded-full bg-primary-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.04em] text-primary-700">
+      1st
+    </span>
   );
 }

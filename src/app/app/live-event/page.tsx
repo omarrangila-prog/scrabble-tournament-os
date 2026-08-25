@@ -473,7 +473,16 @@ export default function LiveEventPage() {
    * being silently ignored the way it always has been. A plain object, not a hook — this is
    * well after the early return above, where a hook cannot run.
    */
-  const pairingTournament = { ...app.tournament, system: format.system };
+  const pairingTournament = {
+    ...app.tournament,
+    system: format.system,
+    /*
+     * The seed's `balanceStarts` is a constant nothing has ever changed — `firstSecondEnabled`
+     * is the real, per-event setting. Off means exactly what it always has: no board carries a
+     * first/second decision at all, not that one is made and then hidden.
+     */
+    constraints: { ...app.tournament.constraints, balanceStarts: settings.firstSecondEnabled },
+  };
 
   const openPairingPreview = () => {
     if (format.system === "knockout") {
@@ -551,6 +560,7 @@ export default function LiveEventPage() {
       division: p.division,
       playerA: p.playerAId,
       playerB: p.playerBId,
+      aPlaysFirst: p.aPlaysFirst,
     }));
 
     /*
@@ -636,6 +646,7 @@ export default function LiveEventPage() {
       division: p.division,
       playerA: p.playerAId,
       playerB: p.playerBId,
+      aPlaysFirst: p.aPlaysFirst,
     }));
 
     const check = validateBoardPlan(plan);

@@ -890,3 +890,86 @@ describe("pairing engine — swapPlayers refuses across divisions", () => {
     expect(result).toBe(round);
   });
 });
+
+describe("pairing engine — first/second balancing", () => {
+  it("balances who plays first across rounds, in Swiss", () => {
+    const players = makePlayers(4);
+    let pairings: Pairing[] = [];
+    const firstCounts = new Map<string, number>();
+
+    for (let round = 1; round <= 4; round++) {
+      const { pairings: fresh } = generateRound({
+        players,
+        pairings,
+        tournament: { ...tournament, currentRound: round },
+        round,
+      });
+
+      for (const p of fresh.filter((x) => x.playerBId !== null)) {
+        expect(p.aPlaysFirst).not.toBeNull();
+        const firstId = p.aPlaysFirst ? p.playerAId : p.playerBId!;
+        firstCounts.set(firstId, (firstCounts.get(firstId) ?? 0) + 1);
+      }
+
+      pairings = [
+        ...pairings,
+        ...fresh.map((p) => (p.playerBId === null ? p : { ...p, status: "verified" as const, scoreA: 400, scoreB: 380 })),
+      ];
+    }
+
+    // Balanced: nobody has gone first more than once more often than anybody else.
+    const counts = players.map((p) => firstCounts.get(p.id) ?? 0);
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+  });
+
+  it("does not decide who plays first when start balancing is off", () => {
+    const players = makePlayers(4);
+    const off: Tournament = { ...tournament, constraints: { ...tournament.constraints, balanceStarts: false } };
+
+    const { pairings } = generateRound({ players, pairings: [], tournament: off, round: 1 });
+    for (const p of pairings.filter((x) => x.playerBId !== null)) {
+      expect(p.aPlaysFirst).toBeNull();
+    }
+  });
+
+  /*
+   * Round robin with exactly two players degenerates to one fixture, repeated every round —
+   * the same two seats, p1 always `playerA`, forever. Proves the balance is tracked by who
+   * has actually gone first, not inferred from which slot a player happens to occupy.
+   */
+  it("gives the next turn to whoever has gone first less often, even when the seats repeat", () => {
+    const players = makePlayers(2);
+    const rrTournament: Tournament = { ...tournament, system: "round-robin" };
+
+    const round1 = generateRound({ players, pairings: [], tournament: rrTournament, round: 1 });
+    expect(round1.pairings[0].playerAId).toBe("p1");
+    // Tied 0–0, so the default (A) applies.
+    expect(round1.pairings[0].aPlaysFirst).toBe(true);
+
+    const played: Pairing[] = round1.pairings.map((p) => ({
+      ...p,
+      status: "verified" as const,
+      scoreA: 400,
+      scoreB: 380,
+    }));
+    const round2 = generateRound({ players, pairings: played, tournament: rrTournament, round: 2 });
+
+    expect(round2.pairings[0].playerAId).toBe("p1");
+    // p1 already went first once; it is p2's turn now, despite sitting in the same seats.
+    expect(round2.pairings[0].aPlaysFirst).toBe(false);
+  });
+
+  it("carries a swap without needing to touch who plays first — the slot decides, not the identity", () => {
+    const players = makePlayers(8);
+    const { pairings } = generateRound({ players, pairings: [], tournament, round: 1 });
+    const before = pairings[0].aPlaysFirst;
+
+    const a = pairings[0].playerAId;
+    const b = pairings[1].playerBId!;
+    const swapped = swapPlayers(pairings, players, tournament, a, b);
+
+    // Board 0 still says the same thing about its A slot — whoever now occupies it.
+    expect(swapped[0].aPlaysFirst).toBe(before);
+    expect(swapped[0].playerAId).toBe(b);
+  });
+});

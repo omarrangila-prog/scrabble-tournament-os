@@ -529,10 +529,10 @@ function EventSettingsCard({ by }: { by: string }) {
         />
         <Toggle
           checked={s.firstSecondEnabled}
-          disabled
+          disabled={saving === "firstSecondEnabled" || !eventSettings.loaded}
           onChange={() => void flip("firstSecondEnabled", "First/second tracking")}
           label="Track first / second"
-          description="Not built yet — flipping this saves the setting but nothing reads it: no score sheet asks who went first, and no pairing or standings rule uses it. Left visible rather than deleted, so the setting a future version reads is already here."
+          description="Balance who plays first across the tournament, and show it on each board. Off means pairing makes no decision — nobody is marked to move first."
         />
       </div>
     </Card>

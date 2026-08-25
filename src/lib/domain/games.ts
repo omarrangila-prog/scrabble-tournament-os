@@ -32,6 +32,8 @@ export interface GameRow {
   verifiedAt: string | null;
   /** Why a score is what it is, when somebody had to explain it. */
   note: string | null;
+  /** Whether the player in `playerA` plays first. Null: no decision was made. */
+  aPlaysFirst: boolean | null;
 }
 
 /** One board being proposed for publication. */
@@ -40,6 +42,9 @@ export interface BoardPlan {
   division: DivisionId;
   playerA: string;
   playerB: string | null;
+  /** Whether `playerA` plays first. Omitted: no decision was made (start balancing off, or a
+   * manually-built board). */
+  aPlaysFirst?: boolean | null;
 }
 
 const STATUSES: PairingStatus[] = [
@@ -101,6 +106,7 @@ export function pairingsFromGames(rows: GameRow[], tournamentId: string): Pairin
         reason: "Published round, read from the database.",
         confidence: 0,
         conflicts: [],
+        aPlaysFirst: row.aPlaysFirst,
       };
 
       /*

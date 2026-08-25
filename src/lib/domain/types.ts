@@ -185,6 +185,13 @@ export interface Pairing {
   playerAId: string;
   /** null represents a bye. */
   playerBId: string | null;
+  /**
+   * Whether the player in the `playerAId` slot plays first. Refers to the slot, not a
+   * specific player — a swap that moves who occupies `playerAId` does not need to touch this
+   * separately, since "whoever is in A goes first" stays true. `undefined`/`null` means no
+   * decision was made (start balancing off, or a manually-built board), not "B goes first".
+   */
+  aPlaysFirst?: boolean | null;
   scoreA?: number;
   scoreB?: number;
   status: PairingStatus;

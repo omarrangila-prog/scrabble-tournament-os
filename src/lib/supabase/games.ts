@@ -20,6 +20,8 @@ export interface PublicBoard {
   scoreA: number | null;
   scoreB: number | null;
   status: string;
+  /** Whether `playerA` plays first. Null: no decision was made. */
+  aPlaysFirst: boolean | null;
 }
 
 function missingFunction(message: string): boolean {
@@ -49,6 +51,7 @@ export async function listGames(eventId: string): Promise<GameRow[]> {
     verifiedBy: (r.out_verified_by as string | null) ?? null,
     verifiedAt: (r.out_verified_at as string | null) ?? null,
     note: (r.out_note as string | null) ?? null,
+    aPlaysFirst: (r.out_a_plays_first as boolean | null) ?? null,
   }));
 }
 
@@ -82,6 +85,7 @@ export async function publishRound(
       division: b.division,
       playerA: b.playerA,
       playerB: b.playerB ?? "",
+      aPlaysFirst: b.aPlaysFirst ?? null,
     })),
     p_by: by ?? null,
   });
@@ -264,6 +268,7 @@ export async function boardsForRound(
     scoreA: r.out_score_a === null || r.out_score_a === undefined ? null : Number(r.out_score_a),
     scoreB: r.out_score_b === null || r.out_score_b === undefined ? null : Number(r.out_score_b),
     status: String(r.out_status ?? "scheduled"),
+    aPlaysFirst: (r.out_a_plays_first as boolean | null) ?? null,
   }));
 }
 

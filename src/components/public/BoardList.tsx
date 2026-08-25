@@ -169,9 +169,27 @@ export function BoardList({
                 </span>
 
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-bold">{b.playerA}</span>
+                  <span className="block truncate text-[15px] font-bold">
+                    {b.playerA}
+                    {b.aPlaysFirst === true ? (
+                      <span className="ml-1.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[#2F5D3A]">
+                        1st
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="block truncate text-[13.5px] text-black/60">
-                    {b.playerB ? `v ${b.playerB}` : "Bye — no game this round"}
+                    {b.playerB ? (
+                      <>
+                        v {b.playerB}
+                        {b.aPlaysFirst === false ? (
+                          <span className="ml-1.5 text-[10.5px] font-bold uppercase tracking-[0.04em] text-[#2F5D3A]">
+                            1st
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      "Bye — no game this round"
+                    )}
                   </span>
                 </span>
 

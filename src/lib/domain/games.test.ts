@@ -27,6 +27,7 @@ function game(over: Partial<GameRow> = {}): GameRow {
     verifiedBy: null,
     verifiedAt: null,
     note: null,
+    aPlaysFirst: null,
     ...over,
   };
 }
