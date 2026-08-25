@@ -480,7 +480,7 @@
               "result": "won"
             }
           ],
-          "rank": 3,
+          "rank": 2,
           "wins": 3.0,
           "losses": 0.0,
           "spread": 302,
@@ -514,7 +514,7 @@
               "result": "won"
             }
           ],
-          "rank": 4,
+          "rank": 3,
           "wins": 3.0,
           "losses": 0.0,
           "spread": 277,
@@ -548,7 +548,7 @@
               "result": "won"
             }
           ],
-          "rank": 5,
+          "rank": 4,
           "wins": 3.0,
           "losses": 0.0,
           "spread": 190,
@@ -582,7 +582,7 @@
               "result": "won"
             }
           ],
-          "rank": 6,
+          "rank": 5,
           "wins": 3.0,
           "losses": 0.0,
           "spread": 111,
@@ -616,7 +616,7 @@
               "result": "won"
             }
           ],
-          "rank": 7,
+          "rank": 6,
           "wins": 3.0,
           "losses": 0.0,
           "spread": 110,
@@ -644,16 +644,16 @@
             },
             {
               "round": 3,
-              "scoreFor": 264,
-              "scoreAgainst": 95,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
               "opponent": "Yazdaan Zeeshan",
-              "result": "won"
+              "result": "drew"
             }
           ],
-          "rank": 2,
-          "wins": 3.0,
-          "losses": 0.0,
-          "spread": 435,
+          "rank": 7,
+          "wins": 2.5,
+          "losses": 0.5,
+          "spread": 266,
           "rating": 1220,
           "slug": "abdul-ahad-b16",
           "ranked": true
@@ -705,16 +705,16 @@
             },
             {
               "round": 3,
-              "scoreFor": 95,
-              "scoreAgainst": 264,
+              "scoreFor": 50,
+              "scoreAgainst": 50,
               "opponent": "Abdul Ahad",
-              "result": "lost"
+              "result": "drew"
             }
           ],
-          "rank": 23,
-          "wins": 1.0,
-          "losses": 1.0,
-          "spread": -119,
+          "rank": 9,
+          "wins": 2.5,
+          "losses": 0.5,
+          "spread": 100,
           "rating": 1210,
           "slug": "yazdaan-zeeshan-b15",
           "ranked": true
@@ -745,7 +745,7 @@
               "result": "drew"
             }
           ],
-          "rank": 9,
+          "rank": 10,
           "wins": 2.5,
           "losses": 0.5,
           "spread": 42,
@@ -779,7 +779,7 @@
               "result": "won"
             }
           ],
-          "rank": 10,
+          "rank": 11,
           "wins": 2.0,
           "losses": 1.0,
           "spread": 166,
@@ -813,7 +813,7 @@
               "result": "won"
             }
           ],
-          "rank": 11,
+          "rank": 12,
           "wins": 2.0,
           "losses": 1.0,
           "spread": 110,
@@ -847,7 +847,7 @@
               "result": "won"
             }
           ],
-          "rank": 12,
+          "rank": 13,
           "wins": 2.0,
           "losses": 1.0,
           "spread": 80,
@@ -881,7 +881,7 @@
               "result": "won"
             }
           ],
-          "rank": 13,
+          "rank": 14,
           "wins": 2.0,
           "losses": 1.0,
           "spread": 63,
@@ -915,7 +915,7 @@
               "result": "lost"
             }
           ],
-          "rank": 14,
+          "rank": 15,
           "wins": 2.0,
           "losses": 1.0,
           "spread": 54,
@@ -949,7 +949,7 @@
               "result": "won"
             }
           ],
-          "rank": 15,
+          "rank": 16,
           "wins": 2.0,
           "losses": 1.0,
           "spread": 32,
@@ -983,7 +983,7 @@
               "result": "drew"
             }
           ],
-          "rank": 16,
+          "rank": 17,
           "wins": 1.5,
           "losses": 1.5,
           "spread": 38,
@@ -1010,7 +1010,7 @@
               "result": "drew"
             }
           ],
-          "rank": 17,
+          "rank": 18,
           "wins": 1.5,
           "losses": 1.5,
           "spread": -45,
@@ -1044,7 +1044,7 @@
               "result": "won"
             }
           ],
-          "rank": 18,
+          "rank": 19,
           "wins": 1.0,
           "losses": 2.0,
           "spread": -13,
@@ -1078,7 +1078,7 @@
               "result": "lost"
             }
           ],
-          "rank": 19,
+          "rank": 20,
           "wins": 1.0,
           "losses": 2.0,
           "spread": -35,
@@ -1112,7 +1112,7 @@
               "result": "lost"
             }
           ],
-          "rank": 20,
+          "rank": 21,
           "wins": 1.0,
           "losses": 2.0,
           "spread": -63,
@@ -1146,7 +1146,7 @@
               "result": "lost"
             }
           ],
-          "rank": 21,
+          "rank": 22,
           "wins": 1.0,
           "losses": 2.0,
           "spread": -86,
@@ -1180,7 +1180,7 @@
               "result": "drew"
             }
           ],
-          "rank": 22,
+          "rank": 23,
           "wins": 1.0,
           "losses": 2.0,
           "spread": -100,
