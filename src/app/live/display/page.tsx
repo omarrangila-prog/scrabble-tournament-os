@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useLiveEvent } from "@/lib/supabase/useLiveEvent";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { useEventState } from "@/lib/supabase/useEventState";
 import { arrivalTotals } from "@/lib/supabase/registrations";
@@ -65,12 +65,19 @@ const SCENE_FOR: Record<EventState, Scene> = {
   archived: "closed",
 };
 
-export default function LiveDisplayPage() {
+function LiveDisplay() {
   /*
    * No store, and no signed-in read of any kind. Everything on this screen comes from
    * functions a television can call without an account — which is what a television is.
    */
-  const phase = useEventState(ACTIVE_EVENT_ID, 8);
+  /*
+   * Which tournament this screen is showing. Resolved rather than hardcoded — `?event=` when
+   * a venue runs two rooms, otherwise whichever event is actually mid-day.
+   */
+  const liveEvent = useLiveEvent();
+  const eventId = liveEvent.eventId ?? "";
+
+  const phase = useEventState(eventId, 8);
   /*
    * The round, read the way a television can read it.
    *
@@ -78,16 +85,16 @@ export default function LiveDisplayPage() {
    * returns nothing and the wall announced "Round 0 complete · 0 / 0 boards in" — during the
    * one scene whose whole job is telling the room what to do.
    */
-  const live = useRoundProgress(ACTIVE_EVENT_ID);
+  const live = useRoundProgress(eventId);
   const round = live.round;
-  const clock = useRoundTimer(ACTIVE_EVENT_ID, round);
+  const clock = useRoundTimer(eventId, round);
 
   /*
    * QR is event-experience, never tournament-core — this wall has to be exactly as usable
    * with it turned off. `qrEnabled` comes from the one real, server-backed setting; nothing
    * here decides for itself whether QR should show.
    */
-  const { qrEnabled } = usePublicEventSettings(ACTIVE_EVENT_ID);
+  const { qrEnabled } = usePublicEventSettings(eventId);
 
   /* Once a second, so the clock on the wall is the clock in the room. */
   const [, tick] = React.useState(0);
@@ -119,10 +126,11 @@ export default function LiveDisplayPage() {
   const [breakKind, setBreakKind] = React.useState<"break" | "lunch">("break");
 
   React.useEffect(() => {
+    if (!eventId) return;
     let live = true;
 
     const read = async () => {
-      const kind = await readBreakKind(ACTIVE_EVENT_ID);
+      const kind = await readBreakKind(eventId);
       if (live) setBreakKind(kind);
     };
 
@@ -133,13 +141,14 @@ export default function LiveDisplayPage() {
       live = false;
       window.clearInterval(id);
     };
-  }, []);
+  }, [eventId]);
 
   React.useEffect(() => {
+    if (!eventId) return;
     let live = true;
 
     const read = async () => {
-      const totals = await arrivalTotals(ACTIVE_EVENT_ID);
+      const totals = await arrivalTotals(eventId);
       if (live) setArrivals(totals);
     };
 
@@ -150,12 +159,12 @@ export default function LiveDisplayPage() {
       live = false;
       window.clearInterval(id);
     };
-  }, []);
+  }, [eventId]);
 
   const checkedIn = arrivals.checkedIn;
   const expected = arrivals.expected;
 
-  const base = `${origin}/events/${ACTIVE_EVENT.slug}`;
+  const base = `${origin}/events/${liveEvent.slug ?? ""}`;
 
 
   /*
@@ -187,6 +196,9 @@ export default function LiveDisplayPage() {
   const minutesLeft = Math.max(0, Math.floor(clock.remaining / 60000));
   const lastMinute = clock.phase === "running" && clock.remaining > 0 && clock.remaining <= 60_000;
 
+  if (!liveEvent.resolved) return <WallMessage>Loading…</WallMessage>;
+  if (!liveEvent.eventId) return <WallMessage>No tournament is running right now.</WallMessage>;
+
   return (
     <main
       className="relative flex min-h-dvh flex-col px-[4vw] py-[3vh]"
@@ -201,7 +213,7 @@ export default function LiveDisplayPage() {
           className="text-[2.4vw] font-extrabold uppercase tracking-[0.18em]"
           style={{ color: BRASS }}
         >
-          Blufy&rsquo;s AlphaBattle
+          {liveEvent.name ?? ""}
         </p>
         <p className="text-[1.5vw] font-semibold" style={{ color: `${IVORY}99` }}>
           {EVENT_STATE_LABEL[state]}
@@ -212,7 +224,7 @@ export default function LiveDisplayPage() {
       <div className="flex flex-1 flex-col items-center justify-center text-center">
         {/* ---- Nothing happening yet ------------------------------------ */}
         {scene === "closed" ? (
-          <Headline sub="Nothing to do just yet.">{ACTIVE_EVENT.name}</Headline>
+          <Headline sub="Nothing to do just yet.">{liveEvent.name ?? ""}</Headline>
         ) : null}
 
         {/* ---- Come in and check in ------------------------------------- */}
@@ -356,11 +368,11 @@ export default function LiveDisplayPage() {
         ) : null}
 
         {/* ---- Standings, and the finish --------------------------------- */}
-        {scene === "standings" ? <Standings final={state === "completed"} /> : null}
+        {scene === "standings" ? <Standings final={state === "completed"} eventId={eventId} /> : null}
       </div>
 
       <footer className="text-center text-[1.2vw]" style={{ color: `${IVORY}55` }}>
-        {ACTIVE_EVENT.venueName} · {ACTIVE_EVENT.city}
+        {[liveEvent.details?.venueName, liveEvent.details?.city].filter(Boolean).join(" · ")}
       </footer>
     </main>
   );
@@ -400,7 +412,7 @@ function Qr({ url }: { url: string }) {
 }
 
 /** The top of each division, once results exist. */
-function Standings({ final }: { final: boolean }) {
+function Standings({ final, eventId }: { final: boolean; eventId: string }) {
   const app = useStore();
 
   /*
@@ -411,10 +423,11 @@ function Standings({ final }: { final: boolean }) {
   const [rows, setRows] = React.useState<PublicStanding[]>([]);
 
   React.useEffect(() => {
+    if (!eventId) return;
     let live = true;
 
     const read = async () => {
-      const next = await publicStandings(ACTIVE_EVENT_ID);
+      const next = await publicStandings(eventId);
       if (live) setRows(next);
     };
 
@@ -425,7 +438,7 @@ function Standings({ final }: { final: boolean }) {
       live = false;
       window.clearInterval(id);
     };
-  }, []);
+  }, [eventId]);
 
   /*
    * The reveal, once the event is finished.
@@ -440,7 +453,7 @@ function Standings({ final }: { final: boolean }) {
     if (!final) return;
     const id = window.setInterval(() => setRevealed((n) => (n >= 3 ? n : n + 1)), 8000);
     return () => window.clearInterval(id);
-  }, [final]);
+  }, [final, eventId]);
 
   const divisions = app.divisions
     .map((d) => ({
@@ -522,5 +535,35 @@ function Standings({ final }: { final: boolean }) {
         ))}
       </div>
     </>
+  );
+}
+
+/**
+ * The venue wall.
+ *
+ * One screen the whole room reads, so it resolves which tournament it is showing rather than
+ * being told at build time: `?event=` when a venue runs two rooms, otherwise whichever event
+ * is actually mid-day.
+ */
+export default function LiveDisplayPage() {
+  /* `useSearchParams` (behind `useLiveEvent`) needs a Suspense boundary to prerender. */
+  return (
+    <React.Suspense fallback={<WallMessage>Loading…</WallMessage>}>
+      <LiveDisplay />
+    </React.Suspense>
+  );
+}
+
+function WallMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      className="grid min-h-dvh place-items-center"
+      style={{
+        background: `radial-gradient(120% 80% at 50% -10%, ${FELT} 0%, ${NIGHT} 72%)`,
+        color: IVORY,
+      }}
+    >
+      <p className="text-[2.4vw] font-extrabold">{children}</p>
+    </main>
   );
 }

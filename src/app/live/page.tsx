@@ -29,7 +29,7 @@ import {
   Th,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useLiveEvent } from "@/lib/supabase/useLiveEvent";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
 import { computeStandings } from "@/lib/engine/standings";
@@ -47,7 +47,7 @@ const NAV = [
   { id: "announcements", label: "Announcements" },
 ];
 
-export default function PublicSitePage() {
+function PublicSite() {
   const store = useStore();
   const { tournament, divisions, venue, announcements } = store;
 
@@ -59,9 +59,16 @@ export default function PublicSitePage() {
    * playing. Standings are computed here from verified games rather than stored,
    * the same as everywhere else.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  /*
+   * Which tournament this screen is showing. Resolved rather than hardcoded — `?event=` when
+   * a venue runs two rooms, otherwise whichever event is actually mid-day.
+   */
+  const liveEvent = useLiveEvent();
+  const eventId = liveEvent.eventId ?? "";
+
+  const roster = useRoster(eventId);
   const players = roster.players;
-  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const games = useGames(eventId, tournament.id);
   const pairings = games.pairings;
 
   const [tab, setTab] = React.useState("home");
@@ -134,6 +141,9 @@ export default function PublicSitePage() {
       tone: "success",
     });
   };
+
+  if (!liveEvent.resolved) return <SiteMessage>Loading…</SiteMessage>;
+  if (!liveEvent.eventId) return <SiteMessage>No tournament is running right now.</SiteMessage>;
 
   return (
     <div className="min-h-dvh">
@@ -400,7 +410,7 @@ export default function PublicSitePage() {
         ) : null}
 
         {/* STANDINGS ----------------------------------------------------- */}
-        {tab === "standings" ? <PublicStandings /> : null}
+        {tab === "standings" ? <PublicStandings eventId={eventId} /> : null}
 
         {/* PLAYERS ------------------------------------------------------- */}
         {tab === "players" ? (
@@ -563,13 +573,13 @@ export default function PublicSitePage() {
   );
 }
 
-function PublicStandings() {
+function PublicStandings({ eventId }: { eventId: string }) {
   const store = useStore();
   const { tournament, divisions } = store;
 
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const roster = useRoster(eventId);
   const players = roster.players;
-  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const games = useGames(eventId, tournament.id);
   const pairings = games.pairings;
 
   /*
@@ -686,5 +696,26 @@ function SponsorStrip({ sponsors }: { sponsors: string[] }) {
         ))}
       </div>
     </Card>
+  );
+}
+
+/**
+ * The public event site. Resolves which tournament it is showing rather than being told at
+ * build time: `?event=` when a venue runs two rooms, otherwise whichever event is mid-day.
+ */
+export default function PublicSitePage() {
+  /* `useSearchParams` (behind `useLiveEvent`) needs a Suspense boundary to prerender. */
+  return (
+    <React.Suspense fallback={<SiteMessage>Loading…</SiteMessage>}>
+      <PublicSite />
+    </React.Suspense>
+  );
+}
+
+function SiteMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid min-h-dvh place-items-center">
+      <p className="text-[15px] font-semibold text-muted">{children}</p>
+    </div>
   );
 }

@@ -384,7 +384,7 @@ export default function RegisterPage() {
      * recorded so the page can say whether it actually went — anything else is a
      * promise nobody checked.
      */
-    void emailConfirmation(token).then((outcome) => setEmailed(outcome.ok));
+    void emailConfirmation(token, event.id).then((outcome) => setEmailed(outcome.ok));
   };
 
   if (submitted) {

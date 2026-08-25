@@ -87,7 +87,7 @@ export default function SendCodesPage() {
     setSending(true);
     setOutcome(null);
 
-    const result = await emailPlayerCodes(withEmail);
+    const result = await emailPlayerCodes(withEmail, currentEvent.eventId);
 
     setSending(false);
 

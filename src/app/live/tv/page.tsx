@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Grid3x3, Megaphone, Pause, Play, Timer, Trophy } from "lucide-react";
 import { Avatar, Badge, Button } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useLiveEvent } from "@/lib/supabase/useLiveEvent";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { RoundClock } from "@/components/public/RoundClock";
@@ -29,9 +29,16 @@ const PANELS: { id: PanelId; label: string; seconds: number }[] = [
  * Full-screen display for the venue projector. Large type, high contrast and
  * auto-rotating panels so it can run unattended through a round.
  */
-export default function TvDisplayPage() {
+function TvDisplay() {
   const store = useStore();
   const { tournament, announcements } = store;
+
+  /*
+   * Which tournament this screen is showing. Resolved rather than hardcoded — `?event=` when
+   * a venue runs two rooms, otherwise whichever event is actually mid-day.
+   */
+  const liveEvent = useLiveEvent();
+  const eventId = liveEvent.eventId ?? "";
 
   /*
    * The wall reads the same database as everything else.
@@ -41,8 +48,8 @@ export default function TvDisplayPage() {
    * have — in front of the people whose real names and real games were in the database
    * all along.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
-  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const roster = useRoster(eventId);
+  const games = useGames(eventId, tournament.id);
   const players = roster.players;
   const pairings = games.pairings;
   const round = games.round;
@@ -53,7 +60,7 @@ export default function TvDisplayPage() {
   const [controlsVisible, setControlsVisible] = React.useState(true);
 
   /* QR is event-experience, never tournament-core — see the same flag on `/live/display`. */
-  const { qrEnabled } = usePublicEventSettings(ACTIVE_EVENT_ID);
+  const { qrEnabled } = usePublicEventSettings(eventId);
 
   const panel = PANELS[index];
 
@@ -111,7 +118,7 @@ export default function TvDisplayPage() {
     : "";
 
   /* The room's clock, for the header badge as well as the panel. */
-  const roomClock = useRoundTimer(ACTIVE_EVENT_ID, round);
+  const roomClock = useRoundTimer(eventId, round);
   const clockPhase = roomClock.phase;
 
   const origin = React.useSyncExternalStore(
@@ -125,12 +132,15 @@ export default function TvDisplayPage() {
    * laptop at the venue as well as on the deployed site. Empty on the server, where there is
    * no origin — the block is simply absent until it renders in a browser.
    */
-  const submitUrl = origin ? `${origin}/events/${ACTIVE_EVENT.slug}/submit-score` : "";
+  const submitUrl = origin && liveEvent.slug ? `${origin}/events/${liveEvent.slug}/submit-score` : "";
 
   const livePairings = pairings
     .filter((p) => p.round === round && p.playerBId)
     .sort((a, b) => a.board - b.board)
     .slice(0, 12);
+
+  if (!liveEvent.resolved) return <TvMessage>Loading…</TvMessage>;
+  if (!liveEvent.eventId) return <TvMessage>No tournament is running right now.</TvMessage>;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -312,7 +322,7 @@ export default function TvDisplayPage() {
                         Round {round}
                       </p>
                       <RoundClock
-                        eventId={ACTIVE_EVENT_ID}
+                        eventId={eventId}
                         round={round}
                         size="large"
                         className="mt-2 bg-transparent"
@@ -424,6 +434,27 @@ export default function TvDisplayPage() {
           Full screen
         </Button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Full-screen display for the venue projector. Large type, high contrast and
+ * auto-rotating panels so it can run unattended through a round.
+ */
+export default function TvDisplayPage() {
+  /* `useSearchParams` (behind `useLiveEvent`) needs a Suspense boundary to prerender. */
+  return (
+    <React.Suspense fallback={<TvMessage>Loading…</TvMessage>}>
+      <TvDisplay />
+    </React.Suspense>
+  );
+}
+
+function TvMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid min-h-dvh place-items-center">
+      <p className="text-[28px] font-extrabold text-muted">{children}</p>
     </div>
   );
 }

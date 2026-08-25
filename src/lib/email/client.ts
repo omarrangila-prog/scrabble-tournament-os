@@ -55,8 +55,8 @@ async function post(body: unknown, authorization?: string): Promise<EmailOutcome
  * Only the token travels. The address is looked up on the server from that token, so
  * this cannot be used to send mail to somebody else.
  */
-export function emailConfirmation(token: string): Promise<EmailOutcome> {
-  return post({ kind: "registration", token });
+export function emailConfirmation(token: string, eventId: string): Promise<EmailOutcome> {
+  return post({ kind: "registration", token, eventId });
 }
 
 export interface CertificateSend {
@@ -117,6 +117,7 @@ export interface BulkOutcome {
  */
 export async function emailPlayerCodes(
   people: PlayerCodeRecipient[],
+  eventId: string,
 ): Promise<BulkOutcome> {
   const db = supabase();
   const session = db ? (await db.auth.getSession()).data.session : null;
@@ -131,7 +132,7 @@ export async function emailPlayerCodes(
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ kind: "player-codes", people }),
+    body: JSON.stringify({ kind: "player-codes", people, eventId }),
   }).catch(() => null);
 
   if (!response) {

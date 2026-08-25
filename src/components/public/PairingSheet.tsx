@@ -39,7 +39,7 @@ const LABEL: Record<string, string> = {
  * It needs no account, because a television has none. Every read here is a public one; that
  * mistake has been made on this screen three times.
  */
-export function PairingSheet({ eventId }: { eventId: string }) {
+export function PairingSheet({ eventId, eventName }: { eventId: string; eventName: string }) {
   const live = useRoundProgress(eventId, 10);
   const [boards, setBoards] = React.useState<PublicBoard[]>([]);
   const [arrivals, setArrivals] = React.useState<PublicArrival[]>([]);
@@ -80,7 +80,7 @@ export function PairingSheet({ eventId }: { eventId: string }) {
     >
       <header className="flex items-baseline justify-between gap-[2vw]">
         <p className="text-[1.7vw] font-extrabold uppercase tracking-[0.16em]" style={{ color: BRASS }}>
-          Blufy&rsquo;s AlphaBattle
+          {eventName}
         </p>
         <p className="text-[1.7vw] font-extrabold">
           {showingBoards

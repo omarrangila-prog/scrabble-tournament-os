@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import {
   certificateEmail,
   playerCodeEmail,
@@ -30,6 +29,8 @@ import { checkDeliverability, isEmailConfigured, sendEmail } from "@/lib/email/s
 
 interface RegistrationRequest {
   kind: "registration" | "player-codes";
+  /** Which event the token belongs to. A token is only meaningful against its own event. */
+  eventId?: string;
   people?: {
     fullName: string;
     email: string;
@@ -104,7 +105,7 @@ async function callerIsStaff(authorization: string | null): Promise<boolean> {
  * code, so a send built on it would have addressed mail to nothing and omitted the one
  * thing the message exists to carry.
  */
-async function registrationForToken(token: string) {
+async function registrationForToken(token: string, eventId: string) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return null;
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/registration_for_email`, {
@@ -114,7 +115,7 @@ async function registrationForToken(token: string) {
       Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ p_event_id: ACTIVE_EVENT_ID, p_token: token }),
+    body: JSON.stringify({ p_event_id: eventId, p_token: token }),
   });
 
   if (!response.ok) return null;
@@ -128,18 +129,63 @@ async function registrationForToken(token: string) {
  * Composed here rather than in the browser so the recipient list comes from the database
  * and not from whatever a page happened to be showing.
  */
+/**
+ * The event these messages are about.
+ *
+ * Its name, date and venue used to be literal strings naming the 23 August tournament, and
+ * the check-in link had that event's slug baked into the URL — so a message sent for any
+ * other event named the wrong tournament and linked to the wrong check-in page.
+ */
+async function eventFacts(eventId: string) {
+  const fallback = { name: "The tournament", date: "", venue: "", slug: "" };
+  if (!SUPABASE_URL || !SUPABASE_KEY || !eventId) return fallback;
+
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/events?id=eq.${encodeURIComponent(eventId)}&select=slug,name,data`,
+    {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+    },
+  );
+  if (!response.ok) return fallback;
+
+  const rows = (await response.json().catch(() => null)) as Record<string, unknown>[] | null;
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return fallback;
+
+  const data = (row.data ?? {}) as Record<string, unknown>;
+  const startDate = data.startDate ? String(data.startDate) : "";
+
+  return {
+    name: String(row.name ?? fallback.name),
+    date: startDate
+      ? new Date(`${startDate}T00:00:00`).toLocaleDateString("en-GB", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "",
+    venue: [data.venueName, data.city].filter(Boolean).join(", "),
+    slug: String(row.slug ?? ""),
+  };
+}
+
 async function sendPlayerCode(
   origin: string,
   row: { fullName: string; email: string; playerNumber: string; checkInCode: string; token: string },
+  facts: { name: string; date: string; venue: string; slug: string },
 ) {
   const composed = playerCodeEmail({
     fullName: row.fullName || "there",
     playerNumber: row.playerNumber,
     checkInCode: row.checkInCode,
-    eventName: "Blufy's AlphaBattle",
-    eventDate: "Sunday 23 August 2026",
-    venue: "Chai Chatt, Habitt City, Karachi",
-    checkInUrl: `${origin}/events/alphabattle-23-august/check-in?t=${encodeURIComponent(row.token)}`,
+    eventName: facts.name,
+    eventDate: facts.date,
+    venue: facts.venue,
+    checkInUrl: `${origin}/events/${facts.slug}/check-in?t=${encodeURIComponent(row.token)}`,
   });
 
   return sendEmail({ to: row.email, ...composed });
@@ -170,11 +216,11 @@ export async function POST(request: Request) {
 
   /* ---- A participant's own confirmation -------------------------------- */
   if (body.kind === "registration") {
-    if (!body.token) {
+    if (!body.token || !body.eventId) {
       return NextResponse.json({ ok: false, message: "Missing token." }, { status: 400 });
     }
 
-    const record = await registrationForToken(body.token);
+    const record = await registrationForToken(body.token, body.eventId);
     if (!record) {
       /*
        * Deliberately the same answer as a token that exists but has no email: an
@@ -193,13 +239,14 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin;
+    const facts = await eventFacts(body.eventId);
     const composed = registrationEmail({
       fullName: String(record.out_full_name ?? "there"),
-      eventName: "Blufy's AlphaBattle",
-      eventDate: "Sunday 23 August 2026",
-      venue: "Chai Chatt, Habitt City, Karachi",
+      eventName: facts.name,
+      eventDate: facts.date,
+      venue: facts.venue,
       checkInCode: String(record.out_check_in_code ?? ""),
-      checkInUrl: `${origin}/events/alphabattle-23-august/check-in?t=${encodeURIComponent(body.token)}`,
+      checkInUrl: `${origin}/events/${facts.slug}/check-in?t=${encodeURIComponent(body.token)}`,
       amount: `PKR ${Number(record.out_amount_due ?? 0).toLocaleString("en-PK")}`,
     });
 
@@ -233,13 +280,16 @@ export async function POST(request: Request) {
      * rate-limit bursts, and a sequential send is well inside every limit that matters at
      * this size.
      */
+    /* Looked up once, not per recipient — it is the same event for every message. */
+    const facts = await eventFacts(body.eventId ?? "");
+
     for (const person of people) {
       if (!person?.email?.includes("@")) {
         failed.push({ name: person?.fullName ?? "unknown", reason: "no email address" });
         continue;
       }
 
-      const result = await sendPlayerCode(origin, person);
+      const result = await sendPlayerCode(origin, person, facts);
       if (result.ok) sent.push(person.fullName);
       else failed.push({ name: person.fullName, reason: result.message ?? "refused" });
     }

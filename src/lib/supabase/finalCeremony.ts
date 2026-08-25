@@ -1,6 +1,5 @@
 "use client";
 
-import { ACTIVE_EVENT } from "@/lib/domain/eventSeed";
 import {
   awardFor,
   type FinalPlayer,
@@ -77,6 +76,31 @@ export async function finalSummary(eventId: string): Promise<FinalPlayer[]> {
  * A certificate is saved and issued before the email goes, so the verification code in
  * somebody's inbox always resolves. The other order produces mail nobody can check.
  */
+/** The event's own name and date, for the wording of what it issues. */
+async function eventFacts(eventId: string): Promise<{ name: string; date: string }> {
+  const db = supabase();
+  if (!db) return { name: "The tournament", date: "" };
+
+  const { data } = await db.rpc("staff_events");
+  const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+  const row = rows.find((r) => String(r.out_id) === eventId);
+  if (!row) return { name: "The tournament", date: "" };
+
+  const details = (row.out_data ?? {}) as Record<string, unknown>;
+  const startDate = details.startDate ? String(details.startDate) : "";
+
+  return {
+    name: String(row.out_name ?? "The tournament"),
+    date: startDate
+      ? new Date(`${startDate}T00:00:00`).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "",
+  };
+}
+
 export async function closeTournament(
   eventId: string,
   by: string,
@@ -85,6 +109,13 @@ export async function closeTournament(
 ): Promise<CeremonyReport> {
   const players = await finalSummary(eventId);
   const sup = superlatives(players);
+
+  /*
+   * What the certificate emails say the event was. Read from the event being closed rather
+   * than the constants this used, which named the 23 August tournament and its date in every
+   * certificate whatever event had actually just finished.
+   */
+  const facts = await eventFacts(eventId);
   const lines: CeremonyLine[] = [];
 
   for (const [i, p] of players.entries()) {
@@ -121,8 +152,8 @@ export async function closeTournament(
           detail: award.summary,
           personalNote: award.note ?? undefined,
           code,
-          eventName: ACTIVE_EVENT.name,
-          eventDate: "23 August 2026",
+          eventName: facts.name,
+          eventDate: facts.date,
           verifyUrl: verificationUrl(origin, code),
         });
         emailed = sent.ok;
