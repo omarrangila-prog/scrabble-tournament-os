@@ -7,16 +7,15 @@ import { AlertTriangle, Check, Loader2, MapPin, PencilLine } from "lucide-react"
 import {
   cardRows,
   type ConfirmationPlayer,
-  EVENT_WHEN,
   moneyLines,
 } from "@/lib/domain/confirmation";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { usePublicEvent } from "@/lib/supabase/usePublicEvent";
 import {
   confirmationGroup,
   confirmDetails,
   requestCorrection,
 } from "@/lib/supabase/confirmation";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const CREAM = "#F6F1E7";
 const FOREST = "#2F5D3A";
@@ -36,23 +35,33 @@ const BROWN = "#3E2F23";
  * Nothing here mentions certificates. Those come after the tournament, from the results.
  */
 export default function ConfirmPage() {
-  const params = useParams<{ token: string }>();
+  const params = useParams<{ slug: string; token: string }>();
   const token = String(params.token ?? "");
+
+  /*
+   * The event named in the link, not a hardcoded one. This page ignored its own `[slug]`
+   * segment and resolved every visitor to the single seeded event — so a confirmation sent
+   * for a second tournament would have looked up the wrong event's registrations, and the
+   * card below stated the 23 August date, time and venue whatever event it was actually for.
+   */
+  const { event, resolved } = usePublicEvent(params.slug);
+  const eventId = event?.id ?? "";
 
   const [players, setPlayers] = React.useState<ConfirmationPlayer[] | null>(null);
   const [nudge, setNudge] = React.useState(0);
   const reload = React.useCallback(() => setNudge((n) => n + 1), []);
 
   React.useEffect(() => {
+    if (!eventId) return;
     let live = true;
     (async () => {
-      const found = await confirmationGroup(ACTIVE_EVENT_ID, token);
+      const found = await confirmationGroup(eventId, token);
       if (live) setPlayers(found);
     })();
     return () => {
       live = false;
     };
-  }, [token, nudge]);
+  }, [eventId, token, nudge]);
 
   return (
     <main className="min-h-dvh pb-16" style={{ background: CREAM, color: BROWN }}>
@@ -61,13 +70,20 @@ export default function ConfirmPage() {
           className="text-center text-[11px] font-bold uppercase tracking-[0.22em]"
           style={{ color: GOLD }}
         >
-          Blufy&apos;s AlphaBattle
+          {event?.name ?? " "}
         </p>
         <h1 className="mt-2 text-center text-[24px] font-extrabold leading-tight">
           Player registration confirmation
         </h1>
 
-        {players === null ? (
+        {resolved && !event ? (
+          <div className="mt-8 rounded-[16px] border-2 border-dashed p-7 text-center" style={{ borderColor: `${BROWN}33` }}>
+            <p className="text-[16px] font-bold">Event not found</p>
+            <p className="mt-2 text-[13px] leading-relaxed opacity-70">
+              Check the link, or reply to the message this link came in.
+            </p>
+          </div>
+        ) : players === null ? (
           <p className="mt-10 flex items-center justify-center gap-2 text-[13px] opacity-70">
             <Loader2 className="size-4 animate-spin" /> Finding your registration…
           </p>
@@ -91,6 +107,7 @@ export default function ConfirmPage() {
               <PlayerCard
                 key={p.number}
                 player={p}
+                eventId={eventId}
                 token={token}
                 only={players.length === 1}
                 onChanged={reload}
@@ -104,11 +121,21 @@ export default function ConfirmPage() {
               <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: GOLD }}>
                 Event details
               </p>
-              <p className="mt-1.5 text-[15px] font-bold">{EVENT_WHEN.date}</p>
-              <p className="text-[14px]">{EVENT_WHEN.time}</p>
-              <p className="mt-1 flex items-center justify-center gap-1.5 text-[13.5px] opacity-80">
-                <MapPin className="size-3.5" /> {EVENT_WHEN.venue}
-              </p>
+              {event?.startDate ? (
+                <p className="mt-1.5 text-[15px] font-bold">{formatDate(event.startDate)}</p>
+              ) : null}
+              {event?.startTime ? (
+                <p className="text-[14px]">
+                  {event.startTime}
+                  {event.expectedFinish ? ` – ${event.expectedFinish}` : ""}
+                </p>
+              ) : null}
+              {event?.venueName ? (
+                <p className="mt-1 flex items-center justify-center gap-1.5 text-[13.5px] opacity-80">
+                  <MapPin className="size-3.5" /> {event.venueName}
+                  {event.city ? `, ${event.city}` : ""}
+                </p>
+              ) : null}
             </div>
 
             <p className="mt-5 text-center text-[12.5px] leading-relaxed opacity-70">
@@ -126,10 +153,12 @@ const FIELDS = ["Name", "Age", "Mobile", "Email", "Category", "PSA Status", "Pay
 function PlayerCard({
   player,
   token,
+  eventId,
   only,
   onChanged,
 }: {
   player: ConfirmationPlayer;
+  eventId: string;
   token: string;
   only: boolean;
   onChanged: () => void;
@@ -156,8 +185,8 @@ function PlayerCard({
 
     const ok =
       what === "confirm"
-        ? await confirmDetails(ACTIVE_EVENT_ID, token, player.number)
-        : await requestCorrection(ACTIVE_EVENT_ID, token, player.number, field, detail);
+        ? await confirmDetails(eventId, token, player.number)
+        : await requestCorrection(eventId, token, player.number, field, detail);
 
     sending.current = false;
     setBusy(false);

@@ -15,7 +15,7 @@ import {
   Stat,
 } from "@/components/ui";
 import type { ConfirmationPlayer } from "@/lib/domain/confirmation";
-import { divisionLabel, moneyLines } from "@/lib/domain/confirmation";
+import { divisionLabel, type EventFacts, moneyLines } from "@/lib/domain/confirmation";
 import {
   confirmationEmail,
   type ContactGroup,
@@ -28,6 +28,7 @@ import { field, importField, numberField } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
 import { supabase } from "@/lib/supabase/client";
+import { formatDate } from "@/lib/utils";
 
 /**
  * Asking everybody to check their own details, before the day.
@@ -45,6 +46,19 @@ export default function ConfirmationsPage() {
   const app = useStore();
   const currentEvent = useCurrentEvent();
   const roster = useRoster(currentEvent.eventId);
+
+  /*
+   * What every message says about the event. Read from the selected event rather than the
+   * constants these templates used to hardcode, which named the 23 August tournament's date,
+   * time and venue in every confirmation regardless of which event it was actually for.
+   */
+  const selected = currentEvent.events.find((e) => e.id === currentEvent.eventId);
+  const eventFacts: EventFacts = {
+    name: selected?.name ?? "The tournament",
+    date: selected?.details.startDate ? formatDate(selected.details.startDate) : "",
+    time: [selected?.details.startTime, selected?.details.endTime].filter(Boolean).join(" – "),
+    venue: [selected?.details.venueName, selected?.details.city].filter(Boolean).join(", "),
+  };
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
   const [sendingAll, setSendingAll] = React.useState<{ done: number; total: number } | null>(null);
@@ -87,9 +101,9 @@ export default function ConfirmationsPage() {
     () =>
       groupByContact(players, (lead) => {
         const token = (lead as ConfirmationPlayer & { token: string }).token;
-        return `${origin}/events/alphabattle-23-august/confirm/${token}`;
+        return `${origin}/events/${selected?.slug ?? ""}/confirm/${token}`;
       }),
-    [players, origin],
+    [players, origin, selected?.slug],
   );
 
   const term = query.trim().toLowerCase();
@@ -123,7 +137,7 @@ export default function ConfirmationsPage() {
   };
 
   const sendOne = async (group: ContactGroup) => {
-    const composed = confirmationEmail(group);
+    const composed = confirmationEmail(group, eventFacts);
     const out = await emailDetailsConfirmation({
       to: group.lead.email,
       subject: composed.subject,
@@ -245,6 +259,7 @@ export default function ConfirmationsPage() {
           <div className="mt-3 space-y-2">
             {shown.map((group) => (
               <ContactRow
+                event={eventFacts}
                 key={group.lead.number}
                 group={group}
                 state={sent[group.lead.number]}
@@ -266,7 +281,7 @@ export default function ConfirmationsPage() {
                   roster.reload();
                 }}
                 onCopy={async () => {
-                  await navigator.clipboard.writeText(whatsappMessage(group));
+                  await navigator.clipboard.writeText(whatsappMessage(group, eventFacts));
                   app.toast({ title: "Message copied", tone: "success" });
                 }}
               />
@@ -275,13 +290,14 @@ export default function ConfirmationsPage() {
         )}
       </RosterGate>
 
-      {preview ? <Preview group={preview} onClose={() => setPreview(null)} /> : null}
+      {preview ? <Preview group={preview} event={eventFacts} onClose={() => setPreview(null)} /> : null}
     </>
   );
 }
 
 function ContactRow({
   group,
+  event,
   state,
   opened,
   busy,
@@ -291,6 +307,7 @@ function ContactRow({
   onCopy,
 }: {
   group: ContactGroup;
+  event: EventFacts;
   state?: "sent" | "failed";
   opened: boolean;
   busy: boolean;
@@ -304,7 +321,7 @@ function ContactRow({
   const asked = group.players.some((p) => p.correction !== "");
 
   /* A Pakistani mobile as wa.me wants it: country code, no trunk zero. */
-  const wa = `https://wa.me/${group.lead.mobile.replace(/\D/g, "").replace(/^0/, "92")}?text=${encodeURIComponent(whatsappMessage(group))}`;
+  const wa = `https://wa.me/${group.lead.mobile.replace(/\D/g, "").replace(/^0/, "92")}?text=${encodeURIComponent(whatsappMessage(group, event))}`;
 
   return (
     <Card className="p-4">
@@ -368,7 +385,7 @@ function ContactRow({
   );
 }
 
-function Preview({ group, onClose }: { group: ContactGroup; onClose: () => void }) {
+function Preview({ group, event, onClose }: { group: ContactGroup; event: EventFacts; onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
@@ -402,7 +419,7 @@ function Preview({ group, onClose }: { group: ContactGroup; onClose: () => void 
           WhatsApp message
         </p>
         <pre className="mt-1.5 whitespace-pre-wrap rounded-control bg-[rgb(var(--c-surface-soft))] p-3 text-[12px] leading-relaxed text-ink">
-          {whatsappMessage(group)}
+          {whatsappMessage(group, event)}
         </pre>
 
         <Button variant="secondary" className="mt-4 w-full" onClick={onClose}>

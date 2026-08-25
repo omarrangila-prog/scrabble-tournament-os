@@ -152,9 +152,18 @@ export function cardRows(p: ConfirmationPlayer): CardRow[] {
   return rows.filter((row): row is CardRow => row !== null && row.value !== "");
 }
 
-/** The event, said the same way everywhere it appears. */
-export const EVENT_WHEN = {
-  date: "Sunday, 23 August 2026",
-  time: "12:00 PM – 3:30 PM",
-  venue: "Chai Chatt, Karachi",
-} as const;
+/**
+ * The event, said the same way everywhere it appears.
+ *
+ * Passed in rather than hardcoded. These strings used to be constants naming the 23 August
+ * event, so every confirmation message — email, WhatsApp, and the page they link to — stated
+ * that event's name, date, time and venue regardless of which event the registration was
+ * actually for.
+ */
+export interface EventFacts {
+  name: string;
+  /** Already formatted for reading, not an ISO date. */
+  date: string;
+  time: string;
+  venue: string;
+}

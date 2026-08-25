@@ -4,7 +4,7 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 import { AlertTriangle, Check, ChevronLeft, Loader2, Search, Trophy } from "lucide-react";
 
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { usePublicEvent } from "@/lib/supabase/usePublicEvent";
 import {
   claimPlayerOpen,
   forgetPlayer,
@@ -48,7 +48,15 @@ const CREAM = "#F6F1E7";
  */
 export default function PlayPage() {
   const params = useParams<{ slug: string }>();
-  const eventId = ACTIVE_EVENT_ID;
+
+  /*
+   * The event in the URL, not a hardcoded one. This page read `params.slug` and then ignored
+   * it, resolving every visitor to the single seeded event id — so once a second tournament
+   * existed, everybody scanning that event's QR code landed here and was shown the *other*
+   * event's pairings, with no indication anything was wrong.
+   */
+  const { event, resolved } = usePublicEvent(params.slug);
+  const eventId = event?.id ?? "";
 
   const [rounds, setRounds] = React.useState<PlayerRound[] | null>(null);
   const [chosen, setChosen] = React.useState<number | null>(null);
@@ -113,6 +121,30 @@ export default function PlayPage() {
     const id = window.setInterval(reload, 12_000);
     return () => window.clearInterval(id);
   }, [token, reload]);
+
+  /* Which event this is has to be settled before anything is looked up against it. */
+  if (!resolved) {
+    return (
+      <main className="grid min-h-dvh place-items-center" style={{ background: CREAM }}>
+        <p className="flex items-center gap-2 text-[13px] text-muted">
+          <Loader2 className="size-4 animate-spin" /> Loading…
+        </p>
+      </main>
+    );
+  }
+
+  if (!event) {
+    return (
+      <main className="grid min-h-dvh place-items-center px-6" style={{ background: CREAM }}>
+        <div className="text-center">
+          <p className="text-[15px] font-bold" style={{ color: FOREST }}>
+            Event not found
+          </p>
+          <p className="mt-1 text-[13px] text-muted">Check the link, or ask a volunteer.</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!token) {
     return (

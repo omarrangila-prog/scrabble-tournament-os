@@ -2,7 +2,7 @@ import {
   cardRows,
   type ConfirmationPlayer,
   divisionLabel,
-  EVENT_WHEN,
+  type EventFacts,
   moneyLines,
 } from "./confirmation";
 
@@ -36,10 +36,10 @@ const moneyPair = (p: ConfirmationPlayer, bold: boolean) => {
   return [`${wrap(m.label)} ${m.value}`, `${wrap(m.amountLabel)} ${m.amountValue}`];
 };
 
-export function confirmationSubject(group: ContactGroup): string {
+export function confirmationSubject(group: ContactGroup, event: EventFacts): string {
   return group.players.length === 1
-    ? `Please confirm ${group.players[0].name}'s registration — Blufy's AlphaBattle`
-    : `Please confirm your ${group.players.length} registrations — Blufy's AlphaBattle, 23 August`;
+    ? `Please confirm ${group.players[0].name}'s registration — ${event.name}`
+    : `Please confirm your ${group.players.length} registrations — ${event.name}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -54,12 +54,12 @@ const NUMERALS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️�
  * Short enough to read in a notification: who, which category, what is owed or paid, when,
  * where, and one link.
  */
-export function whatsappMessage(group: ContactGroup): string {
+export function whatsappMessage(group: ContactGroup, event: EventFacts): string {
   const { players, confirmUrl } = group;
   const when = [
-    `📅 ${EVENT_WHEN.date}`,
-    `⏰ ${EVENT_WHEN.time}`,
-    `📍 ${EVENT_WHEN.venue}`,
+    `📅 ${event.date}`,
+    `⏰ ${event.time}`,
+    `📍 ${event.venue}`,
   ].join("\n");
 
   if (players.length === 1) {
@@ -67,7 +67,7 @@ export function whatsappMessage(group: ContactGroup): string {
     return [
       `Hello ${p.name} 👋`,
       ``,
-      `Your registration for *Blufy's AlphaBattle* has been recorded.`,
+      `Your registration for *${event.name}* has been recorded.`,
       ``,
       `Please check your details:`,
       ``,
@@ -83,7 +83,7 @@ export function whatsappMessage(group: ContactGroup): string {
       ``,
       `Keep your player number to hand for check-in.`,
       ``,
-      `*Blufy's AlphaBattle*`,
+      `*${event.name}*`,
     ]
       .filter((line) => line !== "")
       .join("\n");
@@ -92,7 +92,7 @@ export function whatsappMessage(group: ContactGroup): string {
   return [
     `Hello 👋`,
     ``,
-    `${players.length} registrations are connected to your contact for *Blufy's AlphaBattle*:`,
+    `${players.length} registrations are connected to your contact for *${event.name}*:`,
     ``,
     ...players.flatMap((p, i) => [
       `${NUMERALS[i] ?? `${i + 1}.`} *${p.name}*`,
@@ -106,7 +106,7 @@ export function whatsappMessage(group: ContactGroup): string {
     `Please review and confirm all of them here:`,
     confirmUrl,
     ``,
-    `*Blufy's AlphaBattle*`,
+    `*${event.name}*`,
   ]
     .filter((line, i, all) => !(line === "" && all[i - 1] === ""))
     .join("\n");
@@ -147,7 +147,7 @@ function cardHtml(p: ConfirmationPlayer): string {
   </table>`;
 }
 
-export function confirmationEmail(group: ContactGroup): {
+export function confirmationEmail(group: ContactGroup, event: EventFacts): {
   subject: string;
   html: string;
   text: string;
@@ -157,14 +157,14 @@ export function confirmationEmail(group: ContactGroup): {
 
   const html = `<div style="margin:0;padding:24px 12px;background:${CREAM};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <div style="max-width:520px;margin:0 auto;">
-      <p style="margin:0;text-align:center;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${GOLD};">Blufy's AlphaBattle</p>
+      <p style="margin:0;text-align:center;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${GOLD};">${escape(event.name)}</p>
       <h1 style="margin:8px 0 0;text-align:center;font-size:22px;font-weight:800;color:${BROWN};">Player registration confirmation</h1>
 
       <p style="margin:20px 0 0;font-size:15px;color:${BROWN};">Dear ${escape(lead.name)},</p>
       <p style="margin:10px 0 0;font-size:14px;line-height:1.6;color:${BROWN}CC;">
         ${many
-          ? `Your ${players.length} registrations for Blufy's AlphaBattle have been recorded. Please check each one below and confirm that it is correct.`
-          : `Your registration for Blufy's AlphaBattle has been recorded. Please check the details below and confirm that they are correct.`}
+          ? `Your ${players.length} registrations for ${escape(event.name)} have been recorded. Please check each one below and confirm that it is correct.`
+          : `Your registration for ${escape(event.name)} has been recorded. Please check the details below and confirm that they are correct.`}
       </p>
 
       ${players.map(cardHtml).join("")}
@@ -172,9 +172,9 @@ export function confirmationEmail(group: ContactGroup): {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 0;border-radius:14px;background:${FOREST}14;">
         <tr><td style="padding:16px 20px;text-align:center;">
           <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${GOLD};">Event details</p>
-          <p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${BROWN};">${EVENT_WHEN.date}</p>
-          <p style="margin:2px 0 0;font-size:14px;color:${BROWN}CC;">${EVENT_WHEN.time}</p>
-          <p style="margin:2px 0 0;font-size:13.5px;color:${BROWN}AA;">${EVENT_WHEN.venue}</p>
+          <p style="margin:6px 0 0;font-size:15px;font-weight:700;color:${BROWN};">${event.date}</p>
+          <p style="margin:2px 0 0;font-size:14px;color:${BROWN}CC;">${event.time}</p>
+          <p style="margin:2px 0 0;font-size:13.5px;color:${BROWN}AA;">${event.venue}</p>
         </td></tr>
       </table>
 
@@ -191,12 +191,12 @@ export function confirmationEmail(group: ContactGroup): {
         Please keep your player number to hand for check-in on the day. We look forward to
         welcoming you.
       </p>
-      <p style="margin:14px 0 0;font-size:13px;font-weight:700;color:${BROWN};">Blufy's AlphaBattle</p>
+      <p style="margin:14px 0 0;font-size:13px;font-weight:700;color:${BROWN};">${escape(event.name)}</p>
     </div>
   </div>`;
 
   const text = [
-    `BLUFY'S ALPHABATTLE — PLAYER REGISTRATION CONFIRMATION`,
+    `${event.name.toUpperCase()} — PLAYER REGISTRATION CONFIRMATION`,
     ``,
     `Dear ${lead.name},`,
     ``,
@@ -209,19 +209,19 @@ export function confirmationEmail(group: ContactGroup): {
       ``,
     ]),
     `EVENT`,
-    EVENT_WHEN.date,
-    EVENT_WHEN.time,
-    EVENT_WHEN.venue,
+    event.date,
+    event.time,
+    event.venue,
     ``,
     `Confirm your details, or ask for a correction:`,
     confirmUrl,
     ``,
     `Please keep your player number to hand for check-in.`,
     ``,
-    `Blufy's AlphaBattle`,
+    event.name,
   ].join("\n");
 
-  return { subject: confirmationSubject(group), html, text };
+  return { subject: confirmationSubject(group, event), html, text };
 }
 
 /**
