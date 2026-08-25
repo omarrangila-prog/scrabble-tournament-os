@@ -15,6 +15,7 @@ import {
   Player,
   Tournament,
 } from "../domain/types";
+import { roundsForRoundRobin } from "../domain/pairingFormats";
 import { buildRecords, compareByRules, PlayerRecord } from "./standings";
 
 export interface PairingInput {
@@ -223,10 +224,39 @@ function foldWithBacktracking(
 }
 
 /**
- * Generates pairings for one round using a Swiss fold with repeat-opponent
- * avoidance and backtracking. Locked pairings are preserved exactly.
+ * Generates pairings for one round.
+ *
+ * Dispatches on the tournament's configured system. Swiss is both the default and the
+ * fallback for anything not (yet) implemented as its own generator, because a director who
+ * never touched the format picker should see exactly what this engine has always done.
+ * Knockout is refused outright rather than silently run as something else — eliminating a
+ * player is a different kind of decision from pairing one, this engine tracks no
+ * elimination state to make it correctly, and mislabelling a Swiss round as a knockout round
+ * would be a worse failure than an honest error the caller can show.
  */
 export function generateRound(input: PairingInput): PairingResult {
+  switch (input.tournament.system) {
+    case "round-robin":
+      return generateRoundRobinRound(input);
+    case "king-of-the-hill":
+      return generateKothRound(input);
+    case "manual":
+      return generateManualRound(input);
+    case "knockout":
+      throw new Error(
+        "Knockout pairing is not supported yet. Choose a different format for this event in Settings.",
+      );
+    default:
+      return generateSwissRound(input);
+  }
+}
+
+/**
+ * Swiss fold with repeat-opponent avoidance and backtracking. Locked pairings are preserved
+ * exactly. This was the engine's only pairing system before formats existed as a real,
+ * per-event choice — everything about its behaviour is unchanged.
+ */
+function generateSwissRound(input: PairingInput): PairingResult {
   const { players, pairings, tournament, round } = input;
   const constraints = tournament.constraints;
   const playerMap = new Map(players.map((p) => [p.id, p]));
@@ -335,6 +365,227 @@ export function generateRound(input: PairingInput): PairingResult {
   }
 
   return { pairings: annotateConflicts(out, players, tournament, history, byes), unpaired };
+}
+
+/**
+ * Which of `seats` occupies each position this round, by the circle method: one seat is
+ * fixed, every other seat rotates one place further each round. `seats.length` must be even
+ * — an odd field is padded with a `null` bye seat by the caller before this is reached — and
+ * over exactly `seats.length - 1` rounds, every seat meets every other seat exactly once.
+ * Pure and stateless: called fresh each round with the same ordered `seats`, it always
+ * reproduces the same schedule, so there is no running state to keep in step with what has
+ * already been published.
+ */
+function circleArrangement<T>(seats: T[], round: number): T[] {
+  const fixed = seats[0];
+  const rotating = seats.slice(1);
+  const shift = (round - 1) % rotating.length;
+  const rotated = rotating.map((_, i) => rotating[(i + shift) % rotating.length]);
+  return [fixed, ...rotated];
+}
+
+/**
+ * Round robin: every player in a division plays every other player in the division exactly
+ * once, in a schedule fixed for the whole event rather than decided round by round. Needs no
+ * repeat-opponent avoidance — the schedule already guarantees no repeat is possible within
+ * its own length — and if the event runs more rounds than the schedule needs, the fixture
+ * repeats from the start rather than leaving a round with nothing to publish.
+ *
+ * The seat order is fixed by rating then name, not by anything the director can adjust here:
+ * every seat still meets every other seat exactly once whatever that order is, so this only
+ * decides which seat a given player sits in, not who ends up playing whom overall.
+ */
+function generateRoundRobinRound(input: PairingInput): PairingResult {
+  const { players, pairings, tournament, round } = input;
+  const roundConstraints = { ...tournament.constraints, avoidRepeatOpponents: false };
+
+  // Real prior-round history and bye counts, so every other conflict type — duplicate
+  // assignment, a second bye, accessibility — still works correctly; only the repeat-opponent
+  // flag itself is suppressed above, since a cycled fixture repeats on purpose.
+  const history = new Map<string, string[]>();
+  const byes = new Map<string, number>();
+  for (const p of players) {
+    history.set(p.id, []);
+    byes.set(p.id, 0);
+  }
+  for (const pr of pairings.filter((x) => x.round < round)) {
+    if (pr.playerBId === null) {
+      byes.set(pr.playerAId, (byes.get(pr.playerAId) ?? 0) + 1);
+      continue;
+    }
+    history.get(pr.playerAId)?.push(pr.playerBId);
+    history.get(pr.playerBId)?.push(pr.playerAId);
+  }
+
+  const out: Pairing[] = [];
+  const unpaired: string[] = [];
+  let board = 1;
+
+  for (const divisionId of tournament.divisions) {
+    const pool = eligiblePlayers(players)
+      .filter((p) => p.division === divisionId)
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0) || a.fullName.localeCompare(b.fullName));
+
+    if (pool.length < 2) continue;
+
+    const needed = roundsForRoundRobin(pool.length);
+    // Cycles once the fixture has run its course, rather than a later round pairing nobody.
+    const fixtureRound = ((round - 1) % needed) + 1;
+
+    const seats: (Player | null)[] = pool.length % 2 === 0 ? [...pool] : [...pool, null];
+    const arrangement = circleArrangement(seats, fixtureRound);
+    const n = arrangement.length;
+
+    for (let i = 0; i < n / 2; i++) {
+      const a = arrangement[i];
+      const b = arrangement[n - 1 - i];
+
+      if (a === null || b === null) {
+        const byePlayer = (a ?? b) as Player;
+        out.push({
+          id: `pr-${round}-bye-${byePlayer.id}`,
+          tournamentId: tournament.id,
+          round,
+          division: divisionId,
+          board: 0,
+          playerAId: byePlayer.id,
+          playerBId: null,
+          status: "bye",
+          locked: false,
+          reason: `Round robin, fixture ${fixtureRound} of ${needed}: an odd-sized field means one player sits out each time through.`,
+          confidence: 100,
+          conflicts: [],
+        });
+        continue;
+      }
+
+      out.push({
+        id: `pr-${round}-${board}`,
+        tournamentId: tournament.id,
+        round,
+        division: divisionId,
+        board,
+        playerAId: a.id,
+        playerBId: b.id,
+        status: "scheduled",
+        locked: false,
+        reason: `Round robin, fixture ${fixtureRound} of ${needed}: this pairing happens exactly once across the schedule.`,
+        confidence: 100,
+        conflicts: [],
+      });
+      board += 1;
+    }
+  }
+
+  return {
+    pairings: annotateConflicts(out, players, { ...tournament, constraints: roundConstraints }, history, byes),
+    unpaired,
+  };
+}
+
+/**
+ * King of the Hill: the current standings, paired straight down — first against second,
+ * third against fourth, and so on, every round. Repeats are not avoided because they are the
+ * entire point of the format; flagging one as a conflict here would tell a director something
+ * is wrong with a round that is working exactly as chosen.
+ */
+function generateKothRound(input: PairingInput): PairingResult {
+  const { players, pairings, tournament, round } = input;
+  const roundConstraints = { ...tournament.constraints, avoidRepeatOpponents: false };
+  const playerMap = new Map(players.map((p) => [p.id, p]));
+
+  // Real prior-round history and bye counts — used both to pick who sits out this round and,
+  // below, so the final conflict pass can still catch a genuine second bye. Only the
+  // repeat-opponent flag is suppressed, since KOTH pairs the same leaders together on purpose.
+  const history = new Map<string, string[]>();
+  const byes = new Map<string, number>();
+  for (const p of players) {
+    history.set(p.id, []);
+    byes.set(p.id, 0);
+  }
+  for (const pr of pairings.filter((x) => x.round < round)) {
+    if (pr.playerBId === null) {
+      byes.set(pr.playerAId, (byes.get(pr.playerAId) ?? 0) + 1);
+      continue;
+    }
+    history.get(pr.playerAId)?.push(pr.playerBId);
+    history.get(pr.playerBId)?.push(pr.playerAId);
+  }
+
+  const records = buildRecords(players, pairings, round - 1);
+  const ctx = { all: records, players: playerMap, pairings };
+
+  const out: Pairing[] = [];
+  const unpaired: string[] = [];
+  let board = 1;
+
+  for (const divisionId of tournament.divisions) {
+    const queue = eligiblePlayers(players)
+      .filter((p) => p.division === divisionId)
+      .sort((x, y) => compareByRules(records.get(x.id)!, records.get(y.id)!, tournament.rankingRules, ctx));
+
+    // Bye to the lowest-ranked eligible player who has not already had one — same rule Swiss
+    // uses, so a player's bye entitlement means the same thing whichever format is running.
+    if (queue.length % 2 === 1) {
+      let byeIdx = -1;
+      for (let i = queue.length - 1; i >= 0; i--) {
+        if ((byes.get(queue[i].id) ?? 0) < roundConstraints.maxByesPerPlayer) {
+          byeIdx = i;
+          break;
+        }
+      }
+      if (byeIdx === -1) byeIdx = queue.length - 1;
+      const byePlayer = queue.splice(byeIdx, 1)[0];
+      out.push({
+        id: `pr-${round}-bye-${byePlayer.id}`,
+        tournamentId: tournament.id,
+        round,
+        division: divisionId,
+        board: 0,
+        playerAId: byePlayer.id,
+        playerBId: null,
+        status: "bye",
+        locked: false,
+        reason: "King of the Hill: lowest-ranked eligible player without a bye yet sits out.",
+        confidence: 100,
+        conflicts: [],
+      });
+    }
+
+    for (let i = 0; i < queue.length; i += 2) {
+      const a = queue[i];
+      const b = queue[i + 1];
+      out.push({
+        id: `pr-${round}-${board}`,
+        tournamentId: tournament.id,
+        round,
+        division: divisionId,
+        board,
+        playerAId: a.id,
+        playerBId: b.id,
+        status: "scheduled",
+        locked: false,
+        reason: `King of the Hill: ${i + 1} plays ${i + 2} in the current standings.`,
+        confidence: 100,
+        conflicts: [],
+      });
+      board += 1;
+    }
+  }
+
+  return {
+    pairings: annotateConflicts(out, players, { ...tournament, constraints: roundConstraints }, history, byes),
+    unpaired,
+  };
+}
+
+/**
+ * Manual: nothing is paired automatically. Every eligible player comes back unpaired, for a
+ * director to build the round from scratch — the swap surface that adjusts a generated round
+ * also handles pairing two names straight out of this pool.
+ */
+function generateManualRound(input: PairingInput): PairingResult {
+  return { pairings: [], unpaired: eligiblePlayers(input.players).map((p) => p.id) };
 }
 
 /** Recomputes conflicts for a whole round — used after any manual change. */
@@ -450,6 +701,18 @@ export function swapPlayers(
   const two = locate(playerTwoId);
   if (!one || !two || one.p.locked || two.p.locked) return round;
 
+  /*
+   * A board's division does not travel with a swap — only the two ids do — so swapping
+   * across divisions would leave the right division label on a board playing the wrong
+   * players. Refused the same way a locked board already is: silently, because a swap
+   * that cannot happen and a swap the director never actually asked for look the same from
+   * here, and the preview simply keeps showing whatever was there before either tap.
+   */
+  const playerMap = new Map(players.map((p) => [p.id, p]));
+  const p1 = playerMap.get(playerOneId);
+  const p2 = playerMap.get(playerTwoId);
+  if (!p1 || !p2 || p1.division !== p2.division) return round;
+
   one.p[one.slot] = playerTwoId;
   two.p[two.slot] = playerOneId;
 
@@ -457,5 +720,100 @@ export function swapPlayers(
   const history = new Map<string, string[]>();
   for (const p of players) history.set(p.id, []);
   return annotateConflicts(next, players, tournament, history);
+}
+
+/**
+ * Pairs two players straight out of the unpaired pool onto a new board — the other half of
+ * manual pairing, alongside `swapPlayers` adjusting a board that already exists. Refuses
+ * across divisions for the same reason `swapPlayers` does, and refuses if either player is
+ * already seated somewhere in `round` — the preview only ever offers this for names still in
+ * the unpaired list, but a stale click after a fast second tap should not seat somebody
+ * twice.
+ */
+export function pairUnpaired(
+  round: Pairing[],
+  players: Player[],
+  tournament: Tournament,
+  roundNumber: number,
+  playerOneId: string,
+  playerTwoId: string,
+): Pairing[] {
+  if (playerOneId === playerTwoId) return round;
+
+  const seated = new Set(round.flatMap((p) => [p.playerAId, p.playerBId].filter(Boolean) as string[]));
+  if (seated.has(playerOneId) || seated.has(playerTwoId)) return round;
+
+  const playerMap = new Map(players.map((p) => [p.id, p]));
+  const p1 = playerMap.get(playerOneId);
+  const p2 = playerMap.get(playerTwoId);
+  if (!p1 || !p2 || p1.division !== p2.division) return round;
+
+  const board = Math.max(0, ...round.filter((p) => p.playerBId !== null).map((p) => p.board)) + 1;
+  const next: Pairing[] = [
+    ...round,
+    {
+      id: `pr-${p1.division}-manual-${playerOneId}-${playerTwoId}`,
+      tournamentId: tournament.id,
+      round: roundNumber,
+      division: p1.division,
+      board,
+      playerAId: playerOneId,
+      playerBId: playerTwoId,
+      status: "scheduled",
+      locked: false,
+      reason: "Paired by hand.",
+      confidence: 100,
+      conflicts: [],
+    },
+  ];
+
+  const history = new Map<string, string[]>();
+  for (const p of players) history.set(p.id, []);
+  return annotateConflicts(next, players, tournament, history);
+}
+
+/**
+ * Sends a player back to the unpaired pool — the manual-pairing undo. Removing their board
+ * outright rather than leaving a one-sided pairing behind, which is not a shape any other
+ * screen expects to see.
+ */
+export function unpairPlayer(round: Pairing[], playerId: string): Pairing[] {
+  return round.filter((p) => p.playerAId !== playerId && p.playerBId !== playerId);
+}
+
+/**
+ * Marks an unpaired player as this round's bye — manual pairing's way of sitting somebody
+ * out on purpose, same board-0 shape every other format uses for a bye.
+ */
+export function markBye(
+  round: Pairing[],
+  players: Player[],
+  tournament: Tournament,
+  roundNumber: number,
+  playerId: string,
+): Pairing[] {
+  const seated = new Set(round.flatMap((p) => [p.playerAId, p.playerBId].filter(Boolean) as string[]));
+  if (seated.has(playerId)) return round;
+
+  const player = players.find((p) => p.id === playerId);
+  if (!player) return round;
+
+  return [
+    ...round,
+    {
+      id: `pr-manual-bye-${playerId}`,
+      tournamentId: tournament.id,
+      round: roundNumber,
+      division: player.division,
+      board: 0,
+      playerAId: playerId,
+      playerBId: null,
+      status: "bye",
+      locked: false,
+      reason: "Marked as a bye by hand.",
+      confidence: 100,
+      conflicts: [],
+    },
+  ];
 }
 

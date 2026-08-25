@@ -3,10 +3,14 @@ import {
   annotateConflicts,
   eligiblePlayers,
   generateRound,
+  markBye,
+  pairUnpaired,
   swapPlayers,
+  unpairPlayer,
   validateRound,
 } from "./pairing";
 import { buildRecords, computeStandings } from "./standings";
+import { roundsForRoundRobin } from "../domain/pairingFormats";
 import { TOURNAMENT } from "../domain/seed";
 import { Pairing, Player, Tournament } from "../domain/types";
 
@@ -648,5 +652,219 @@ describe("pairing engine — same-club conflict", () => {
     ];
     const withConflicts = annotateConflicts(round, players, tournament, new Map());
     expect(withConflicts[0].conflicts.some((c) => c.kind === "same-club")).toBe(true);
+  });
+});
+
+/** Plays out a full round robin, round by round, tracking who has met whom and who sat out. */
+function playRoundRobin(players: Player[], rounds: number) {
+  const rrTournament: Tournament = { ...tournament, system: "round-robin" };
+  let pairings: Pairing[] = [];
+  const met = new Map<string, Set<string>>();
+  const byeCounts = new Map<string, number>();
+  const roundsById: Pairing[][] = [];
+
+  for (const p of players) met.set(p.id, new Set());
+
+  for (let round = 1; round <= rounds; round++) {
+    const { pairings: fresh, unpaired } = generateRound({
+      players,
+      pairings,
+      tournament: rrTournament,
+      round,
+    });
+    expect(unpaired).toHaveLength(0);
+    roundsById.push(fresh);
+
+    for (const p of fresh) {
+      if (p.playerBId === null) {
+        byeCounts.set(p.playerAId, (byeCounts.get(p.playerAId) ?? 0) + 1);
+        continue;
+      }
+      // Never a repeat within one pass through the fixture.
+      expect(met.get(p.playerAId)!.has(p.playerBId)).toBe(false);
+      met.get(p.playerAId)!.add(p.playerBId);
+      met.get(p.playerBId)!.add(p.playerAId);
+    }
+
+    pairings = [
+      ...pairings,
+      ...fresh.map((p) => (p.playerBId === null ? p : { ...p, status: "verified" as const, scoreA: 400, scoreB: 380 })),
+    ];
+  }
+
+  return { roundsById, met, byeCounts };
+}
+
+describe("pairing engine — round robin", () => {
+  it("pairs every player with every other player exactly once, even field", () => {
+    const players = makePlayers(6);
+    const needed = roundsForRoundRobin(6);
+    expect(needed).toBe(5);
+
+    const { roundsById, met } = playRoundRobin(players, needed);
+
+    for (const round of roundsById) expect(round.some((p) => p.playerBId === null)).toBe(false);
+    for (const p of players) expect(met.get(p.id)!.size).toBe(players.length - 1);
+  });
+
+  it("pairs every player with every other player exactly once, odd field, with one bye per round", () => {
+    const players = makePlayers(5);
+    const needed = roundsForRoundRobin(5);
+    expect(needed).toBe(5);
+
+    const { roundsById, met, byeCounts } = playRoundRobin(players, needed);
+
+    for (const round of roundsById) expect(round.filter((p) => p.playerBId === null)).toHaveLength(1);
+    for (const p of players) expect(met.get(p.id)!.size).toBe(players.length - 1);
+    // Five players, five rounds, one bye each round: every player sits out exactly once.
+    for (const p of players) expect(byeCounts.get(p.id) ?? 0).toBe(1);
+  });
+
+  it("cycles the fixture rather than pairing nobody once the schedule is exhausted", () => {
+    const players = makePlayers(6);
+    const needed = roundsForRoundRobin(6);
+    const rrTournament: Tournament = { ...tournament, system: "round-robin" };
+
+    const round1 = generateRound({ players, pairings: [], tournament: rrTournament, round: 1 });
+    const roundAfterCycle = generateRound({
+      players,
+      pairings: [],
+      tournament: rrTournament,
+      round: needed + 1,
+    });
+
+    const shape = (r: Pairing[]) =>
+      r
+        .map((p) => [p.playerAId, p.playerBId].sort().join("-"))
+        .sort()
+        .join("|");
+    expect(shape(roundAfterCycle.pairings)).toBe(shape(round1.pairings));
+  });
+
+  it("does not flag the cycled repeat as a repeat-opponent conflict", () => {
+    const players = makePlayers(4);
+    const needed = roundsForRoundRobin(4);
+    const rrTournament: Tournament = { ...tournament, system: "round-robin" };
+
+    let pairings: Pairing[] = [];
+    for (let round = 1; round <= needed; round++) {
+      const { pairings: fresh } = generateRound({ players, pairings, tournament: rrTournament, round });
+      pairings = [...pairings, ...fresh.map((p) => ({ ...p, status: "verified" as const, scoreA: 400, scoreB: 380 }))];
+    }
+
+    const { pairings: cycled } = generateRound({ players, pairings, tournament: rrTournament, round: needed + 1 });
+    for (const p of cycled) expect(p.conflicts.some((c) => c.kind === "repeat-opponent")).toBe(false);
+  });
+});
+
+describe("pairing engine — king of the hill", () => {
+  const kothTournament: Tournament = { ...tournament, system: "king-of-the-hill" };
+
+  it("pairs first against second, third against fourth, by current standings", () => {
+    const players = makePlayers(8);
+    // Give player 8 (lowest rating) two wins so they lead the standings.
+    const history: Pairing[] = [
+      {
+        id: "h1", tournamentId: tournament.id, round: 1, division: "masters", board: 1,
+        playerAId: "p8", playerBId: "p7", status: "verified", locked: false, reason: "", confidence: 90,
+        conflicts: [], scoreA: 450, scoreB: 300,
+      },
+    ];
+
+    const { pairings } = generateRound({ players, pairings: history, tournament: kothTournament, round: 2 });
+    const board1 = pairings.find((p) => p.board === 1)!;
+    // p8 leads on the one result so far; standings order puts them first.
+    expect([board1.playerAId, board1.playerBId]).toContain("p8");
+  });
+
+  it("does not avoid repeats — leaders keep meeting leaders without a conflict flag", () => {
+    const players = makePlayers(4);
+    let pairings: Pairing[] = [];
+
+    for (let round = 1; round <= 3; round++) {
+      const { pairings: fresh } = generateRound({ players, pairings, tournament: kothTournament, round });
+      // Same two players lead every round (nobody's record changes), so board 1 repeats.
+      if (round > 1) {
+        const board1 = fresh.find((p) => p.board === 1)!;
+        expect(board1.conflicts.some((c) => c.kind === "repeat-opponent")).toBe(false);
+      }
+      pairings = [...pairings, ...fresh.map((p) => (p.playerBId === null ? p : { ...p, status: "verified" as const, scoreA: 400, scoreB: 380 }))];
+    }
+  });
+
+  it("gives the bye to the lowest-ranked eligible player without one yet", () => {
+    const players = makePlayers(5);
+    const { pairings } = generateRound({ players, pairings: [], tournament: kothTournament, round: 1 });
+    const bye = pairings.find((p) => p.playerBId === null)!;
+    // makePlayers ranks p5 lowest (rating descends with index) and nobody has a bye yet.
+    expect(bye.playerAId).toBe("p5");
+  });
+});
+
+describe("pairing engine — manual", () => {
+  const manualTournament: Tournament = { ...tournament, system: "manual" };
+
+  it("pairs nothing automatically — every eligible player comes back unpaired", () => {
+    const players = makePlayers(6);
+    const { pairings, unpaired } = generateRound({ players, pairings: [], tournament: manualTournament, round: 1 });
+    expect(pairings).toHaveLength(0);
+    expect(unpaired.sort()).toEqual(players.map((p) => p.id).sort());
+  });
+
+  it("pairUnpaired creates a board from two unpaired players", () => {
+    const players = makePlayers(4);
+    const next = pairUnpaired([], players, manualTournament, 1, "p1", "p2");
+    expect(next).toHaveLength(1);
+    expect([next[0].playerAId, next[0].playerBId].sort()).toEqual(["p1", "p2"]);
+    expect(next[0].round).toBe(1);
+  });
+
+  it("pairUnpaired refuses a player already seated", () => {
+    const players = makePlayers(4);
+    const once = pairUnpaired([], players, manualTournament, 1, "p1", "p2");
+    const twice = pairUnpaired(once, players, manualTournament, 1, "p1", "p3");
+    expect(twice).toBe(once);
+  });
+
+  it("pairUnpaired refuses across divisions", () => {
+    const players = makePlayers(4).map((p, i) => ({ ...p, division: i < 2 ? "masters" as const : "advanced" as const }));
+    const next = pairUnpaired([], players, manualTournament, 1, "p1", "p3");
+    expect(next).toHaveLength(0);
+  });
+
+  it("unpairPlayer removes their board entirely", () => {
+    const players = makePlayers(4);
+    const paired = pairUnpaired([], players, manualTournament, 1, "p1", "p2");
+    const back = unpairPlayer(paired, "p1");
+    expect(back).toHaveLength(0);
+  });
+
+  it("markBye adds a bye and refuses a player already seated", () => {
+    const players = makePlayers(4);
+    const withBye = markBye([], players, manualTournament, 1, "p1");
+    expect(withBye).toHaveLength(1);
+    expect(withBye[0].playerBId).toBeNull();
+
+    const again = markBye(withBye, players, manualTournament, 1, "p1");
+    expect(again).toBe(withBye);
+  });
+});
+
+describe("pairing engine — swapPlayers refuses across divisions", () => {
+  it("leaves the round unchanged when the two players are in different divisions", () => {
+    const players = makePlayers(4).map((p, i) => ({ ...p, division: i < 2 ? "masters" as const : "advanced" as const }));
+    const round: Pairing[] = [
+      {
+        id: "b1", tournamentId: tournament.id, round: 1, division: "masters", board: 1,
+        playerAId: "p1", playerBId: "p2", status: "scheduled", locked: false, reason: "", confidence: 90, conflicts: [],
+      },
+      {
+        id: "b2", tournamentId: tournament.id, round: 1, division: "advanced", board: 2,
+        playerAId: "p3", playerBId: "p4", status: "scheduled", locked: false, reason: "", confidence: 90, conflicts: [],
+      },
+    ];
+
+    const result = swapPlayers(round, players, tournament, "p1", "p3");
+    expect(result).toBe(round);
   });
 });
