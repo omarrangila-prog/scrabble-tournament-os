@@ -54,7 +54,7 @@ import { FinalResults } from "@/components/organizer/FinalResults";
 import { RunTheDay } from "@/components/organizer/RunTheDay";
 import { PairingPreview } from "@/components/organizer/PairingPreview";
 import { useEventFormat } from "@/lib/supabase/useEventFormat";
-import { generateRound, swapPlayers } from "@/lib/engine/pairing";
+import { generateRound, markBye, pairUnpaired, swapPlayers, unpairPlayer } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
   assignTables,
@@ -131,6 +131,7 @@ export default function LiveEventPage() {
   const { format, save: saveFormat } = useEventFormat(ACTIVE_EVENT_ID, {
     rounds: event?.rounds ?? 5,
     roundMinutes: event?.roundMinutes ?? 20,
+    system: "swiss",
   });
   const [publishing, setPublishing] = React.useState(false);
 
@@ -152,7 +153,9 @@ export default function LiveEventPage() {
    * swap from a round the director backed out of, rather than reading a ref during render to
    * detect that itself.
    */
-  const [preview, setPreview] = React.useState<{ round: number; pairings: Pairing[] } | null>(null);
+  const [preview, setPreview] = React.useState<{ round: number; pairings: Pairing[]; unpaired: string[] } | null>(
+    null,
+  );
   const [previewSession, setPreviewSession] = React.useState(0);
 
   const toggleQr = async () => {
@@ -463,7 +466,25 @@ export default function LiveEventPage() {
    * Reads the locked active list when one exists; otherwise the live check-in count, exactly
    * as pairing always has.
    */
+  /*
+   * `app.tournament` still carries the seed's hardcoded "swiss" — `format.system` is the real,
+   * saved choice. Every engine call in this file uses this instead of `app.tournament`
+   * directly, so a director's format choice in Settings actually reaches pairing rather than
+   * being silently ignored the way it always has been. A plain object, not a hook — this is
+   * well after the early return above, where a hook cannot run.
+   */
+  const pairingTournament = { ...app.tournament, system: format.system };
+
   const openPairingPreview = () => {
+    if (format.system === "knockout") {
+      app.toast({
+        title: "Knockout isn't supported yet",
+        description: "Choose a different pairing system for this event in Settings.",
+        tone: "warning",
+      });
+      return;
+    }
+
     const present = activeLock.ids
       ? roster.players.filter((p) => activeLock.ids!.includes(p.id))
       : attending.filter((p) => p.checkIn === "checked-in");
@@ -482,14 +503,16 @@ export default function LiveEventPage() {
     const generated = generateRound({
       players: present,
       pairings: games.pairings,
-      tournament: app.tournament,
+      tournament: pairingTournament,
       round: nextRound,
       /*
        * The opening round is drawn at random. Without it the queue comes out close to
        * alphabetical, which seats siblings — who share a surname — against each other.
-       * From round two on the engine ignores this and pairs on the standings.
+       * From round two on the engine ignores this and pairs on the standings. Swiss only —
+       * round robin's schedule is fixed by seat order, and King of the Hill by the standings
+       * themselves, so a random draw would only make either one unreproducible.
        */
-      random: Math.random,
+      random: format.system === "swiss" ? Math.random : undefined,
     });
 
     /*
@@ -523,28 +546,33 @@ export default function LiveEventPage() {
       return;
     }
 
-    /*
-     * Checked before opening the preview. The database enforces the same rules at Publish,
-     * but a constraint violation there arrives as a Postgres error in front of a director
-     * holding a room full of people — better to say so now, with a chance to fix it.
-     */
     const plan: BoardPlan[] = seated.map((p) => ({
       board: p.board,
       division: p.division,
       playerA: p.playerAId,
       playerB: p.playerBId,
     }));
-    const check = validateBoardPlan(plan);
-    if (!check.ok) {
-      app.toast({
-        title: "These pairings are not valid",
-        description: check.problems[0] ?? "Please try again.",
-        tone: "critical",
-      });
-      return;
+
+    /*
+     * Checked before opening the preview — except for manual pairing, which starts with
+     * nothing on the board on purpose. `validateBoardPlan` refuses an empty plan as "there
+     * are no boards to publish", which is exactly wrong here: this preview is where the
+     * director builds it. The database enforces the same rules at Publish either way, so a
+     * constraint violation there still arrives before anything is written.
+     */
+    if (plan.length > 0) {
+      const check = validateBoardPlan(plan);
+      if (!check.ok) {
+        app.toast({
+          title: "These pairings are not valid",
+          description: check.problems[0] ?? "Please try again.",
+          tone: "critical",
+        });
+        return;
+      }
     }
 
-    setPreview({ round: nextRound, pairings: seated });
+    setPreview({ round: nextRound, pairings: seated, unpaired: generated.unpaired });
     setPreviewSession((n) => n + 1);
   };
 
@@ -552,7 +580,30 @@ export default function LiveEventPage() {
   const swapInPreview = (playerOneId: string, playerTwoId: string) => {
     setPreview((current) => {
       if (!current) return current;
-      const next = swapPlayers(current.pairings, roster.players, app.tournament, playerOneId, playerTwoId);
+      const next = swapPlayers(current.pairings, roster.players, pairingTournament, playerOneId, playerTwoId);
+      return { ...current, pairings: next };
+    });
+  };
+
+  /** Manual pairing: seats two players from the unpaired pool onto a new board. */
+  const pairFromPool = (playerOneId: string, playerTwoId: string) => {
+    setPreview((current) => {
+      if (!current) return current;
+      const next = pairUnpaired(current.pairings, roster.players, pairingTournament, current.round, playerOneId, playerTwoId);
+      return { ...current, pairings: next };
+    });
+  };
+
+  /** Manual pairing: sends a player back to the unpaired pool, removing their board. */
+  const unpairFromPreview = (playerId: string) => {
+    setPreview((current) => (current ? { ...current, pairings: unpairPlayer(current.pairings, playerId) } : current));
+  };
+
+  /** Manual pairing: marks an unpaired player as this round's bye. */
+  const markByeInPreview = (playerId: string) => {
+    setPreview((current) => {
+      if (!current) return current;
+      const next = markBye(current.pairings, roster.players, pairingTournament, current.round, playerId);
       return { ...current, pairings: next };
     });
   };
@@ -560,6 +611,25 @@ export default function LiveEventPage() {
   /** Writes the round the director has just looked at. This is the only place a round is published. */
   const confirmPublish = async () => {
     if (!preview) return;
+
+    /*
+     * Manual pairing starts with everyone in the unpaired pool — checked here rather than
+     * blocking the preview from opening, since that emptiness is exactly the state a director
+     * begins from. Anyone still there when Publish is pressed has neither a board nor a bye,
+     * which is not a state a published round can be in.
+     */
+    const seatedIds = new Set(
+      preview.pairings.flatMap((p) => [p.playerAId, p.playerBId].filter(Boolean) as string[]),
+    );
+    const stillWaiting = preview.unpaired.filter((id) => !seatedIds.has(id));
+    if (stillWaiting.length > 0) {
+      app.toast({
+        title: "Not everyone has a board",
+        description: `${stillWaiting.length} player(s) still need a board or a bye before this round can publish.`,
+        tone: "warning",
+      });
+      return;
+    }
 
     const plan: BoardPlan[] = preview.pairings.map((p) => ({
       board: p.board,
@@ -1039,18 +1109,32 @@ export default function LiveEventPage() {
                 </>
               ) : null}
               {eventState === "break" ? (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  icon={<ArrowRight className="size-4" />}
-                  disabled={round >= format.rounds}
-                  onClick={() => {
-                    live.setRound(event.id, round + 1);
-                    void setState("check-in-closed");
-                  }}
-                >
-                  {round >= format.rounds ? "Final round complete" : `Prepare round ${round + 1}`}
-                </Button>
+                <>
+                  {/*
+                   * Round count already stops the last round from "preparing" a round that
+                   * doesn't exist. This is the other half: the database refuses to publish a
+                   * round over an unfinished one regardless, so the button says so up front
+                   * rather than a director finding out from an error after the room is
+                   * already back in their seats.
+                   */}
+                  {round < format.rounds && !advance.ready ? (
+                    <p className="rounded-control bg-warning-050 px-3.5 py-2.5 text-[12px] leading-relaxed text-[#a76d16]">
+                      Round {round} still needs attention before the next one can be prepared: {advance.reason}
+                    </p>
+                  ) : null}
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    icon={<ArrowRight className="size-4" />}
+                    disabled={round >= format.rounds || !advance.ready}
+                    onClick={() => {
+                      live.setRound(event.id, round + 1);
+                      void setState("check-in-closed");
+                    }}
+                  >
+                    {round >= format.rounds ? "Final round complete" : `Prepare round ${round + 1}`}
+                  </Button>
+                </>
               ) : null}
 
             </div>
@@ -1145,8 +1229,13 @@ export default function LiveEventPage() {
         open={preview !== null}
         round={preview?.round ?? 0}
         pairings={preview?.pairings ?? []}
+        unpaired={preview?.unpaired ?? []}
+        players={roster.players}
         nameOf={nameOfPlayer}
         onSwap={swapInPreview}
+        onPairFromPool={pairFromPool}
+        onUnpair={unpairFromPreview}
+        onMarkBye={markByeInPreview}
         onCancel={() => setPreview(null)}
         onPublish={() => void confirmPublish()}
         busy={publishing}

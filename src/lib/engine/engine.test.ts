@@ -848,6 +848,28 @@ describe("pairing engine — manual", () => {
     const again = markBye(withBye, players, manualTournament, 1, "p1");
     expect(again).toBe(withBye);
   });
+
+  /*
+   * `games.board` has a database check constraint requiring a positive number. Every other
+   * bye in this engine reaches the database only after `numberByes` renumbers its `board: 0`
+   * placeholder — a step manual pairing's live edits never run. A bye created here with
+   * `board: 0` would pass every in-memory check and then fail at Publish, in front of a
+   * director who has already told the round everyone has a seat.
+   */
+  it("gives a manually-marked bye a positive board number, not the board-0 placeholder", () => {
+    const players = makePlayers(4);
+    const withBye = markBye([], players, manualTournament, 1, "p1");
+    expect(withBye[0].board).toBeGreaterThan(0);
+  });
+
+  it("keeps a manually-paired board and a manually-marked bye on distinct board numbers", () => {
+    const players = makePlayers(4);
+    const paired = pairUnpaired([], players, manualTournament, 1, "p1", "p2");
+    const withBye = markBye(paired, players, manualTournament, 1, "p3");
+    const boards = withBye.map((p) => p.board);
+    expect(new Set(boards).size).toBe(boards.length);
+    for (const b of boards) expect(b).toBeGreaterThan(0);
+  });
 });
 
 describe("pairing engine — swapPlayers refuses across divisions", () => {

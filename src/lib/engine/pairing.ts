@@ -748,7 +748,16 @@ export function pairUnpaired(
   const p2 = playerMap.get(playerTwoId);
   if (!p1 || !p2 || p1.division !== p2.division) return round;
 
-  const board = Math.max(0, ...round.filter((p) => p.playerBId !== null).map((p) => p.board)) + 1;
+  /*
+   * `games.board` has a database-level check constraint requiring a positive number — the
+   * `board: 0` convention every other bye in this engine uses only ever reaches the database
+   * after `numberByes` (domain/tables.ts) renumbers it, as part of the one-time table
+   * assignment `openPairingPreview` runs before a round is first shown. Manual pairing edits
+   * happen after that point, so every board created here computes its own number directly —
+   * counting every board already in the round, bye or real, so a new real board and a bye
+   * created moments apart can never collide on the same number.
+   */
+  const board = Math.max(0, ...round.map((p) => p.board)) + 1;
   const next: Pairing[] = [
     ...round,
     {
@@ -798,6 +807,11 @@ export function markBye(
   const player = players.find((p) => p.id === playerId);
   if (!player) return round;
 
+  // Same reasoning as pairUnpaired above: `board: 0` only ever reaches the database once
+  // `numberByes` renumbers it, which manual edits made after the round first opens bypass.
+  // Counting every board already present, bye or real, keeps this collision-free with them.
+  const board = Math.max(0, ...round.map((p) => p.board)) + 1;
+
   return [
     ...round,
     {
@@ -805,7 +819,7 @@ export function markBye(
       tournamentId: tournament.id,
       round: roundNumber,
       division: player.division,
-      board: 0,
+      board,
       playerAId: playerId,
       playerBId: null,
       status: "bye",

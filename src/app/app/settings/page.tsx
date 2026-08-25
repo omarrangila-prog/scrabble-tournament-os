@@ -31,6 +31,11 @@ import {
 import { useStore } from "@/lib/store/useStore";
 import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useEventSettings, writeEventSettings, type EventSettings } from "@/lib/supabase/useEventSettings";
+import { useEventFormat } from "@/lib/supabase/useEventFormat";
+import { useRoster } from "@/lib/supabase/useRoster";
+import { useGames } from "@/lib/supabase/useGames";
+import { FormatPicker } from "@/components/forms/FormatPicker";
+import type { PairingSystem } from "@/lib/domain/types";
 import {
   ALL_CAPABILITIES,
   ALL_ROLES,
@@ -127,6 +132,8 @@ export default function SettingsPage() {
               </Field>
             </div>
           </Card>
+
+          <PairingFormatCard />
 
           <EventSettingsCard by={store.currentUser?.name ?? "Director"} />
         </div>
@@ -495,11 +502,74 @@ function EventSettingsCard({ by }: { by: string }) {
         />
         <Toggle
           checked={s.firstSecondEnabled}
-          disabled={saving === "firstSecondEnabled" || !eventSettings.loaded}
+          disabled
           onChange={() => void flip("firstSecondEnabled", "First/second tracking")}
           label="Track first / second"
-          description="Record who plays first and who plays second on each board."
+          description="Not built yet — flipping this saves the setting but nothing reads it: no score sheet asks who went first, and no pairing or standings rule uses it. Left visible rather than deleted, so the setting a future version reads is already here."
         />
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * How the next round gets decided. Saved on the event the same way round count and round
+ * length already are — read live by pairing, so a choice made here is the choice a director
+ * actually gets when they press Review on Live Event, rather than the Swiss fold running no
+ * matter what this said.
+ *
+ * Locked once Round 1 exists: round robin's whole schedule depends on the field being fixed
+ * from the start, and changing format mid-event would leave earlier rounds decided under
+ * rules the later ones no longer follow.
+ */
+function PairingFormatCard() {
+  const roster = useRoster(ACTIVE_EVENT_ID);
+  const games = useGames(ACTIVE_EVENT_ID);
+  const { format, loaded, save } = useEventFormat(ACTIVE_EVENT_ID, {
+    rounds: 5,
+    roundMinutes: 20,
+    system: "swiss",
+  });
+  const [saving, setSaving] = React.useState(false);
+
+  const attending = roster.players.filter((p) => p.checkIn === "checked-in").length;
+  /*
+   * Locked once Round 1 has been published. Round robin's whole schedule is fixed the moment
+   * it is generated — changing the format after boards exist would leave earlier rounds
+   * decided under rules the later ones no longer follow.
+   */
+  const locked = games.round > 0;
+
+  const setSystem = async (system: PairingSystem) => {
+    setSaving(true);
+    const out = await save({ ...format, system });
+    setSaving(false);
+    if (!out.ok) alert(out.message ?? "Not saved. Please try again.");
+  };
+
+  return (
+    <Card>
+      <CardHeader
+        title="Pairing format"
+        subtitle="How the next round gets decided — read live by pairing on Live Event"
+      />
+      <div className="px-5 pb-5">
+        {!loaded ? (
+          <div className="h-32 animate-pulse rounded-feature bg-[rgb(var(--c-surface-soft))]" />
+        ) : locked ? (
+          <p className="rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted">
+            Round 1 has already been paired, so the format for this event is locked in. Clear
+            every round on Live Event to change it.
+          </p>
+        ) : (
+          <FormatPicker
+            value={format.system}
+            onChange={(next) => void setSystem(next)}
+            players={attending || roster.players.length}
+            rounds={format.rounds}
+          />
+        )}
+        {saving ? <p className="mt-2 text-[12px] text-muted">Saving…</p> : null}
       </div>
     </Card>
   );

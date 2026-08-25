@@ -2,26 +2,37 @@
 
 import * as React from "react";
 
+import type { PairingSystem } from "@/lib/domain/types";
+
 import { supabase } from "./client";
 
 /**
- * How many rounds, and how long each one runs.
+ * How many rounds, how long each one runs, and which pairing system decides them.
  *
  * Held on the event rather than in a browser, because the wall, the director's phone and
  * every participant have to agree — a length kept in one laptop would put a twenty-minute
  * clock on the television and a twenty-five-minute one on a phone.
  *
- * Both are decisions made in the room on the morning, once the director has seen how many
- * people came and how much of the hall they have.
+ * Rounds and round length are decisions made in the room on the morning, once the director
+ * has seen how many people came and how much of the hall they have. The pairing system is
+ * not — round robin's schedule is fixed the moment Round 1 is generated, so it belongs in
+ * Settings, decided ahead of the day, not changed here with a room full of people waiting.
  */
 
 export interface EventFormat {
   rounds: number;
   roundMinutes: number;
+  system: PairingSystem;
 }
 
 export const ROUND_LENGTHS = [20, 25] as const;
 export const ROUND_COUNTS = [4, 5] as const;
+
+const KNOWN_SYSTEMS: PairingSystem[] = ["swiss", "round-robin", "knockout", "king-of-the-hill", "manual"];
+
+function asPairingSystem(value: unknown): PairingSystem {
+  return KNOWN_SYSTEMS.find((s) => s === value) ?? "swiss";
+}
 
 export async function readEventFormat(eventId: string): Promise<EventFormat | null> {
   const db = supabase();
@@ -34,6 +45,7 @@ export async function readEventFormat(eventId: string): Promise<EventFormat | nu
   return {
     rounds: Number(row.out_rounds ?? 5),
     roundMinutes: Number(row.out_round_minutes ?? 20),
+    system: asPairingSystem(row.out_pairing_system),
   };
 }
 
@@ -48,6 +60,7 @@ export async function writeEventFormat(
     p_event_id: eventId,
     p_rounds: format.rounds,
     p_round_minutes: format.roundMinutes,
+    p_pairing_system: format.system,
   });
 
   if (error) {
