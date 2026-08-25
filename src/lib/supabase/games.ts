@@ -59,14 +59,17 @@ export type PublishOutcome =
 /**
  * Publishes a round.
  *
- * Sent as one array so the round appears complete or not at all. A director who
- * loses connection halfway through should not end up with half a round on the
- * venue screen.
+ * Sent as one array so the round appears complete or not at all. A director who loses
+ * connection halfway through should not end up with half a round on the venue screen.
+ *
+ * `by` is who is publishing — recorded in the audit log, and falls back to the signed-in
+ * staff member's own email server-side when omitted.
  */
 export async function publishRound(
   eventId: string,
   round: number,
   boards: BoardPlan[],
+  by?: string,
 ): Promise<PublishOutcome> {
   const db = supabase();
   if (!db) return { ok: false, message: "The database is not reachable right now." };
@@ -80,17 +83,25 @@ export async function publishRound(
       playerA: b.playerA,
       playerB: b.playerB ?? "",
     })),
+    p_by: by ?? null,
   });
 
   if (error) {
     if (missingFunction(error.message)) return { ok: false, message: NEEDS_MIGRATION };
 
     /*
-     * The database refuses to re-pair a round that has results. That is a real
-     * answer to a real question, so it is passed through rather than flattened
-     * into "could not publish".
+     * The database's own refusals are specific — a round still has an unfinished
+     * predecessor, a player is double-booked across columns, someone in the plan is not on
+     * the locked list — and each one names exactly what to fix. Flattening them into
+     * "could not publish" would hand a director a mystery mid-round.
      */
-    if (error.message.includes("already has")) {
+    const known = [
+      "already has",
+      "still has",
+      "not on the locked active list",
+      "same player onto more than one board",
+    ];
+    if (known.some((phrase) => error.message.includes(phrase))) {
       return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
     }
     return { ok: false, message: "Could not publish the round. Please try again." };
@@ -254,4 +265,49 @@ export async function boardsForRound(
     scoreB: r.out_score_b === null || r.out_score_b === undefined ? null : Number(r.out_score_b),
     status: String(r.out_status ?? "scheduled"),
   }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Locking who is actually playing                                            */
+/* -------------------------------------------------------------------------- */
+
+export type LockOutcome =
+  | { ok: true; count: number; alreadyPublished: boolean }
+  | { ok: false; message: string };
+
+/**
+ * Snapshots who is checked in, right now, as the tournament's active player list.
+ *
+ * Pairing has always read the live roster at the instant the button is pressed — somebody
+ * checking in mid-generation changed who got paired, with nothing recorded afterward about
+ * who the tournament actually considered present. This is that record. Safe to call more
+ * than once before Round 1 exists; refuses once it does, so a second lock cannot quietly
+ * change who a published round was drawn from.
+ */
+export async function lockActivePlayers(eventId: string, by: string): Promise<LockOutcome> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_lock_active_players", {
+    p_event_id: eventId,
+    p_by: by,
+  });
+  if (error) return { ok: false, message: "Could not lock the active player list." };
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  return {
+    ok: true,
+    count: Number(row?.out_locked_count ?? 0),
+    alreadyPublished: Boolean(row?.out_already_published),
+  };
+}
+
+/** The locked active list, or null when nothing has been locked for this event yet. */
+export async function activePlayerIds(eventId: string): Promise<string[] | null> {
+  const db = supabase();
+  if (!db) return null;
+
+  const { data, error } = await db.rpc("staff_active_player_ids", { p_event_id: eventId });
+  if (error || !Array.isArray(data)) return null;
+  return data.map((id) => String(id));
 }

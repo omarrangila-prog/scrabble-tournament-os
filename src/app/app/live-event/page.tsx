@@ -52,8 +52,9 @@ import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
 import { AutoRun } from "@/components/organizer/AutoRun";
 import { FinalResults } from "@/components/organizer/FinalResults";
 import { RunTheDay } from "@/components/organizer/RunTheDay";
+import { PairingPreview } from "@/components/organizer/PairingPreview";
 import { useEventFormat } from "@/lib/supabase/useEventFormat";
-import { generateRound } from "@/lib/engine/pairing";
+import { generateRound, swapPlayers } from "@/lib/engine/pairing";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
   assignTables,
@@ -61,11 +62,13 @@ import {
   formatTableSpec,
   overlappingTables,
   parseTableSpec,
+  type TableProblem,
 } from "@/lib/domain/tables";
 import { useTablePlan, writeBreakKind, writeTablePlan } from "@/lib/supabase/useTablePlan";
 import { useEventSettings, writeEventSettings } from "@/lib/supabase/useEventSettings";
+import { useActiveLock } from "@/lib/supabase/useActiveLock";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
-import type { Player } from "@/lib/domain/types";
+import type { Pairing, Player } from "@/lib/domain/types";
 import {
   canAdvanceRound,
   formatClock,
@@ -134,6 +137,23 @@ export default function LiveEventPage() {
   const eventSettings = useEventSettings(ACTIVE_EVENT_ID);
   const settings = eventSettings.settings;
   const [settingsSaving, setSettingsSaving] = React.useState(false);
+
+  /*
+   * Who pairing is allowed to read as "present". `null` means nothing has been locked yet,
+   * which is not an error — it is exactly the state every event was in before this existed —
+   * and pairing falls back to the live check-in count, same as always.
+   */
+  const activeLock = useActiveLock(ACTIVE_EVENT_ID);
+
+  /*
+   * The round waiting for a director's eyes before it goes on the wall. `null` means nothing
+   * is open — generating one fills this in, publishing or cancelling clears it. `session` is
+   * bumped on every fresh generation so the preview modal remounts and drops any half-made
+   * swap from a round the director backed out of, rather than reading a ref during render to
+   * detect that itself.
+   */
+  const [preview, setPreview] = React.useState<{ round: number; pairings: Pairing[] } | null>(null);
+  const [previewSession, setPreviewSession] = React.useState(0);
 
   const toggleQr = async () => {
     setSettingsSaving(true);
@@ -244,6 +264,14 @@ export default function LiveEventPage() {
     const id = window.setInterval(() => tick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  /* Looked up by id rather than carried on the pairing itself — a swap only ever moves ids
+     between boards, and the preview needs a name for whichever id ends up where. Declared
+     above the early return below because it is a hook. */
+  const nameOfPlayer = React.useMemo(() => {
+    const map = new Map(roster.players.map((p) => [p.id, p.fullName]));
+    return (id: string) => map.get(id) ?? "Unknown player";
+  }, [roster.players]);
 
   if (!event) {
     return (
@@ -403,8 +431,42 @@ export default function LiveEventPage() {
     });
   };
 
-  const publishPairings = async (): Promise<boolean> => {
-    const present = attending.filter((p) => p.checkIn === "checked-in");
+  /**
+   * Locks who counts as playing, right now, before Round 1 is generated.
+   *
+   * Optional. Skipping this is exactly how every event before this feature existed ran —
+   * pairing falls back to whoever is checked in at the moment Publish is pressed. Locking
+   * only matters when check-in keeps moving while pairing is being reviewed, which is
+   * precisely the case that used to change who got paired with no record of it afterward.
+   */
+  const lockPlayers = async () => {
+    const outcome = await activeLock.lock(app.currentUser?.name ?? "Director");
+    if (!outcome.ok) {
+      app.toast({ title: "Could not lock", description: "Please try again.", tone: "critical" });
+      return;
+    }
+    app.toast({
+      title: outcome.alreadyPublished
+        ? "Already pairing"
+        : `${outcome.count} player${outcome.count === 1 ? "" : "s"} locked`,
+      description: outcome.alreadyPublished
+        ? "A round already exists for this event, so the active list cannot change now."
+        : "Pairing will use exactly this list from here on, checked in or not.",
+      tone: outcome.alreadyPublished ? "warning" : "success",
+    });
+  };
+
+  /**
+   * Generates the next round and opens it for review. Nothing is written yet — the database
+   * only sees a round once the director presses Publish inside the preview.
+   *
+   * Reads the locked active list when one exists; otherwise the live check-in count, exactly
+   * as pairing always has.
+   */
+  const openPairingPreview = () => {
+    const present = activeLock.ids
+      ? roster.players.filter((p) => activeLock.ids!.includes(p.id))
+      : attending.filter((p) => p.checkIn === "checked-in");
 
     if (present.length < 2) {
       app.toast({
@@ -412,7 +474,7 @@ export default function LiveEventPage() {
         description: "At least two arrivals are needed to pair a round.",
         tone: "warning",
       });
-      return false;
+      return;
     }
 
     const nextRound = games.round + 1;
@@ -430,13 +492,6 @@ export default function LiveEventPage() {
       random: Math.random,
     });
 
-    const numbered: BoardPlan[] = generated.pairings.map((pairing) => ({
-      board: pairing.board,
-      division: pairing.division,
-      playerA: pairing.playerAId,
-      playerB: pairing.playerBId,
-    }));
-
     /*
      * Boards become the tables they are actually played on.
      *
@@ -444,24 +499,19 @@ export default function LiveEventPage() {
      * from the one painted on the table as soon as two divisions share a room. Everything
      * downstream — the phone, the score sheet, the wall — shows this number, so it has to be
      * the one somebody can walk to.
-     */
-    /*
-     * Only when a plan exists.
      *
-     * With no plan, `assignTables` correctly reports that no division has any tables — and
-     * the refusal below then blocked pairing entirely for anybody who had not set one.
-     * Boards keep their generated numbers instead, which is what they did before table
-     * plans existed and is a perfectly good room.
+     * `assignTables` only needs `division`, `board` and `playerB` to do this, so a
+     * `playerB` alias travels alongside `playerBId` rather than converting away from
+     * `Pairing` — the preview and the swap step both need the full pairing shape kept
+     * intact, board number included, all the way to Publish.
      */
     const hasPlan = tablePlan.plan.length > 0;
-    const { seated, problems } = hasPlan
-      ? assignTables(numbered, tablePlan.plan)
-      : { seated: numberByes(numbered), problems: [] };
-
-    const plan = hasPlan ? seated : numberByes(seated);
+    const seatable = generated.pairings.map((p) => ({ ...p, playerB: p.playerBId }));
+    const { seated, problems }: { seated: (Pairing & { playerB: string | null })[]; problems: TableProblem[] } =
+      hasPlan ? assignTables(seatable, tablePlan.plan) : { seated: numberByes(seatable), problems: [] };
 
     /*
-     * A division with more pairs than tables is refused rather than published. Seating two
+     * A division with more pairs than tables is refused rather than previewed. Seating two
      * games at one table is not something the room can sort out later.
      */
     if (problems.length > 0) {
@@ -470,14 +520,20 @@ export default function LiveEventPage() {
         description: `${problems[0].message} Set the tables under Table plan, then pair again.`,
         tone: "critical",
       });
-      return false;
+      return;
     }
 
     /*
-     * Checked before sending. The database enforces the same rules, but a
-     * constraint violation arrives as a Postgres error in front of a director
-     * holding a room full of people.
+     * Checked before opening the preview. The database enforces the same rules at Publish,
+     * but a constraint violation there arrives as a Postgres error in front of a director
+     * holding a room full of people — better to say so now, with a chance to fix it.
      */
+    const plan: BoardPlan[] = seated.map((p) => ({
+      board: p.board,
+      division: p.division,
+      playerA: p.playerAId,
+      playerB: p.playerBId,
+    }));
     const check = validateBoardPlan(plan);
     if (!check.ok) {
       app.toast({
@@ -485,32 +541,67 @@ export default function LiveEventPage() {
         description: check.problems[0] ?? "Please try again.",
         tone: "critical",
       });
-      return false;
+      return;
+    }
+
+    setPreview({ round: nextRound, pairings: seated });
+    setPreviewSession((n) => n + 1);
+  };
+
+  /** Applies a swap the director made inside the preview. Nothing is written to the database. */
+  const swapInPreview = (playerOneId: string, playerTwoId: string) => {
+    setPreview((current) => {
+      if (!current) return current;
+      const next = swapPlayers(current.pairings, roster.players, app.tournament, playerOneId, playerTwoId);
+      return { ...current, pairings: next };
+    });
+  };
+
+  /** Writes the round the director has just looked at. This is the only place a round is published. */
+  const confirmPublish = async () => {
+    if (!preview) return;
+
+    const plan: BoardPlan[] = preview.pairings.map((p) => ({
+      board: p.board,
+      division: p.division,
+      playerA: p.playerAId,
+      playerB: p.playerBId,
+    }));
+
+    const check = validateBoardPlan(plan);
+    if (!check.ok) {
+      app.toast({
+        title: "These pairings are not valid",
+        description: check.problems[0] ?? "Please try again.",
+        tone: "critical",
+      });
+      return;
     }
 
     setPublishing(true);
-    const result = await publishRound(event.id, nextRound, plan);
+    const result = await publishRound(event.id, preview.round, plan, app.currentUser?.name ?? "Director");
     setPublishing(false);
 
     if (!result.ok) {
       app.toast({ title: "Round not published", description: result.message, tone: "critical" });
-      return false;
+      return;
     }
 
     games.reload();
-    live.ensureTimer(event.id, nextRound, format.roundMinutes);
+    live.ensureTimer(event.id, preview.round, format.roundMinutes);
     setState("round-published");
 
+    const byes = preview.pairings.filter((p) => p.playerBId === null).length;
     app.toast({
-      title: `Round ${nextRound} published`,
+      title: `Round ${preview.round} published`,
       description:
-        generated.unpaired.length > 0
-          ? `${result.boards} boards. ${generated.unpaired.length} player(s) have a bye.`
+        byes > 0
+          ? `${result.boards} boards. ${byes} player(s) have a bye.`
           : `${result.boards} boards are now visible to participants.`,
       tone: "success",
     });
 
-    return true;
+    setPreview(null);
   };
 
   /**
@@ -518,24 +609,14 @@ export default function LiveEventPage() {
    *
    * Publishing and starting were two buttons in different cards, and a round that was paired
    * but never started is a hall full of people sitting at the right tables waiting for a
-   * clock nobody pressed. If there is nothing to play, this pairs it first and then starts
-   * it; if the boards are already up, it just starts them.
+   * clock nobody pressed. If there is nothing to play yet, this opens the round for review
+   * instead of starting anything — a director presses Start again once it is published; if
+   * the boards are already up, it just starts them.
    */
   const startTheRound = async () => {
     if (boards.totalBoards === 0) {
-      /*
-       * Not chained blindly. `publishPairings` refuses for good reasons — too few people
-       * checked in, a division with more pairs than tables — and each says so itself.
-       * Starting a clock over a round that was never published would bury that message
-       * under a countdown.
-       *
-       * It reports the answer directly rather than this reading the board count back:
-       * `games.reload()` refreshes a subscription, and the value in hand belongs to the
-       * render that is already running, so a re-read here is always the number from before.
-       * That is what made the first version pair a round and then quietly never start it.
-       */
-      const published = await publishPairings();
-      if (!published) return;
+      openPairingPreview();
+      return;
     }
 
     await setState("round-active");
@@ -896,15 +977,42 @@ export default function LiveEventPage() {
                 </Button>
               ) : null}
               {eventState === "check-in-closed" ? (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  icon={<Grid3x3 className="size-4" />}
-                  onClick={publishPairings}
-                  disabled={publishing || roster.access !== "ok"}
-                >
-                  {publishing ? "Publishing…" : `Pair and publish round ${games.round + 1}`}
-                </Button>
+                <>
+                  {games.round === 0 ? (
+                    <div className="rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-2.5 text-[12px] leading-relaxed">
+                      {activeLock.ids === null ? (
+                        <>
+                          <p className="text-muted">
+                            Optional: lock who counts as playing before Round 1. Without this,
+                            pairing reads whoever is checked in the moment you publish.
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2 w-full"
+                            onClick={() => void lockPlayers()}
+                          >
+                            Lock active players ({checkedIn} checked in)
+                          </Button>
+                        </>
+                      ) : (
+                        <p className="font-semibold text-ink">
+                          {activeLock.ids.length} player{activeLock.ids.length === 1 ? "" : "s"} locked
+                          as active for this event.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    icon={<Grid3x3 className="size-4" />}
+                    onClick={openPairingPreview}
+                    disabled={publishing || roster.access !== "ok"}
+                  >
+                    {`Review round ${games.round + 1} pairings`}
+                  </Button>
+                </>
               ) : null}
               {eventState === "result-entry" ? (
                 <>
@@ -993,7 +1101,13 @@ export default function LiveEventPage() {
          * null simply never fires, which is exactly what happened.
          */
         phase={eventState}
-        onPublish={() => void publishPairings()}
+        /*
+         * Opens the round for review rather than publishing it outright. The day still runs
+         * itself — a director does not have to remember to press "pair" — but nothing goes
+         * on the wall without a look first, which is the one guarantee this whole preview
+         * step exists to make.
+         */
+        onPublish={openPairingPreview}
         onPhase={setState}
       />
 
@@ -1024,6 +1138,18 @@ export default function LiveEventPage() {
             });
           });
         }}
+      />
+
+      <PairingPreview
+        key={previewSession}
+        open={preview !== null}
+        round={preview?.round ?? 0}
+        pairings={preview?.pairings ?? []}
+        nameOf={nameOfPlayer}
+        onSwap={swapInPreview}
+        onCancel={() => setPreview(null)}
+        onPublish={() => void confirmPublish()}
+        busy={publishing}
       />
     </div>
   );
