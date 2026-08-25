@@ -36,7 +36,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 653,
-          "rating": 1230,
           "slug": "hassan-hadi-a4",
           "ranked": true
         },
@@ -70,7 +69,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 404,
-          "rating": 1230,
           "slug": "muhammad-yadaan-a1",
           "ranked": true
         },
@@ -104,7 +102,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": -5,
-          "rating": 1210,
           "slug": "ali-rashid-a7",
           "ranked": true
         },
@@ -138,7 +135,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": -18,
-          "rating": 1210,
           "slug": "anjum-aziz-a10",
           "ranked": true
         },
@@ -172,7 +168,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": -120,
-          "rating": 1210,
           "slug": "affan-muhammad-a6",
           "ranked": true
         },
@@ -206,7 +201,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": -270,
-          "rating": 1210,
           "slug": "huzaifa-amir-a5",
           "ranked": true
         },
@@ -240,7 +234,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": 149,
-          "rating": 1190,
           "slug": "ebaad-hasan-a9",
           "ranked": true
         },
@@ -274,7 +267,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": 112,
-          "rating": 1190,
           "slug": "affan-salman-a3",
           "ranked": true
         },
@@ -308,7 +300,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -67,
-          "rating": 1190,
           "slug": "iman-umair-a12",
           "ranked": true
         },
@@ -342,7 +333,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -326,
-          "rating": 1190,
           "slug": "khizer-hassan-a8",
           "ranked": true
         },
@@ -376,7 +366,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -163,
-          "rating": 1170,
           "slug": "hani-garib-a2",
           "ranked": true
         },
@@ -410,7 +399,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -349,
-          "rating": 1170,
           "slug": "faheem-naqvi-a11",
           "ranked": true
         }
@@ -450,7 +438,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 459,
-          "rating": 1230,
           "slug": "manahil-fatima-b6",
           "ranked": true
         },
@@ -484,7 +471,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 302,
-          "rating": 1230,
           "slug": "anamta-khan-b4",
           "ranked": true
         },
@@ -518,7 +504,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 277,
-          "rating": 1230,
           "slug": "wania-fatima-b7",
           "ranked": true
         },
@@ -552,7 +537,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 190,
-          "rating": 1230,
           "slug": "jazim-hussain-b28",
           "ranked": true
         },
@@ -586,7 +570,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 111,
-          "rating": 1230,
           "slug": "muhammad-haider-b19",
           "ranked": true
         },
@@ -620,7 +603,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 110,
-          "rating": 1230,
           "slug": "muhammad-sameed-b18",
           "ranked": true
         },
@@ -654,7 +636,6 @@
           "wins": 2.5,
           "losses": 0.5,
           "spread": 266,
-          "rating": 1220,
           "slug": "abdul-ahad-b16",
           "ranked": true
         },
@@ -688,7 +669,6 @@
           "wins": 2.5,
           "losses": 0.5,
           "spread": 176,
-          "rating": 1220,
           "slug": "zainab-zuberi-b1",
           "ranked": true
         },
@@ -715,7 +695,6 @@
           "wins": 2.5,
           "losses": 0.5,
           "spread": 100,
-          "rating": 1210,
           "slug": "yazdaan-zeeshan-b15",
           "ranked": true
         },
@@ -749,7 +728,6 @@
           "wins": 2.5,
           "losses": 0.5,
           "spread": 42,
-          "rating": 1220,
           "slug": "hamza-azeem-b32",
           "ranked": true
         },
@@ -783,7 +761,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 166,
-          "rating": 1210,
           "slug": "moosa-sarosh-b13",
           "ranked": true
         },
@@ -817,7 +794,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 110,
-          "rating": 1210,
           "slug": "kiflain-b3",
           "ranked": true
         },
@@ -851,7 +827,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 80,
-          "rating": 1210,
           "slug": "haris-javed-b27",
           "ranked": true
         },
@@ -885,7 +860,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 63,
-          "rating": 1210,
           "slug": "ramlah-hashim-b33",
           "ranked": true
         },
@@ -919,7 +893,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 54,
-          "rating": 1210,
           "slug": "shiza-sohail-b31",
           "ranked": true
         },
@@ -953,7 +926,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 32,
-          "rating": 1210,
           "slug": "raamiz-ahmed-b14",
           "ranked": true
         },
@@ -987,7 +959,6 @@
           "wins": 1.5,
           "losses": 1.5,
           "spread": 38,
-          "rating": 1200,
           "slug": "murtaza-b17",
           "ranked": true
         },
@@ -1014,7 +985,6 @@
           "wins": 1.5,
           "losses": 1.5,
           "spread": -45,
-          "rating": 1190,
           "slug": "hamza-b9",
           "ranked": true
         },
@@ -1048,7 +1018,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -13,
-          "rating": 1190,
           "slug": "ashar-narinja-b29",
           "ranked": true
         },
@@ -1082,7 +1051,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -35,
-          "rating": 1190,
           "slug": "essa-sarosh-b10",
           "ranked": true
         },
@@ -1116,7 +1084,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -63,
-          "rating": 1190,
           "slug": "mohammad-hazil-b21",
           "ranked": true
         },
@@ -1150,7 +1117,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -86,
-          "rating": 1190,
           "slug": "muhammad-soban-b25",
           "ranked": true
         },
@@ -1184,7 +1150,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -100,
-          "rating": 1190,
           "slug": "aariz-hussain-b11",
           "ranked": true
         },
@@ -1211,7 +1176,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -132,
-          "rating": 1180,
           "slug": "zulfiqar-ali-b2",
           "ranked": true
         },
@@ -1245,7 +1209,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -147,
-          "rating": 1190,
           "slug": "zaki-abbas-b22",
           "ranked": true
         },
@@ -1279,7 +1242,6 @@
           "wins": 0.5,
           "losses": 2.5,
           "spread": -127,
-          "rating": 1180,
           "slug": "sakina-rameen-b20",
           "ranked": true
         },
@@ -1313,7 +1275,6 @@
           "wins": 0.5,
           "losses": 2.5,
           "spread": -273,
-          "rating": 1180,
           "slug": "abdul-basit-b12",
           "ranked": true
         },
@@ -1347,7 +1308,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -183,
-          "rating": 1170,
           "slug": "muhammad-suleman-b5",
           "ranked": true
         },
@@ -1381,7 +1341,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -206,
-          "rating": 1170,
           "slug": "salah-sohail-b23",
           "ranked": true
         },
@@ -1415,7 +1374,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -224,
-          "rating": 1170,
           "slug": "muzammil-sohail-b24",
           "ranked": true
         },
@@ -1449,7 +1407,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -244,
-          "rating": 1170,
           "slug": "muhammad-salahuddin-b26",
           "ranked": true
         },
@@ -1483,7 +1440,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -255,
-          "rating": 1170,
           "slug": "umer-muhammad-ali-b8",
           "ranked": true
         },
@@ -1517,7 +1473,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -293,
-          "rating": 1170,
           "slug": "khizr-hussain-b30",
           "ranked": true
         }
@@ -1557,7 +1512,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 300,
-          "rating": 1230,
           "slug": "aayan-khan-r12",
           "ranked": true
         },
@@ -1591,7 +1545,6 @@
           "wins": 3.0,
           "losses": 0.0,
           "spread": 219,
-          "rating": 1230,
           "slug": "muhammad-hashir-r2",
           "ranked": true
         },
@@ -1625,7 +1578,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 124,
-          "rating": 1210,
           "slug": "affan-imran-r5",
           "ranked": true
         },
@@ -1659,7 +1611,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 111,
-          "rating": 1210,
           "slug": "abdul-wasay-r9",
           "ranked": true
         },
@@ -1693,7 +1644,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 75,
-          "rating": 1210,
           "slug": "yazdan-lodhi-r14",
           "ranked": true
         },
@@ -1727,7 +1677,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": 27,
-          "rating": 1210,
           "slug": "haadiyah-ahmed-r3",
           "ranked": true
         },
@@ -1761,7 +1710,6 @@
           "wins": 2.0,
           "losses": 1.0,
           "spread": -74,
-          "rating": 1210,
           "slug": "aiza-saad-r10",
           "ranked": true
         },
@@ -1795,7 +1743,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": 79,
-          "rating": 1190,
           "slug": "rayyan-lodhi-r13",
           "ranked": true
         },
@@ -1829,7 +1776,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -39,
-          "rating": 1190,
           "slug": "ibtehaj-khan-r7",
           "ranked": true
         },
@@ -1863,7 +1809,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -53,
-          "rating": 1190,
           "slug": "dhuha-alvi-r4",
           "ranked": true
         },
@@ -1897,7 +1842,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -75,
-          "rating": 1190,
           "slug": "hareem-omar-r6",
           "ranked": true
         },
@@ -1931,7 +1875,6 @@
           "wins": 1.0,
           "losses": 2.0,
           "spread": -143,
-          "rating": 1190,
           "slug": "qazi-amaan-r11",
           "ranked": true
         },
@@ -1965,7 +1908,6 @@
           "wins": 0.0,
           "losses": 3.0,
           "spread": -161,
-          "rating": 1170,
           "slug": "omema-shoaib-r1",
           "ranked": true
         },

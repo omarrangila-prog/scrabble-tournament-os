@@ -38,6 +38,8 @@ import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
 import { summarizeAuditDetail, useAuditLog } from "@/lib/supabase/useAuditLog";
 import { useRoundSnapshots, type RoundSnapshot } from "@/lib/supabase/useRoundSnapshots";
+import { useEventCategories, writeEventCategories } from "@/lib/supabase/useEventCategories";
+import type { Division } from "@/lib/domain/types";
 import { FormatPicker } from "@/components/forms/FormatPicker";
 import type { PairingSystem } from "@/lib/domain/types";
 import {
@@ -147,6 +149,11 @@ export default function SettingsPage() {
               </Field>
             </div>
           </Card>
+
+          <CategoriesCard
+            eventId={currentEvent.eventId}
+            by={store.currentUser?.name ?? "Director"}
+          />
 
           <PairingFormatCard eventId={currentEvent.eventId} />
 
@@ -752,6 +759,144 @@ function RoundHistoryCard({
               </div>
             );
           })
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * The categories this tournament runs.
+ *
+ * They were three fixed strings in the code — beginner, recreational, advanced — so an event
+ * wanting an Under-12 section, a Schools field, or one Open category could not have one
+ * without a redeploy. This is that list, editable, stored on the event.
+ *
+ * Removing a category somebody is already entered in is refused by the database rather than
+ * here: it would leave their registration pointing at something that no longer exists, and
+ * they would disappear from every roster and pairing screen that groups by category. The
+ * refusal says so, and says to rename instead — renaming keeps the id and moves nobody.
+ */
+function CategoriesCard({ eventId, by }: { eventId: string; by: string }) {
+  const { categories, loaded, reload } = useEventCategories(eventId);
+
+  /* `null` means "not edited yet", so the saved list shows through without being copied into
+     state in an effect — the same render-time fallback the table plan uses. */
+  const [draft, setDraft] = React.useState<Division[] | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const rows = draft ?? categories;
+  const dirty = draft !== null;
+
+  const edit = (i: number, patch: Partial<Division>) =>
+    setDraft(rows.map((c, n) => (n === i ? { ...c, ...patch } : c)));
+
+  const add = () =>
+    setDraft([...rows, { id: "", name: "", shortName: "", accent: "primary" }]);
+
+  const remove = (i: number) => setDraft(rows.filter((_, n) => n !== i));
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+
+    /* An id is what every registration and game row stores, so it is generated from the name
+       only while it is blank — editing a name must never silently re-point existing entrants
+       at a different category. */
+    const cleaned = rows.map((c) => ({
+      ...c,
+      name: c.name.trim(),
+      id: c.id.trim() || c.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      shortName: c.shortName.trim() || c.name.trim().slice(0, 3).toUpperCase(),
+    }));
+
+    const out = await writeEventCategories(eventId, cleaned, by);
+    setSaving(false);
+
+    if (!out.ok) {
+      setError(out.message ?? "Not saved.");
+      return;
+    }
+    setDraft(null);
+    reload();
+  };
+
+  return (
+    <Card>
+      <CardHeader
+        title="Categories"
+        subtitle="The sections this tournament runs. Players are paired and ranked within their own."
+      />
+      <div className="space-y-3 px-5 pb-5">
+        {!loaded ? (
+          <div className="h-24 animate-pulse rounded-feature bg-[rgb(var(--c-surface-soft))]" />
+        ) : (
+          <>
+            {rows.map((c, i) => (
+              <div key={i} className="flex items-end gap-2">
+                <Field label={i === 0 ? "Name" : ""} className="flex-1">
+                  <Input
+                    value={c.name}
+                    placeholder="e.g. Under 12"
+                    onChange={(e) => edit(i, { name: e.target.value })}
+                  />
+                </Field>
+                <Field label={i === 0 ? "Short" : ""} className="w-[92px]">
+                  <Input
+                    value={c.shortName}
+                    placeholder="U12"
+                    onChange={(e) => edit(i, { shortName: e.target.value })}
+                  />
+                </Field>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mb-1"
+                  disabled={rows.length === 1}
+                  title={rows.length === 1 ? "A tournament needs at least one category" : "Remove"}
+                  onClick={() => remove(i)}
+                >
+                  <XCircle className="size-4" />
+                </Button>
+              </div>
+            ))}
+
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={add}>
+                Add a category
+              </Button>
+              {dirty ? (
+                <>
+                  <Button variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+                    {saving ? "Saving…" : "Save categories"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => {
+                      setDraft(null);
+                      setError(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : null}
+            </div>
+
+            {error ? (
+              <p className="rounded-control bg-critical-050 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-critical">
+                {error}
+              </p>
+            ) : (
+              <p className="text-[12px] leading-relaxed text-muted">
+                Renaming a category keeps everybody in it. Removing one is refused while
+                anybody is still entered in it — move them first.
+              </p>
+            )}
+          </>
         )}
       </div>
     </Card>

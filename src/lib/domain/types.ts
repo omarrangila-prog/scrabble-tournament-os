@@ -7,7 +7,15 @@
  * without reshaping the UI layer.
  */
 
-export type DivisionId = "masters" | "advanced" | "recreational" | "beginner";
+/**
+ * A category id.
+ *
+ * Deliberately a plain string, not a closed union. The categories a tournament runs are the
+ * director's to decide — "Under 12", "Schools", "Open" — and a fixed list of four hardcoded
+ * ids meant adding one was a code change. The real list lives on the event; this is only the
+ * shape of a reference to one.
+ */
+export type DivisionId = string;
 
 export type Role =
   | "director"
@@ -68,11 +76,8 @@ export interface Venue {
 export interface Division {
   id: DivisionId;
   name: string;
+  /** Two or three letters for a board sheet, where a full name will not fit. */
   shortName: string;
-  /** Inclusive rating band used for seeding-balance warnings. */
-  ratingFloor: number;
-  ratingCeiling: number;
-  maxAge?: number;
   accent: "primary" | "secondary" | "success" | "warning";
 }
 

@@ -28,7 +28,6 @@ export interface PlayerRecord {
   wins: number | null;
   losses: number | null;
   spread: number | null;
-  rating: number | null;
   ranked: boolean;
 }
 
@@ -59,7 +58,6 @@ export const EVENT: EventRecord = {
       wins: player.wins ?? null,
       losses: player.losses ?? null,
       spread: player.spread ?? null,
-      rating: player.rating ?? null,
     })),
   })),
 };

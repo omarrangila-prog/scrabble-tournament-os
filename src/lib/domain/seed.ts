@@ -69,9 +69,9 @@ export const DIVISIONS: Division[] = [
    * nobody could be placed in, which is how two screens came to default to an
    * empty table.
    */
-  { id: "advanced", name: "Advanced", shortName: "ADV", ratingFloor: 1300, ratingCeiling: 1800, accent: "secondary" },
-  { id: "recreational", name: "Recreational", shortName: "REC", ratingFloor: 1100, ratingCeiling: 1650, maxAge: 18, accent: "success" },
-  { id: "beginner", name: "Beginner", shortName: "NOV", ratingFloor: 800, ratingCeiling: 1350, maxAge: 14, accent: "warning" },
+  { id: "advanced", name: "Advanced", shortName: "ADV", accent: "secondary" },
+  { id: "recreational", name: "Recreational", shortName: "REC", accent: "success" },
+  { id: "beginner", name: "Beginner", shortName: "NOV", accent: "warning" },
 ];
 
 /**
