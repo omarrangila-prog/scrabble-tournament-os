@@ -249,25 +249,50 @@ export async function listRegistrations(eventId: string): Promise<OrganizerRegis
  * they were already in, so the screen can say "already checked in at 09:14" rather
  * than silently doing nothing.
  */
+/**
+ * Checks a player in, staff-side.
+ *
+ * Payment-aware: a status self-check-in would also block on (an unverified or rejected
+ * receipt) comes back as `blocked`/`blockedReason` rather than silently succeeding, which is
+ * what happened before this — staff check-in had no payment awareness at all. Passing
+ * `overrideReason` proceeds anyway and records the override, with why, in the audit log.
+ * Omit it to get the same refusal self-service would give; nothing already relying on the
+ * old two-field shape breaks, since a normal check-in with no payment problem returns exactly
+ * what it always did.
+ */
 export async function staffCheckIn(
   recordId: string,
-): Promise<{ ok: boolean; at?: string; already?: boolean; message?: string }> {
+  overrideReason?: string,
+): Promise<{
+  ok: boolean;
+  at?: string;
+  already?: boolean;
+  blocked?: boolean;
+  blockedReason?: string;
+  message?: string;
+}> {
   const db = supabase();
   if (!db) return { ok: false, message: "The database is not reachable right now." };
 
-  const { data, error } = await db.rpc("staff_check_in", { p_record_id: recordId });
+  const { data, error } = await db.rpc("staff_check_in", {
+    p_record_id: recordId,
+    p_override_reason: overrideReason ?? null,
+  });
   if (error) {
     if (error.message.toLowerCase().includes("could not find the function")) {
-      return { ok: false, message: "Staff check-in needs migration 0016 applied." };
+      return { ok: false, message: "Staff check-in needs migration 0048 applied." };
     }
     return { ok: false, message: "Could not check that player in." };
   }
 
   const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  const blockedReason = (row?.out_blocked_reason as string | null) ?? undefined;
   return {
     ok: true,
     at: row?.out_checked_in_at ? String(row.out_checked_in_at) : undefined,
     already: row?.out_already === true,
+    blocked: Boolean(blockedReason),
+    blockedReason,
   };
 }
 

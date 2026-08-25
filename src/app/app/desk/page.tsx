@@ -130,12 +130,33 @@ export default function DeskPage() {
 
   const arrive = async (recordId: string, name: string) => {
     setBusy(recordId);
-    const outcome = await staffCheckIn(recordId);
+    let outcome = await staffCheckIn(recordId);
     setBusy(null);
 
     if (!outcome.ok) {
       app.toast({ title: "Not checked in", description: outcome.message, tone: "critical" });
       return;
+    }
+
+    /*
+     * A payment problem self-check-in would also refuse on. Staff can still act — the
+     * point is that doing so is visible, not automatic — so a reason is asked for and
+     * carried through to the audit log alongside the payment status it overrode.
+     */
+    if (outcome.blocked) {
+      const reason = window.prompt(
+        `${outcome.blockedReason}\n\nCheck ${name} in anyway? Say why:`,
+      );
+      if (!reason || !reason.trim()) return;
+
+      setBusy(recordId);
+      outcome = await staffCheckIn(recordId, reason.trim());
+      setBusy(null);
+
+      if (!outcome.ok) {
+        app.toast({ title: "Not checked in", description: outcome.message, tone: "critical" });
+        return;
+      }
     }
 
     roster.reload();

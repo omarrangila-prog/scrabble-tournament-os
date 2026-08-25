@@ -63,6 +63,7 @@ import {
   parseTableSpec,
 } from "@/lib/domain/tables";
 import { useTablePlan, writeBreakKind, writeTablePlan } from "@/lib/supabase/useTablePlan";
+import { useEventSettings, writeEventSettings } from "@/lib/supabase/useEventSettings";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Player } from "@/lib/domain/types";
 import {
@@ -129,6 +130,33 @@ export default function LiveEventPage() {
     roundMinutes: event?.roundMinutes ?? 20,
   });
   const [publishing, setPublishing] = React.useState(false);
+
+  const eventSettings = useEventSettings(ACTIVE_EVENT_ID);
+  const settings = eventSettings.settings;
+  const [settingsSaving, setSettingsSaving] = React.useState(false);
+
+  const toggleQr = async () => {
+    setSettingsSaving(true);
+    const result = await writeEventSettings(
+      ACTIVE_EVENT_ID,
+      { qrEnabled: !settings.qrEnabled },
+      app.currentUser?.name ?? "Director",
+    );
+    setSettingsSaving(false);
+
+    if (!result.ok) {
+      app.toast({ title: "Not saved", description: result.message, tone: "critical" });
+      return;
+    }
+    eventSettings.reload();
+    app.toast({
+      title: settings.qrEnabled ? "QR turned off" : "QR turned back on",
+      description: settings.qrEnabled
+        ? "No QR anywhere — the wall, check-in, or here. Nothing else about the tournament changes."
+        : "QR is back on the wall and check-in.",
+      tone: "success",
+    });
+  };
 
   const origin = React.useSyncExternalStore(
     () => () => {},
@@ -728,24 +756,56 @@ export default function LiveEventPage() {
 
         {/* Venue QR ------------------------------------------------------ */}
         <Card className="xl:col-span-3">
-          <CardHeader title="Venue QR" subtitle="One code for the whole day" icon={<QrCode className="size-4.5" />} />
+          <CardHeader
+            title="Venue QR"
+            subtitle={settings.qrEnabled ? "One code for the whole day" : "Turned off for this event"}
+            icon={<QrCode className="size-4.5" />}
+          />
           <div className="flex flex-col items-center gap-3 px-5 pb-5">
-            {origin ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={qrToDataUri(liveUrl, { size: 190 })}
-                alt="Venue event QR code"
-                width={190}
-                height={190}
-                className="rounded-compact border border-line bg-white p-2"
-              />
+            {settings.qrEnabled ? (
+              origin ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={qrToDataUri(liveUrl, { size: 190 })}
+                  alt="Venue event QR code"
+                  width={190}
+                  height={190}
+                  className="rounded-compact border border-line bg-white p-2"
+                />
+              ) : (
+                <div className="size-[190px] animate-pulse rounded-compact bg-[rgb(var(--c-line))]" />
+              )
             ) : (
-              <div className="size-[190px] animate-pulse rounded-compact bg-[rgb(var(--c-line))]" />
+              /*
+                A wall, a check-in screen and a certificate all stop showing a code the
+                instant this reads false — one setting, everywhere, rather than a director
+                having to remember every screen QR ever appeared on.
+              */
+              <div className="grid size-[190px] place-items-center rounded-compact border border-dashed border-line text-center">
+                <p className="px-4 text-[12px] text-muted">
+                  No QR is shown anywhere — the wall, check-in, or here. Staff check
+                  everybody in by name instead.
+                </p>
+              </div>
             )}
             <p className="text-center text-[12px] leading-relaxed text-muted">
-              This code never changes. It opens whatever the event needs right now —
-              currently <strong className="font-semibold text-ink">{EVENT_STATE_LABEL[eventState]}</strong>.
+              {settings.qrEnabled ? (
+                <>
+                  This code never changes. It opens whatever the event needs right now —
+                  currently <strong className="font-semibold text-ink">{EVENT_STATE_LABEL[eventState]}</strong>.
+                </>
+              ) : (
+                "The tournament runs exactly the same either way — QR is a convenience, never a requirement."
+              )}
             </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={settingsSaving}
+              onClick={() => void toggleQr()}
+            >
+              {settingsSaving ? "Saving…" : settings.qrEnabled ? "Turn QR off" : "Turn QR back on"}
+            </Button>
           </div>
         </Card>
 
@@ -1008,12 +1068,32 @@ function ArrivalList({
 
   const check = async (player: Player) => {
     setPending(player.id);
-    const result = await staffCheckIn(player.id);
+    let result = await staffCheckIn(player.id);
     setPending(null);
 
     if (!result.ok) {
       app.toast({ title: "Not checked in", description: result.message ?? "", tone: "critical" });
       return;
+    }
+
+    /*
+     * The same payment problem self-check-in would refuse on. Staff can still act — visibly,
+     * not silently — so a reason is asked for and carried through to the audit log.
+     */
+    if (result.blocked) {
+      const reason = window.prompt(
+        `${result.blockedReason}\n\nCheck ${player.fullName} in anyway? Say why:`,
+      );
+      if (!reason || !reason.trim()) return;
+
+      setPending(player.id);
+      result = await staffCheckIn(player.id, reason.trim());
+      setPending(null);
+
+      if (!result.ok) {
+        app.toast({ title: "Not checked in", description: result.message ?? "", tone: "critical" });
+        return;
+      }
     }
 
     onChanged();

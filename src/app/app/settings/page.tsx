@@ -29,6 +29,8 @@ import {
   Toggle,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useEventSettings, writeEventSettings, type EventSettings } from "@/lib/supabase/useEventSettings";
 import {
   ALL_CAPABILITIES,
   ALL_ROLES,
@@ -126,25 +128,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card>
-            <CardHeader title="Publishing" subtitle="What is visible outside the organizer team" />
-            <div className="divide-y divide-line px-5 pb-5">
-              <Toggle
-                checked={tournament.visibility === "public"}
-                onChange={(v) => store.updateTournament({ visibility: v ? "public" : "private" })}
-                label="Public tournament website"
-                description="Publish pairings, standings and results for players and spectators."
-              />
-              <Toggle
-                checked={tournament.registrationOpen}
-                onChange={(v) => store.updateTournament({ registrationOpen: v })}
-                label="Online registration open"
-                description="Accept new registrations through the public website."
-              />
-              <Toggle checked onChange={() => undefined} label="Publish live board status" description="Show which boards are still playing on the public site." />
-              <Toggle checked onChange={() => undefined} label="Show player ratings publicly" description="Display ratings alongside player names." />
-            </div>
-          </Card>
+          <EventSettingsCard by={store.currentUser?.name ?? "Director"} />
         </div>
       ) : null}
 
@@ -419,5 +403,104 @@ export default function SettingsPage() {
         </p>
       </Modal>
     </div>
+  );
+}
+
+/**
+ * The real event settings — one row in Postgres, read from the same place by every screen
+ * that cares. This replaces four toggles that used to sit here: two wrote to a
+ * Zustand/localStorage model no Supabase-backed screen ever reads, and two were literally
+ * `<Toggle checked onChange={() => undefined}>` — hardcoded on, doing nothing. Every switch
+ * below actually changes what the tournament does, everywhere it does it, and every change
+ * is written to the audit log.
+ */
+function EventSettingsCard({ by }: { by: string }) {
+  const eventSettings = useEventSettings(ACTIVE_EVENT_ID);
+  const [saving, setSaving] = React.useState<string | null>(null);
+
+  const flip = async (key: keyof EventSettings, label: string) => {
+    setSaving(key);
+    const result = await writeEventSettings(
+      ACTIVE_EVENT_ID,
+      { [key]: !eventSettings.settings[key] },
+      by,
+    );
+    setSaving(null);
+
+    if (!result.ok) {
+      alert(result.message ?? "Not saved. Please try again.");
+      return;
+    }
+    eventSettings.reload();
+    void label;
+  };
+
+  const s = eventSettings.settings;
+
+  return (
+    <Card>
+      <CardHeader
+        title="Event settings"
+        subtitle="What is turned on for the active event — changes apply everywhere at once"
+      />
+      <div className="divide-y divide-line px-5 pb-5">
+        <Toggle
+          checked={s.qrEnabled}
+          disabled={saving === "qrEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("qrEnabled", "QR")}
+          label="QR codes"
+          description="Show a QR code on the wall, TV and check-in. Off means staff handle everything by name — nothing about the tournament itself changes."
+        />
+        <Toggle
+          checked={s.selfCheckinEnabled}
+          disabled={saving === "selfCheckinEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("selfCheckinEnabled", "Self check-in")}
+          label="Self check-in"
+          description="Let a participant check themselves in from their own phone. Off means every check-in goes through staff."
+        />
+        <Toggle
+          checked={s.playerScoreEntryEnabled}
+          disabled={saving === "playerScoreEntryEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("playerScoreEntryEnabled", "Player score entry")}
+          label="Player score entry"
+          description="Let a player submit their own board's score. Off means staff enter every score."
+        />
+        <Toggle
+          checked={s.opponentConfirmationEnabled}
+          disabled={saving === "opponentConfirmationEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("opponentConfirmationEnabled", "Opponent confirmation")}
+          label="Opponent confirmation"
+          description="Ask the opponent to confirm a submitted score before it counts."
+        />
+        <Toggle
+          checked={s.certificatesEnabled}
+          disabled={saving === "certificatesEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("certificatesEnabled", "Certificates")}
+          label="Certificates"
+          description="Issue certificates for this event."
+        />
+        <Toggle
+          checked={s.emailEnabled}
+          disabled={saving === "emailEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("emailEnabled", "Email")}
+          label="Email"
+          description="Send confirmation, code and results emails for this event."
+        />
+        <Toggle
+          checked={s.whatsappEnabled}
+          disabled={saving === "whatsappEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("whatsappEnabled", "WhatsApp")}
+          label="WhatsApp"
+          description="Send WhatsApp links/messages for this event."
+        />
+        <Toggle
+          checked={s.firstSecondEnabled}
+          disabled={saving === "firstSecondEnabled" || !eventSettings.loaded}
+          onChange={() => void flip("firstSecondEnabled", "First/second tracking")}
+          label="Track first / second"
+          description="Record who plays first and who plays second on each board."
+        />
+      </div>
+    </Card>
   );
 }

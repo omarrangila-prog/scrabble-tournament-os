@@ -14,6 +14,7 @@ import { qrToDataUri } from "@/lib/qr/qrcode";
 import { SongRound } from "@/components/public/SongRound";
 import { RoundVideoTimer } from "@/components/public/RoundVideoTimer";
 import { useRoundProgress } from "@/lib/supabase/useRoundProgress";
+import { usePublicEventSettings } from "@/lib/supabase/useEventSettings";
 import { cn } from "@/lib/utils";
 
 /**
@@ -80,6 +81,13 @@ export default function LiveDisplayPage() {
   const live = useRoundProgress(ACTIVE_EVENT_ID);
   const round = live.round;
   const clock = useRoundTimer(ACTIVE_EVENT_ID, round);
+
+  /*
+   * QR is event-experience, never tournament-core — this wall has to be exactly as usable
+   * with it turned off. `qrEnabled` comes from the one real, server-backed setting; nothing
+   * here decides for itself whether QR should show.
+   */
+  const { qrEnabled } = usePublicEventSettings(ACTIVE_EVENT_ID);
 
   /* Once a second, so the clock on the wall is the clock in the room. */
   const [, tick] = React.useState(0);
@@ -210,10 +218,12 @@ export default function LiveDisplayPage() {
         {/* ---- Come in and check in ------------------------------------- */}
         {scene === "check-in" ? (
           <>
-            <Headline sub="Scan with your phone. Find your name, and you are in.">
+            <Headline
+              sub={qrEnabled ? "Scan with your phone. Find your name, and you are in." : "See a staff member at the desk to check in."}
+            >
               Welcome — check in
             </Headline>
-            <Qr url={playUrl} />
+            {qrEnabled ? <Qr url={playUrl} /> : null}
             {/*
               The count is the one number worth putting on a wall during check-in: it tells
               the room whether it is waiting for ten people or for one.
@@ -228,10 +238,12 @@ export default function LiveDisplayPage() {
         {/* ---- Boards are up -------------------------------------------- */}
         {scene === "pairings" ? (
           <>
-            <Headline sub="Scan to find your table, or look for your name on the boards.">
+            <Headline
+              sub={qrEnabled ? "Scan to find your table, or look for your name on the boards." : "Look for your name on the boards, or ask staff for your table."}
+            >
               {round > 0 ? `Round ${round} — tables are up` : "Getting the first round ready"}
             </Headline>
-            <Qr url={playUrl} />
+            {qrEnabled ? <Qr url={playUrl} /> : null}
           </>
         ) : null}
 
@@ -287,29 +299,33 @@ export default function LiveDisplayPage() {
               or whose game finished early, still needs the one address that does everything.
               Making them wait for the round to end is how a person ends up at the desk.
             */}
-            <div className="absolute bottom-[3vh] right-[3vw] text-center">
-              {/* A data URI generated in the page — next/image has nothing to optimise. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrToDataUri(playUrl, { size: 360 })}
-                alt=""
-                aria-hidden
-                className="size-[7vw] rounded-[0.6vw]"
-              />
-              <p className="mt-[0.6vh] text-[0.9vw] font-semibold" style={{ color: `${IVORY}66` }}>
-                Scan any time
-              </p>
-            </div>
+            {qrEnabled ? (
+              <div className="absolute bottom-[3vh] right-[3vw] text-center">
+                {/* A data URI generated in the page — next/image has nothing to optimise. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrToDataUri(playUrl, { size: 360 })}
+                  alt=""
+                  aria-hidden
+                  className="size-[7vw] rounded-[0.6vw]"
+                />
+                <p className="mt-[0.6vh] text-[0.9vw] font-semibold" style={{ color: `${IVORY}66` }}>
+                  Scan any time
+                </p>
+              </div>
+            ) : null}
           </>
         ) : null}
 
         {/* ---- Round over, send your score ------------------------------- */}
         {scene === "results" ? (
           <>
-            <Headline sub="One player per board. Scan, find your name, and send the score.">
+            <Headline
+              sub={qrEnabled ? "One player per board. Scan, find your name, and send the score." : "One player per board — give your score to a staff member."}
+            >
               Round {round} complete — submit your result
             </Headline>
-            <Qr url={playUrl} />
+            {qrEnabled ? <Qr url={playUrl} /> : null}
             <p className="mt-[2vh] text-[2.2vw] font-bold" style={{ color: EMERALD }}>
               {live.verified}
               <span style={{ color: `${IVORY}66` }}> / {live.boards} boards in</span>

@@ -12,6 +12,7 @@ import { RoundClock } from "@/components/public/RoundClock";
 import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { computeStandings } from "@/lib/engine/standings";
 import { qrToDataUri } from "@/lib/qr/qrcode";
+import { usePublicEventSettings } from "@/lib/supabase/useEventSettings";
 import { cn, signed } from "@/lib/utils";
 
 type PanelId = "standings" | "pairings" | "announcements" | "sponsors" | "countdown";
@@ -50,6 +51,9 @@ export default function TvDisplayPage() {
   const [playing, setPlaying] = React.useState(true);
   const [secondsLeft, setSecondsLeft] = React.useState(PANELS[0].seconds);
   const [controlsVisible, setControlsVisible] = React.useState(true);
+
+  /* QR is event-experience, never tournament-core — see the same flag on `/live/display`. */
+  const { qrEnabled } = usePublicEventSettings(ACTIVE_EVENT_ID);
 
   const panel = PANELS[index];
 
@@ -354,7 +358,7 @@ export default function TvDisplayPage() {
         because it is not the point of the screen — but a phone camera reads it from across a
         room at this size.
       */}
-      {round > 0 && submitUrl ? (
+      {qrEnabled && round > 0 && submitUrl ? (
         <div className="flex items-center justify-center gap-4 px-6 pb-2 sm:px-10">
           {/*
             A plain <img>. The source is a data URI generated in the browser, so there is
