@@ -3,7 +3,9 @@
 import * as React from "react";
 import {
   AlertTriangle,
+  Archive,
   CheckCircle2,
+  ChevronDown,
   CircleHelp,
   Database,
   Download,
@@ -34,6 +36,8 @@ import { useEventSettings, writeEventSettings, type EventSettings } from "@/lib/
 import { useEventFormat } from "@/lib/supabase/useEventFormat";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
+import { summarizeAuditDetail, useAuditLog } from "@/lib/supabase/useAuditLog";
+import { useRoundSnapshots, type RoundSnapshot } from "@/lib/supabase/useRoundSnapshots";
 import { FormatPicker } from "@/components/forms/FormatPicker";
 import type { PairingSystem } from "@/lib/domain/types";
 import {
@@ -48,18 +52,27 @@ import { cn, downloadFile, formatDateTime, toCsv } from "@/lib/utils";
 
 export default function SettingsPage() {
   const store = useStore();
-  const { tournament, audit, role } = store;
+  const { tournament, role } = store;
   const [tab, setTab] = React.useState("general");
   const [auditQuery, setAuditQuery] = React.useState("");
   const [resetOpen, setResetOpen] = React.useState(false);
 
-  const filteredAudit = audit.filter((a) => {
+  /*
+   * The real audit trail, not `store.audit` — a Zustand array seeded once with demo entries
+   * and never touched by any real write since. Every score correction, dispute, check-in,
+   * payment decision, phase change and settings change has been landing in Postgres since
+   * Phase 1; this is the first screen that reads it back.
+   */
+  const auditLog = useAuditLog(ACTIVE_EVENT_ID);
+  const roundHistory = useRoundSnapshots(ACTIVE_EVENT_ID);
+
+  const filteredAudit = auditLog.entries.filter((a) => {
     const q = auditQuery.trim().toLowerCase();
     return (
       !q ||
       a.action.toLowerCase().includes(q) ||
-      a.target.toLowerCase().includes(q) ||
-      a.user.toLowerCase().includes(q)
+      a.actor.toLowerCase().includes(q) ||
+      summarizeAuditDetail(a.detail).toLowerCase().includes(q)
     );
   });
 
@@ -93,7 +106,8 @@ export default function SettingsPage() {
         tabs={[
           { id: "general", label: "General" },
           { id: "roles", label: "Roles & permissions" },
-          { id: "audit", label: "Audit log", count: audit.length },
+          { id: "audit", label: "Audit log", count: auditLog.entries.length },
+          { id: "history", label: "Round history", count: roundHistory.snapshots.length },
           { id: "data", label: "Data & backup" },
           { id: "help", label: "Help" },
         ]}
@@ -221,21 +235,23 @@ export default function SettingsPage() {
         <Card id="audit">
           <CardHeader
             title="Audit log"
-            subtitle="Every significant action, with the user, role, values changed and reason"
+            subtitle="Every recorded action for this event, with who did it and what changed"
             icon={<History className="size-4.5" />}
             action={
               <div className="flex gap-2">
                 <SearchInput value={auditQuery} onChange={setAuditQuery} placeholder="Search actions" className="w-48" />
+                <Button size="sm" variant="secondary" onClick={auditLog.reload}>
+                  Refresh
+                </Button>
                 <Button
                   size="sm"
                   variant="secondary"
                   icon={<Download className="size-3.5" />}
                   onClick={() => {
                     const rows: (string | number)[][] = [
-                      ["Time", "User", "Role", "Action", "Target", "Previous", "New", "Reason", "Device"],
+                      ["Time", "Actor", "Action", "Detail"],
                       ...filteredAudit.map((a) => [
-                        formatDateTime(a.at), a.user, a.role, a.action, a.target,
-                        a.previousValue ?? "", a.newValue ?? "", a.reason ?? "", a.device,
+                        formatDateTime(a.at), a.actor, a.action, summarizeAuditDetail(a.detail),
                       ]),
                     ];
                     downloadFile("audit-log.csv", toCsv(rows), "text/csv");
@@ -248,39 +264,50 @@ export default function SettingsPage() {
             }
           />
           <div className="px-3 pb-4">
-            <TableWrap className="max-h-[64vh]">
-              <thead>
-                <tr>
-                  <Th className="w-40">Date and time</Th>
-                  <Th className="w-32">User</Th>
-                  <Th className="w-28">Role</Th>
-                  <Th className="w-44">Action</Th>
-                  <Th className="w-40">Target</Th>
-                  <Th className="w-32">Previous value</Th>
-                  <Th className="w-32">New value</Th>
-                  <Th className="min-w-[200px]">Reason</Th>
-                  <Th className="w-36">Device</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAudit.map((a) => (
-                  <tr key={a.id} className="hover:bg-[rgb(var(--c-surface-soft))]">
-                    <Td className="whitespace-nowrap">{formatDateTime(a.at)}</Td>
-                    <Td className="font-medium">{a.user}</Td>
-                    <Td className="capitalize text-muted">{a.role}</Td>
-                    <Td>{a.action}</Td>
-                    <Td className="text-muted">{a.target}</Td>
-                    <Td className="text-muted">{a.previousValue ?? "—"}</Td>
-                    <Td>{a.newValue ?? "—"}</Td>
-                    <Td className="text-muted">{a.reason ?? "—"}</Td>
-                    <Td className="text-muted">{a.device}</Td>
-                  </tr>
+            {!auditLog.loaded ? (
+              <div className="space-y-2 px-2 py-2">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="h-10 animate-pulse rounded-control bg-[rgb(var(--c-surface-soft))]" />
                 ))}
-              </tbody>
-            </TableWrap>
+              </div>
+            ) : filteredAudit.length === 0 ? (
+              <div className="px-2 py-8 text-center">
+                <p className="text-[13px] font-medium text-ink">
+                  {auditLog.entries.length === 0 ? "Nothing recorded yet" : "No entries match that search"}
+                </p>
+                <p className="mt-1 text-[12px] text-muted">
+                  {auditLog.entries.length === 0
+                    ? "Every score correction, dispute, check-in, payment decision and phase change will appear here as it happens."
+                    : "Try a different action, staff name or value."}
+                </p>
+              </div>
+            ) : (
+              <TableWrap className="max-h-[64vh]">
+                <thead>
+                  <tr>
+                    <Th className="w-40">Date and time</Th>
+                    <Th className="w-40">Actor</Th>
+                    <Th className="w-44">Action</Th>
+                    <Th className="min-w-[280px]">What changed</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAudit.map((a) => (
+                    <tr key={a.id} className="hover:bg-[rgb(var(--c-surface-soft))]">
+                      <Td className="whitespace-nowrap">{formatDateTime(a.at)}</Td>
+                      <Td className="font-medium">{a.actor}</Td>
+                      <Td className="text-muted">{a.action}</Td>
+                      <Td className="text-muted">{summarizeAuditDetail(a.detail)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </TableWrap>
+            )}
           </div>
         </Card>
       ) : null}
+
+      {tab === "history" ? <RoundHistoryCard snapshots={roundHistory.snapshots} loaded={roundHistory.loaded} onRefresh={roundHistory.reload} /> : null}
 
       {tab === "data" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -570,6 +597,161 @@ function PairingFormatCard() {
           />
         )}
         {saving ? <p className="mt-2 text-[12px] text-muted">Saving…</p> : null}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Pairings and standings exactly as they stood when each round finalized.
+ *
+ * `staff_snapshot_round` has been writing these since Phase 1 — automatically, once for every
+ * round, right before the next one publishes — and nothing had ever read one back. Not the
+ * source of truth for anything else in this app: standings elsewhere are still derived live
+ * from verified games, which is what keeps them correct after a later correction. This
+ * answers a different question, one live derivation cannot: what did round 2 actually say at
+ * the time, before that correction changed the games behind it.
+ */
+function RoundHistoryCard({
+  snapshots,
+  loaded,
+  onRefresh,
+}: {
+  snapshots: RoundSnapshot[];
+  loaded: boolean;
+  onRefresh: () => void;
+}) {
+  const [expanded, setExpanded] = React.useState<Set<number>>(new Set());
+
+  const toggle = (round: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(round)) next.delete(round);
+      else next.add(round);
+      return next;
+    });
+
+  return (
+    <Card>
+      <CardHeader
+        title="Round history"
+        subtitle="Pairings and standings as they stood when each round finalized — never recomputed, never edited"
+        icon={<Archive className="size-4.5" />}
+        action={
+          <Button size="sm" variant="secondary" onClick={onRefresh}>
+            Refresh
+          </Button>
+        }
+      />
+      <div className="space-y-2 px-5 pb-5">
+        {!loaded ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="h-12 animate-pulse rounded-control bg-[rgb(var(--c-surface-soft))]" />
+            ))}
+          </div>
+        ) : snapshots.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-[13px] font-medium text-ink">No rounds finalized yet</p>
+            <p className="mt-1 text-[12px] text-muted">
+              A record is written automatically once the next round is prepared, preserving the
+              one before it exactly as it stood.
+            </p>
+          </div>
+        ) : (
+          snapshots.map((s) => {
+            const open = expanded.has(s.round);
+            return (
+              <div key={s.round} className="overflow-hidden rounded-feature border border-line">
+                <button
+                  type="button"
+                  onClick={() => toggle(s.round)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-[rgb(var(--c-surface-soft))]"
+                >
+                  <span>
+                    <span className="text-[13.5px] font-semibold text-ink">Round {s.round}</span>
+                    <span className="ml-2 text-[12px] text-muted">
+                      finalized by {s.createdBy} · {formatDateTime(s.createdAt)}
+                    </span>
+                  </span>
+                  <ChevronDown className={cn("size-4 shrink-0 text-muted transition-transform", open && "rotate-180")} />
+                </button>
+
+                {open ? (
+                  <div className="space-y-4 border-t border-line px-4 py-3">
+                    {s.pairings && s.pairings.length > 0 ? (
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
+                          Pairings
+                        </p>
+                        <ul className="space-y-1">
+                          {s.pairings
+                            .slice()
+                            .sort((a, b) => a.board - b.board)
+                            .map((b, i) => (
+                              <li
+                                key={i}
+                                className="flex items-center gap-2.5 rounded-control bg-[rgb(var(--c-surface-soft))] px-3 py-1.5 text-[12.5px]"
+                              >
+                                <span className="num w-7 shrink-0 font-bold text-ink">{b.board || "—"}</span>
+                                <span className="min-w-0 flex-1 truncate">
+                                  {b.playerA}
+                                  {b.playerB ? ` v ${b.playerB}` : " — bye"}
+                                </span>
+                                {b.scoreA !== null && b.scoreB !== null ? (
+                                  <span className="num shrink-0 text-muted">
+                                    {b.scoreA}–{b.scoreB}
+                                  </span>
+                                ) : null}
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {s.standings && s.standings.length > 0 ? (
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
+                          Standings at this point
+                        </p>
+                        <TableWrap className="max-h-[320px]">
+                          <thead>
+                            <tr>
+                              <Th className="w-28">Division</Th>
+                              <Th>Name</Th>
+                              <Th className="w-14">W</Th>
+                              <Th className="w-14">L</Th>
+                              <Th className="w-14">D</Th>
+                              <Th className="w-20">Spread</Th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {s.standings.map((row, i) => (
+                              <tr key={i}>
+                                <Td className="capitalize text-muted">{row.out_division}</Td>
+                                <Td className="font-medium">{row.out_name}</Td>
+                                <Td className="num">{row.out_wins}</Td>
+                                <Td className="num">{row.out_losses}</Td>
+                                <Td className="num">{row.out_draws}</Td>
+                                <Td className="num">{row.out_spread > 0 ? `+${row.out_spread}` : row.out_spread}</Td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </TableWrap>
+                      </div>
+                    ) : null}
+
+                    {(!s.pairings || s.pairings.length === 0) && (!s.standings || s.standings.length === 0) ? (
+                      <p className="text-[12px] text-muted">
+                        No boards had been published when this round was recorded.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
+        )}
       </div>
     </Card>
   );
