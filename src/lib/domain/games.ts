@@ -124,7 +124,15 @@ export interface RoundProgress {
 
 export function roundProgress(rows: GameRow[], round: number): RoundProgress {
   const boards = rows.filter((r) => r.round === round);
-  const verified = boards.filter((r) => r.scoreA !== null).length;
+  /*
+   * A bye counts as resolved the moment it exists — nobody is waiting on a result that will
+   * never be entered. Publishing writes a bye with `scoreA: null` and a status the database
+   * never moves on from ('scheduled' forever, since nothing about a bye is ever "verified"),
+   * which is indistinguishable from a genuinely unscored game unless this checks for the
+   * missing opponent directly. Before this, a round with a bye — most rounds, whenever a
+   * division has an odd number of players — could never show as fully recorded.
+   */
+  const verified = boards.filter((r) => r.scoreA !== null || r.playerB === null).length;
 
   return {
     totalBoards: boards.length,
@@ -152,12 +160,20 @@ export function roundProgress(rows: GameRow[], round: number): RoundProgress {
 export function fullRoundProgress(rows: GameRow[], round: number): EngineRoundProgress {
   const boards = rows.filter((r) => r.round === round);
 
-  const verified = boards.filter((r) => r.status === "verified").length;
+  /*
+   * A bye is stored with status 'scheduled' forever — there is no opponent to confirm a
+   * result with and nothing for staff to verify, so nothing ever moves it to 'verified'. Left
+   * uncounted here, `outstanding` could never reach zero for a round containing one, and
+   * `canAdvanceRound` would refuse every round with an odd-sized division — most rounds of
+   * most events — regardless of whether every actual game had been settled.
+   */
+  const verified = boards.filter((r) => r.status === "verified" || r.playerB === null).length;
   const awaitingConfirmation = boards.filter((r) => r.status === "awaiting-verification").length;
   const conflicts = boards.filter((r) => r.status === "disputed").length;
 
-  /* Submitted means a score exists at all, whatever is still to happen to it. */
-  const submitted = boards.filter((r) => r.scoreA !== null).length;
+  /* Submitted means a score exists at all, whatever is still to happen to it — a bye needs
+     no score, so it counts as submitted the same way it counts as verified, above. */
+  const submitted = boards.filter((r) => r.scoreA !== null || r.playerB === null).length;
 
   return engineRoundProgress({
     totalBoards: boards.length,
@@ -178,10 +194,10 @@ export function latestRound(rows: GameRow[]): number {
   return rows.reduce((max, r) => Math.max(max, r.round), 0);
 }
 
-/** Whether every board in a round has a result. */
+/** Whether every board in a round has a result — a bye needs none, so it never blocks this. */
 export function roundComplete(rows: GameRow[], round: number): boolean {
   const boards = rows.filter((r) => r.round === round);
-  return boards.length > 0 && boards.every((r) => r.scoreA !== null);
+  return boards.length > 0 && boards.every((r) => r.scoreA !== null || r.playerB === null);
 }
 
 /**

@@ -141,6 +141,28 @@ describe("roundProgress", () => {
       percentComplete: 0,
     });
   });
+
+  /*
+   * `staff_publish_round` writes a bye with `scoreA: null` — there is no game to score. A
+   * round with an odd-sized division has one every round, which is most rounds of most
+   * events. Before this counted a missing opponent as resolved, the round could never reach
+   * 100%, however many real games were actually verified.
+   */
+  it("counts a bye as resolved even though it carries no score", () => {
+    const rows = [
+      game({ id: "1", board: 1, scoreA: 400, scoreB: 350 }),
+      game({ id: "2", board: 0, playerB: null, scoreA: null }),
+    ];
+    // Precondition: the bye genuinely has no score, matching what publish actually writes.
+    expect(rows[1].scoreA).toBeNull();
+
+    expect(roundProgress(rows, 1)).toEqual({
+      totalBoards: 2,
+      verified: 2,
+      outstanding: 0,
+      percentComplete: 100,
+    });
+  });
 });
 
 describe("latestRound", () => {
@@ -171,6 +193,21 @@ describe("roundComplete", () => {
     const rows = [
       game({ id: "1", board: 1, scoreA: 400, scoreB: 300 }),
       game({ id: "2", board: 2, playerB: null, scoreA: 0 }),
+    ];
+    expect(roundComplete(rows, 1)).toBe(true);
+  });
+
+  /*
+   * The test above gives the bye `scoreA: 0`, which is not what publishing actually writes —
+   * a bye is stored with `scoreA: null`, same as an unplayed game, and nothing ever fills it
+   * in. That gap let this exact bug through once: the fixture looked like it proved a round
+   * with a bye could complete, while the real data shape it was never tested against could
+   * not.
+   */
+  it("is true once every board has a result, with a bye stored the way publish actually writes it", () => {
+    const rows = [
+      game({ id: "1", board: 1, scoreA: 400, scoreB: 300 }),
+      game({ id: "2", board: 0, playerB: null, scoreA: null, status: "scheduled" }),
     ];
     expect(roundComplete(rows, 1)).toBe(true);
   });
@@ -281,6 +318,28 @@ describe("fullRoundProgress", () => {
 
     expect(fullRoundProgress(rows, 1).conflicts).toBe(0);
     expect(fullRoundProgress(rows, 2).conflicts).toBe(1);
+  });
+
+  /*
+   * Found by testing Phase 2 against a real scratch event: a division with an odd number of
+   * players produces a bye, published with status 'scheduled' and `scoreA: null` — nothing
+   * ever moves it to 'verified', since there is no opponent to confirm a result with. Wiring
+   * `canAdvanceRound` to an actual disabled button (this phase) would have permanently
+   * blocked "Prepare round N+1" on every round with a bye — confirmed against the real,
+   * concluded 23 August event's own bye row before this fix, which carries exactly this
+   * shape (round 1, board 36, status 'scheduled', both scores null).
+   */
+  it("treats a bye as settled, so a round is advanceable once every real game is verified", () => {
+    const rows = [
+      game({ id: "1", board: 1, status: "verified", scoreA: 400, scoreB: 350 }),
+      game({ id: "2", board: 2, status: "verified", scoreA: 390, scoreB: 200 }),
+      game({ id: "3", board: 0, playerB: null, status: "scheduled", scoreA: null, scoreB: null }),
+    ];
+
+    const p = fullRoundProgress(rows, 1);
+    expect(p.outstanding).toBe(0);
+    expect(p.complete).toBe(true);
+    expect(canAdvanceRound(p).ready).toBe(true);
   });
 
   it("reports no progress, and not completion, for a round with no boards", () => {
