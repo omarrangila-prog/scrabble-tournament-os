@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   FileDown,
@@ -60,8 +60,9 @@ function PlayersView() {
   const params = useSearchParams();
   const store = useStore();
   const { divisions } = store;
+  const currentEvent = useCurrentEvent();
 
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const roster = useRoster(currentEvent.eventId);
   const { players, counts } = roster;
 
   const [query, setQuery] = React.useState("");
@@ -202,7 +203,7 @@ function PlayersView() {
         </div>
 
         <div className="my-4">
-          <PlayerSearch placeholder="Search a player to open their full profile…" />
+          <PlayerSearch eventId={currentEvent.eventId} placeholder="Search a player to open their full profile…" />
         </div>
 
         <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -326,9 +327,10 @@ function PlayersView() {
         )}
       </RosterGate>
 
-      <PlayerDrawer player={selected} onClose={() => setSelected(null)} />
+      <PlayerDrawer player={selected} eventId={currentEvent.eventId} onClose={() => setSelected(null)} />
       <WalkInModal
         open={addOpen}
+        eventId={currentEvent.eventId}
         onClose={() => setAddOpen(false)}
         signedInAs={roster.signedInAs}
         onAdded={roster.reload}
@@ -353,12 +355,14 @@ function PlayersView() {
  */
 function WalkInModal({
   open,
+  eventId,
   onClose,
   signedInAs,
   onAdded,
   existing,
 }: {
   open: boolean;
+  eventId: string;
   onClose: () => void;
   signedInAs: string | null;
   onAdded: () => void;
@@ -403,7 +407,7 @@ function WalkInModal({
 
     setBusy(true);
     const outcome = await addWalkIn({
-      eventId: ACTIVE_EVENT_ID,
+      eventId,
       fullName: form.fullName.trim(),
       mobile: form.mobile.trim(),
       playingLevel: form.level,

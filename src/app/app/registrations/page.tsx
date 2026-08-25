@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { Check, Copy, Download, RefreshCw, UserCheck } from "lucide-react";
 import {
   Badge,
@@ -44,7 +44,8 @@ const FILTERS: { id: Filter; label: string }[] = [
  */
 export default function RegistrationsPage() {
   const app = useStore();
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
   const rows = roster.registrations;
 
   const [query, setQuery] = React.useState("");

@@ -5,13 +5,13 @@ import { AlertTriangle, Check, Mail, MessageCircle, Send } from "lucide-react";
 
 import { Badge, Button, Card, CardHeader, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
-import { ACTIVE_EVENT, ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { field, importField } from "@/lib/supabase/organizer";
 import { useStore } from "@/lib/store/useStore";
 import { emailPlayerCodes } from "@/lib/email/client";
 import { useDeliverability, whatsappLink } from "@/lib/email/deliverability";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 /**
  * Telling everybody their player number.
@@ -29,8 +29,10 @@ import { cn } from "@/lib/utils";
  */
 export default function SendCodesPage() {
   const app = useStore();
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
   const delivery = useDeliverability();
+  const eventDetails = currentEvent.events.find((e) => e.id === currentEvent.eventId);
 
   const [sending, setSending] = React.useState(false);
   const [outcome, setOutcome] = React.useState<{
@@ -65,14 +67,16 @@ export default function SendCodesPage() {
    */
   const messageFor = (p: (typeof people)[number]) =>
     [
-      `${ACTIVE_EVENT.name} — ${ACTIVE_EVENT.venueName}, Sunday 23 August.`,
+      `${eventDetails?.name ?? "The tournament"} — ${eventDetails?.details.venueName ?? "the venue"}${
+        eventDetails?.details.startDate ? `, ${formatDate(eventDetails.details.startDate)}` : ""
+      }.`,
       ``,
       `${p.fullName}, you are player ${p.playerNumber}.`,
       ``,
       `At the door, scan the code on the screen and enter ${p.playerNumber}.`,
       `You will also be asked for the last four digits of your mobile, to confirm it is you.`,
       ``,
-      origin ? `${origin}/events/${ACTIVE_EVENT.slug}/check-in` : "",
+      origin && eventDetails ? `${origin}/events/${eventDetails.slug}/check-in` : "",
     ]
       .filter(Boolean)
       .join("\n");

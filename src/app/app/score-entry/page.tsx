@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { AlertTriangle, CheckCircle2, RefreshCw, Undo2 } from "lucide-react";
 import {
   Badge,
@@ -25,6 +24,7 @@ import { useStore } from "@/lib/store/useStore";
 import { clearResult, flagResult, recordResult } from "@/lib/supabase/games";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { cn, formatTime } from "@/lib/utils";
 
 
@@ -43,8 +43,9 @@ import { cn, formatTime } from "@/lib/utils";
  */
 export default function ScoreEntryPage() {
   const store = useStore();
-  const roster = useRoster(ACTIVE_EVENT_ID);
-  const games = useGames(ACTIVE_EVENT_ID, store.tournament.id);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
+  const games = useGames(currentEvent.eventId, store.tournament.id);
 
   const [query, setQuery] = React.useState("");
   const [correcting, setCorrecting] = React.useState<GameRow | null>(null);
@@ -108,7 +109,7 @@ export default function ScoreEntryPage() {
       b,
       whoAmI(store.currentUser?.name, roster.signedInAs),
       undefined,
-      ACTIVE_EVENT_ID,
+      currentEvent.eventId,
     );
     setBusy(null);
 
@@ -140,7 +141,7 @@ export default function ScoreEntryPage() {
 
   const reopen = async (game: GameRow) => {
     setBusy(game.id);
-    const ok = await clearResult(game.id, ACTIVE_EVENT_ID);
+    const ok = await clearResult(game.id, currentEvent.eventId);
     setBusy(null);
 
     if (!ok) {
@@ -452,6 +453,7 @@ function DisputeModal({
   by: string;
 }) {
   const store = useStore();
+  const currentEvent = useCurrentEvent();
   const [reason, setReason] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -471,7 +473,7 @@ function DisputeModal({
     if (!reason.trim()) return setError("Give a reason. Whoever settles this will read it.");
 
     setBusy(true);
-    const result = await flagResult(game.id, by, reason.trim(), ACTIVE_EVENT_ID);
+    const result = await flagResult(game.id, by, reason.trim(), currentEvent.eventId);
     setBusy(false);
 
     if (!result.ok) return setError(result.message);
@@ -546,6 +548,7 @@ function CorrectionModal({
   by: string;
 }) {
   const store = useStore();
+  const currentEvent = useCurrentEvent();
   const [scoreA, setScoreA] = React.useState("");
   const [scoreB, setScoreB] = React.useState("");
   const [reason, setReason] = React.useState("");
@@ -577,7 +580,7 @@ function CorrectionModal({
     if (!reason.trim()) return setError("Give a reason. It is stored with the result.");
 
     setBusy(true);
-    const result = await recordResult(game.id, a, b, by, reason.trim(), ACTIVE_EVENT_ID);
+    const result = await recordResult(game.id, a, b, by, reason.trim(), currentEvent.eventId);
     setBusy(false);
 
     if (!result.ok) return setError(result.message);

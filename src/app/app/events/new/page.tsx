@@ -13,7 +13,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { createEvent } from "@/lib/supabase/events";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
@@ -39,7 +39,8 @@ export default function NewEventPage() {
    * database refuses the write regardless; asking first means the form can say so
    * before somebody fills it in.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
 
   const [form, setForm] = React.useState({
     name: "",

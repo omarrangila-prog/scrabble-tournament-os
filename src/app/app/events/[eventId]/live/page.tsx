@@ -1,5 +1,7 @@
 "use client";
 
+import { useParams } from "next/navigation";
+
 import LiveEventPage from "@/app/app/live-event/page";
 
 /**
@@ -13,5 +15,6 @@ import LiveEventPage from "@/app/app/live-event/page";
  * Check-in, pairings, round control and the venue display.
  */
 export default function LiveEventPageTab() {
-  return <LiveEventPage />;
+  const params = useParams<{ eventId: string }>();
+  return <LiveEventPage eventId={params.eventId} />;
 }

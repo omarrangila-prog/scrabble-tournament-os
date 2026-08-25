@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -112,13 +112,14 @@ export default function PlayerProfilePage() {
   const store = useStore();
   const { pairings, tournament, divisions, audit, role } = store;
   const identityStore = useIdentityStore();
+  const currentEvent = useCurrentEvent();
 
   /*
    * The roster comes from the database, so a link from the player list resolves.
    * Reading it from browser storage meant every profile reached from a real
    * registration answered "player not found".
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const roster = useRoster(currentEvent.eventId);
   const players = roster.players;
 
   const [tab, setTab] = React.useState("overview");
@@ -199,7 +200,7 @@ export default function PlayerProfilePage() {
     return (
       <div className="mx-auto max-w-3xl">
         <div className="mb-5">
-          <PlayerSearch autoFocus />
+          <PlayerSearch eventId={currentEvent.eventId} autoFocus />
         </div>
         <Card>
           <EmptyState
@@ -279,7 +280,7 @@ export default function PlayerProfilePage() {
           <span className="truncate font-medium text-ink">{player.fullName}</span>
         </nav>
         <div className="lg:ml-auto lg:w-[420px]">
-          <PlayerSearch placeholder="Search another player…" />
+          <PlayerSearch eventId={currentEvent.eventId} placeholder="Search another player…" />
         </div>
       </div>
 

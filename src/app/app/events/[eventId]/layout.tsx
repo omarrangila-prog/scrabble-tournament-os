@@ -2,48 +2,32 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { CalendarDays, ExternalLink, MapPin, Users } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Skeleton } from "@/components/ui";
-import {
-  useEventStore,
-} from "@/lib/store/useEventStore";
-import { EVENT_STATE_LABEL } from "@/lib/domain/events";
+import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { WORKSPACE_TABS } from "@/lib/domain/eventPhase";
-import { activeEvent, scopeStatus } from "@/lib/domain/scope";
+import { useEventById } from "@/lib/supabase/useCurrentEvent";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { cn, formatDate } from "@/lib/utils";
 
 /**
  * The event workspace.
  *
- * One place to manage a tournament from creation to archive. The URL carries
- * the event id, so a link is always unambiguous about which event it opens,
- * and the store's active selection is kept in step with it — an organizer who
- * arrives by link should not then find the sidebar pointing somewhere else.
+ * One place to manage a tournament from creation to archive. The URL carries the event id, so
+ * a link is always unambiguous about which event it opens — this reads that id and resolves
+ * the event directly from Supabase via `useEventById`, not from `useEventStore`, whose local
+ * `events` array is seeded once from a file and can only ever contain the one event baked into
+ * it. A second event created through "New event" used to open this exact screen and hit
+ * "Event not found" forever, because nothing had ever taught that store the new event existed.
  */
 export default function EventWorkspaceLayout({ children }: { children: React.ReactNode }) {
   const params = useParams<{ eventId: string }>();
   const pathname = usePathname();
-  const router = useRouter();
-  const store = useEventStore();
 
   const eventId = params.eventId;
+  const { event, loaded } = useEventById(eventId);
 
-  /*
-   * The URL is the authority here. Following it in an effect rather than
-   * during render keeps the store update out of the render pass, and running
-   * it on every id change means deep links select the right event too.
-   */
-  React.useEffect(() => {
-    if (eventId && store.activeEventId !== eventId) store.setActiveEvent(eventId);
-  }, [eventId, store]);
-
-  const status = scopeStatus(store.events, { organizationId: store.activeOrganizationId, eventId }, store.hydrated);
-  const event = activeEvent(store.events, {
-    organizationId: store.activeOrganizationId,
-    eventId,
-  });
   /*
    * Registrations from the database, not from browser storage.
    *
@@ -53,7 +37,7 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
    */
   const roster = useRoster(eventId);
 
-  if (status === "loading") {
+  if (!loaded) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-[132px] w-full rounded-feature" />
@@ -63,16 +47,16 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
     );
   }
 
-  if (status === "not-found" || !event) {
+  if (!event) {
     return (
       <Card>
         <EmptyState
           title="Event not found"
           description="This event may have been deleted, or it belongs to another organization."
           action={
-            <Button variant="primary" onClick={() => router.push("/app/events")}>
-              Back to events
-            </Button>
+            <Link href="/app/events">
+              <Button variant="primary">Back to events</Button>
+            </Link>
           }
         />
       </Card>
@@ -81,6 +65,7 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
 
   const activeTab = pathname.split("/").pop() ?? "overview";
   const registered = roster.registrations.length;
+  const capacity = event.details.capacity ?? 0;
 
   return (
     <div>
@@ -94,22 +79,26 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
         * the fold. The facts are still here; they take a sentence.
         */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] text-muted">
-        <Badge tone="primary">{EVENT_STATE_LABEL[event.state]}</Badge>
-        <span className="inline-flex items-center gap-1.5">
-          <CalendarDays className="size-3.5" />
-          {formatDate(event.startDate)}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <MapPin className="size-3.5" />
-          {event.venueName}
-        </span>
+        <Badge tone="primary">{EVENT_STATE_LABEL[event.state as EventState] ?? event.state}</Badge>
+        {event.details.startDate ? (
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays className="size-3.5" />
+            {formatDate(event.details.startDate)}
+          </span>
+        ) : null}
+        {event.details.venueName ? (
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin className="size-3.5" />
+            {event.details.venueName}
+          </span>
+        ) : null}
         <span className="inline-flex items-center gap-1.5">
           <Users className="size-3.5" />
           <span className="num">{registered}</span>
-          {event.capacity > 0 ? (
+          {capacity > 0 ? (
             <>
               {" of "}
-              <span className="num">{event.capacity}</span> places filled
+              <span className="num">{capacity}</span> places filled
             </>
           ) : (
             <> registered</>

@@ -5,14 +5,13 @@ import { useParams } from "next/navigation";
 import { useEventStore } from "@/lib/store/useEventStore";
 import { useFinanceStore } from "@/lib/store/useFinanceStore";
 import { useStore } from "@/lib/store/useStore";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useEventById } from "@/lib/supabase/useCurrentEvent";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
 import { useCertificates } from "@/lib/supabase/useCertificates";
 import { fullRoundProgress } from "@/lib/domain/games";
 import { divisionFor, reportStatusFor } from "@/lib/domain/roster";
 import { field } from "@/lib/supabase/organizer";
-import { activeEvent } from "@/lib/domain/scope";
 import { InterestAnswer, ParticipationTrack } from "@/lib/firebase/schema";
 import { expenseTotals, feeTotals, financePosition } from "@/lib/engine/finance";
 import { buildDocument, Metric, ReportSection } from "@/lib/engine/reporting";
@@ -42,9 +41,10 @@ export default function ReportDocumentPage() {
    * saying nobody registered, nobody arrived and no games were played, over the organizer's
    * name, for a sponsor.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
-  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
-  const issued = useCertificates(ACTIVE_EVENT_ID);
+  const roster = useRoster(params.eventId);
+  const games = useGames(params.eventId, app.tournament.id);
+  const issued = useCertificates(params.eventId);
+  const { event: storedEvent, loaded: eventLoaded } = useEventById(params.eventId);
 
   /*
    * The generation timestamp is fixed on first render. A report that quietly
@@ -52,12 +52,9 @@ export default function ReportDocumentPage() {
    */
   const [generatedAt] = React.useState(() => new Date().toISOString());
 
-  const event = activeEvent(store.events, {
-    organizationId: store.activeOrganizationId,
-    eventId: params.eventId,
-  });
+  if (!eventLoaded) return null;
 
-  if (!event) {
+  if (!storedEvent) {
     return (
       <main className="mx-auto max-w-[820px] px-6 py-20 text-center">
         <p className="text-[15px] font-semibold text-ink">Report unavailable</p>
@@ -65,6 +62,7 @@ export default function ReportDocumentPage() {
       </main>
     );
   }
+  const event = storedEvent;
 
   const expenses = finance.expensesFor(event.id);
   const income = finance.incomeFor(event.id);
@@ -122,13 +120,14 @@ export default function ReportDocumentPage() {
 
   const document = buildDocument({
     eventName: event.name,
-    organizer: event.organizer,
-    startDate: formatDate(event.startDate),
-    venue: event.venueName,
-    city: event.city,
-    currency: event.currency,
-    capacity: event.capacity,
-    rounds: event.rounds,
+    // The federation running the event, not a per-event field — this app has exactly one.
+    organizer: "Blufy's Federation",
+    startDate: event.details.startDate ? formatDate(event.details.startDate) : "",
+    venue: event.details.venueName ?? "",
+    city: event.details.city ?? "",
+    currency: event.details.currency ?? "PKR",
+    capacity: event.details.capacity ?? 0,
+    rounds: event.details.rounds ?? app.tournament.totalRounds,
 
     registrations: roster.registrations.map((r) => ({
       /* The database says 'submitted'; the report is written in terms of confirmed entries. */

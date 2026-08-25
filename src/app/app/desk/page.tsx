@@ -5,8 +5,8 @@ import { Banknote, Check, Search, UserCheck } from "lucide-react";
 
 import { Badge, Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useStore } from "@/lib/store/useStore";
 import {
   decidePayment,
@@ -36,7 +36,8 @@ import { cn } from "@/lib/utils";
  */
 export default function DeskPage() {
   const app = useStore();
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
 

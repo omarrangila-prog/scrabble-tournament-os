@@ -15,7 +15,6 @@ import {
 import { Avatar } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ALL_ROUTES } from "./nav";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRoster } from "@/lib/supabase/useRoster";
 
 export interface SearchResult {
@@ -40,12 +39,12 @@ const KIND_ICON: Record<SearchResult["kind"], React.ElementType> = {
 };
 
 /** Searches every entity the specification requires the palette to reach. */
-function useGlobalSearch(query: string): SearchResult[] {
+function useGlobalSearch(query: string, eventId: string): SearchResult[] {
   /*
    * Players come from the database. This read `useStore((s) => s.players)`, which
    * nothing fills any more, so searching a real entrant's name found nothing.
    */
-  const players = useRoster(ACTIVE_EVENT_ID).players;
+  const players = useRoster(eventId).players;
 
   return React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,15 +123,17 @@ function useGlobalSearch(query: string): SearchResult[] {
 
 export function CommandPalette({
   open,
+  eventId,
   onClose,
 }: {
   open: boolean;
+  eventId: string;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
-  const results = useGlobalSearch(query);
+  const results = useGlobalSearch(query, eventId);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Reset the palette when it opens, without an effect-driven cascade.

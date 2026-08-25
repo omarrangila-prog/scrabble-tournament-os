@@ -1,14 +1,25 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import * as React from "react";
+import { useRouter } from "next/navigation";
+
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 
 /**
- * Awards and certificates, for the event being run.
+ * Awards and certificates, for the event currently selected.
  *
- * Same reason as Payments: this read the active event from browser storage and asked
- * the organizer to "choose an event" when that state was absent, which is every device
- * that had not used the app before.
+ * This used to be a server redirect to a hardcoded event id. "Which event" is a
+ * per-browser choice — the nav picker, stored client-side — so a server component has
+ * no way to answer that question at all; this reads it the same way every other flat
+ * screen does and redirects once it knows.
  */
 export default function CertificatesPage() {
-  redirect(`/app/events/${ACTIVE_EVENT_ID}/awards`);
+  const router = useRouter();
+  const currentEvent = useCurrentEvent();
+
+  React.useEffect(() => {
+    if (currentEvent.loaded) router.replace(`/app/events/${currentEvent.eventId}/awards`);
+  }, [currentEvent.loaded, currentEvent.eventId, router]);
+
+  return null;
 }

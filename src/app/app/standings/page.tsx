@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -42,15 +42,16 @@ export default function StandingsPage() {
   const router = useRouter();
   const store = useStore();
   const { tournament, divisions, recentlyMoved } = store;
+  const currentEvent = useCurrentEvent();
 
   /*
    * Players and games both come from the database. Standings themselves are not
    * stored anywhere and never will be: they are computed from verified games, and a
    * saved copy is a second version of the truth that drifts from the first.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const roster = useRoster(currentEvent.eventId);
   const players = roster.players;
-  const { pairings, round: latest, loaded: gamesLoaded } = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const { pairings, round: latest, loaded: gamesLoaded } = useGames(currentEvent.eventId, tournament.id);
 
   /*
    * Defaults to a division this event actually has. It was hardcoded to "masters",
@@ -375,7 +376,7 @@ export default function StandingsPage() {
 
       </RosterGate>
 
-      <PlayerDrawer player={selected} onClose={() => setSelected(null)} />
+      <PlayerDrawer player={selected} eventId={currentEvent.eventId} onClose={() => setSelected(null)} />
     </div>
   );
 }

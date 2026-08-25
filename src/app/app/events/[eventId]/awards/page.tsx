@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -30,12 +29,11 @@ import {
   Tabs,
   Textarea,
 } from "@/components/ui";
-import { useEventStore } from "@/lib/store/useEventStore";
 import { useCertificateStore } from "@/lib/store/useCertificateStore";
 import { useStore } from "@/lib/store/useStore";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
-import { activeEvent } from "@/lib/domain/scope";
+import { useEventById } from "@/lib/supabase/useCurrentEvent";
 import {
   canIssue,
   Certificate,
@@ -73,7 +71,7 @@ const STATUS_TONE = {
 
 export default function AwardsPage() {
   const params = useParams<{ eventId: string }>();
-  const store = useEventStore();
+  const { event: storedEvent, loaded: eventLoaded } = useEventById(params.eventId);
   const certs = useCertificateStore();
   const app = useStore();
 
@@ -83,10 +81,10 @@ export default function AwardsPage() {
    * Studio could never find a performance to certify — which is the one thing it
    * exists to do.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
-  const issuedInDatabase = useCertificates(ACTIVE_EVENT_ID);
+  const roster = useRoster(params.eventId);
+  const issuedInDatabase = useCertificates(params.eventId);
   const delivery = useDeliverability();
-  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+  const games = useGames(params.eventId, app.tournament.id);
 
   const [tab, setTab] = React.useState("all");
   const [emailingAll, setEmailingAll] = React.useState(false);
@@ -100,12 +98,8 @@ export default function AwardsPage() {
     () => "",
   );
 
-  const event = activeEvent(store.events, {
-    organizationId: store.activeOrganizationId,
-    eventId: params.eventId,
-  });
-
-  if (!event) return null;
+  if (!eventLoaded || !storedEvent) return null;
+  const event = storedEvent;
 
   const all = certs.certificatesFor(event.id);
 
@@ -174,23 +168,19 @@ export default function AwardsPage() {
   const plan = planBulkIssue(all, ctx);
 
   /*
-   * Performance records come from the verified game record via the standings
-   * engine. Nothing here is synthesised: a player with no verified game gets no
-   * record, and an event with no tournament behind it yields no certificates.
+   * Performance records come from the verified game record via the standings engine.
+   * Nothing here is synthesised: a player with no verified game gets no record.
    *
-   * The event must name its own tournament. Reading whichever tournament
-   * happens to be loaded would let one event's certificates be written from
-   * another event's games — the same scoping mistake the workspace exists to
-   * prevent.
+   * `app.tournament` is the one ruleset this federation scores every event by — divisions,
+   * ranking rules, pairing constraints — not a per-event configuration. `roster` and `games`
+   * above are what actually scope this to the one event on the URL; the ruleset applying to
+   * all of them equally is a deliberate org-wide choice, not a gap.
    */
-  const linkedTournament =
-    event.tournamentId && event.tournamentId === app.tournament.id ? app.tournament : null;
-
-  const records = linkedTournament
+  const records = games.loaded
     ? performanceRecordsFor(
         roster.players,
         games.pairings,
-        linkedTournament,
+        app.tournament,
         app.divisions.map((d) => d.id),
       )
     : [];
@@ -334,7 +324,7 @@ export default function AwardsPage() {
         personalNote: record ? personalNote(record, records)?.text : undefined,
         code: c.code,
         eventName: event.name,
-        eventDate: formatDate(event.startDate),
+        eventDate: formatDate(event.details.startDate),
         verifyUrl: origin ? verificationUrl(origin, c.code) : "",
       });
 
@@ -547,11 +537,7 @@ export default function AwardsPage() {
         <div className="mt-3 flex items-start gap-3 rounded-feature bg-warning-050 px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4.5 shrink-0 text-[#a76d16]" />
           <p className="text-[13px] leading-relaxed text-[#a76d16]">
-            <strong className="font-semibold">
-              {event.tournamentId
-                ? "No verified results yet."
-                : "No tournament is linked to this event yet."}
-            </strong>{" "}
+            <strong className="font-semibold">No verified results yet.</strong>{" "}
             Certificates state what a player achieved, so there is nothing to prepare until games
             have been played and verified. Nothing is generated from an unfinished tournament.
           </p>
@@ -692,7 +678,7 @@ export default function AwardsPage() {
       <PreviewModal
         certificate={preview}
         eventName={event.name}
-        eventDate={event.startDate}
+        eventDate={event.details.startDate}
         /*
          * The whole field, because a superlative can only be checked against it. Passing
          * one record alone would leave the note able to say "the highest game" without

@@ -1,15 +1,25 @@
-import { redirect } from "next/navigation";
+"use client";
 
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import * as React from "react";
+import { useRouter } from "next/navigation";
+
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 
 /**
- * Payments, for the event being run.
+ * Payments, for the event currently selected.
  *
- * A server redirect to a known id, rather than reading an "active event" out of
- * browser storage. That is what produced "No event selected — choose an event" on a
- * device whose local state had never been set: the event was right there in the
- * database, and the page asked which one it was.
+ * This used to be a server redirect to a hardcoded event id. "Which event" is a
+ * per-browser choice — the nav picker, stored client-side — so a server component has
+ * no way to answer that question at all; this reads it the same way every other flat
+ * screen does and redirects once it knows.
  */
 export default function PaymentsPage() {
-  redirect(`/app/events/${ACTIVE_EVENT_ID}/payments`);
+  const router = useRouter();
+  const currentEvent = useCurrentEvent();
+
+  React.useEffect(() => {
+    if (currentEvent.loaded) router.replace(`/app/events/${currentEvent.eventId}/payments`);
+  }, [currentEvent.loaded, currentEvent.eventId, router]);
+
+  return null;
 }

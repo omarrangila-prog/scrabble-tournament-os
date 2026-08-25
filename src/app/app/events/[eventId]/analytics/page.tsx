@@ -1,5 +1,7 @@
 "use client";
 
+import { useParams } from "next/navigation";
+
 import AnalyticsPage from "@/app/app/analytics/page";
 
 /**
@@ -13,5 +15,6 @@ import AnalyticsPage from "@/app/app/analytics/page";
  * How this event performed.
  */
 export default function AnalyticsPageTab() {
-  return <AnalyticsPage />;
+  const params = useParams<{ eventId: string }>();
+  return <AnalyticsPage eventId={params.eventId} />;
 }

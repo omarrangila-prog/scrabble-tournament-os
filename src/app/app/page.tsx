@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -36,6 +35,7 @@ import { SyncIndicator } from "@/components/ui/states";
 import { selectStandings, useStore } from "@/lib/store/useStore";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useGames } from "@/lib/supabase/useGames";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { cn, formatTime, signed, timeAgo } from "@/lib/utils";
 import { LetterTile } from "@/components/art/ScrabbleArt";
 
@@ -51,7 +51,8 @@ export default function CommandCentrePage() {
    * registered, because it was counting an array in browser storage that nothing
    * fills any more.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
   const players = roster.players;
 
   const round = tournament.currentRound;
@@ -563,7 +564,8 @@ function AttentionCentre() {
   const router = useRouter();
   const store = useStore();
   const { tournament } = store;
-  const players = useRoster(ACTIVE_EVENT_ID).players;
+  const currentEvent = useCurrentEvent();
+  const players = useRoster(currentEvent.eventId).players;
 
   /*
    * Games come from the database, so these alerts describe the tournament that is
@@ -571,7 +573,7 @@ function AttentionCentre() {
    * nothing fills, so the Attention Centre could only ever say "nothing needs
    * attention" — the one message it must never get wrong.
    */
-  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const games = useGames(currentEvent.eventId, tournament.id);
   const round = games.round;
 
   const boards = games.games.filter((g) => g.round === round);
@@ -639,7 +641,7 @@ function AttentionCentre() {
       title: `${unpaid.length} player${unpaid.length === 1 ? "" : "s"} playing without a verified payment`,
       body: "They have arrived and their payment has not been confirmed.",
       actionLabel: "Open payments",
-      onAction: () => router.push(`/app/events/${ACTIVE_EVENT_ID}/payments`),
+      onAction: () => router.push(`/app/events/${currentEvent.eventId}/payments`),
     });
   }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -37,10 +36,12 @@ interface Hit {
  */
 
 export function PlayerSearch({
+  eventId,
   onSelect,
   autoFocus = false,
   placeholder = "Search a player by name, ID, club or city…",
 }: {
+  eventId: string;
   onSelect?: (player: Player) => void;
   autoFocus?: boolean;
   placeholder?: string;
@@ -49,7 +50,7 @@ export function PlayerSearch({
   const store = useStore();
   const { pairings, tournament, divisions } = store;
   // The roster is in the database; browser storage has no players in it.
-  const players = useRoster(ACTIVE_EVENT_ID).players;
+  const players = useRoster(eventId).players;
 
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);

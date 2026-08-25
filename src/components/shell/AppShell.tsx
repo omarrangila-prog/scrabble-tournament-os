@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
 import { ROLE_LABEL } from "@/lib/store/permissions";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useTheme } from "@/lib/design/theme";
 import { cn, formatTime } from "@/lib/utils";
 import { ALL_ROUTES, EXTRA_NAV, NAV_ITEMS } from "./nav";
@@ -118,13 +119,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const role = useStore((s) => s.role);
   const organization = useStore((s) => s.organization);
   const tournament = useStore((s) => s.tournament);
-  const tournaments = useStore((s) => s.tournaments);
   const players = useStore((s) => s.players);
   const pairings = useStore((s) => s.pairings);
   const disputes = useStore((s) => s.disputes);
   const activity = useStore((s) => s.activity);
   const signOut = useStore((s) => s.signOut);
   const resetDemo = useStore((s) => s.resetDemo);
+
+  /*
+   * The real event picker. Every flat staff screen (Desk, Score entry, Settings, ...) reads
+   * this same choice, so switching it here re-scopes the whole app to a different event
+   * without navigating anywhere — the URL for those screens never named an event to begin
+   * with. A screen already inside a specific event's own URL (`/app/events/[eventId]/...`)
+   * ignores this entirely; that id always wins.
+   */
+  const currentEvent = useCurrentEvent();
 
   // A refresh keeps tournament data but not the session; restore a sensible one.
   React.useEffect(() => {
@@ -208,14 +217,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <div className="pb-3">
-          {/*
-            * The event picker is gone. There is one event, so a switcher had nothing
-            * to switch between, and it read the events out of browser storage — so
-            * what it actually displayed was "No events yet" above a tournament with a
-            * live registration page.
-            */}
-        </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3 scroll-slim">
           <NavList pathname={pathname} counts={counts} collapsed={collapsed} />
@@ -293,18 +294,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </p>
               <div className="flex min-w-0 items-center gap-1.5">
                 <span className="size-1.5 shrink-0 rounded-full bg-success pulse-dot" />
-                <select
-                  aria-label="Current tournament"
-                  value={tournament.id}
-                  onChange={() => undefined}
-                  className="max-w-[260px] truncate bg-transparent text-[13.5px] font-bold text-ink outline-none"
-                >
-                  {tournaments.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name.replace(" — Demo", "")}
-                    </option>
-                  ))}
-                </select>
+                {currentEvent.loaded && currentEvent.events.length > 0 ? (
+                  <select
+                    aria-label="Current event"
+                    value={currentEvent.eventId}
+                    onChange={(e) => currentEvent.setCurrentEventId(e.target.value)}
+                    className="max-w-[260px] truncate bg-transparent text-[13.5px] font-bold text-ink outline-none"
+                  >
+                    {currentEvent.events.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                        {e.status === "archived" ? " (archived)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : currentEvent.loaded ? (
+                  <Link href="/app/events/new" className="text-[13.5px] font-bold text-primary hover:underline">
+                    Create the first event
+                  </Link>
+                ) : (
+                  <span className="h-[18px] w-32 animate-pulse rounded bg-[rgb(var(--c-line))]" />
+                )}
               </div>
             </div>
 
@@ -431,7 +441,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette open={paletteOpen} eventId={currentEvent.eventId} onClose={() => setPaletteOpen(false)} />
       <Toaster />
     </div>
   );

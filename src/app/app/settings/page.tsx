@@ -31,7 +31,7 @@ import {
   Toggle,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useEventSettings, writeEventSettings, type EventSettings } from "@/lib/supabase/useEventSettings";
 import { useEventFormat } from "@/lib/supabase/useEventFormat";
 import { useRoster } from "@/lib/supabase/useRoster";
@@ -53,6 +53,7 @@ import { cn, downloadFile, formatDateTime, toCsv } from "@/lib/utils";
 export default function SettingsPage() {
   const store = useStore();
   const { tournament, role } = store;
+  const currentEvent = useCurrentEvent();
   const [tab, setTab] = React.useState("general");
   const [auditQuery, setAuditQuery] = React.useState("");
   const [resetOpen, setResetOpen] = React.useState(false);
@@ -63,8 +64,8 @@ export default function SettingsPage() {
    * payment decision, phase change and settings change has been landing in Postgres since
    * Phase 1; this is the first screen that reads it back.
    */
-  const auditLog = useAuditLog(ACTIVE_EVENT_ID);
-  const roundHistory = useRoundSnapshots(ACTIVE_EVENT_ID);
+  const auditLog = useAuditLog(currentEvent.eventId);
+  const roundHistory = useRoundSnapshots(currentEvent.eventId);
 
   const filteredAudit = auditLog.entries.filter((a) => {
     const q = auditQuery.trim().toLowerCase();
@@ -147,9 +148,9 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <PairingFormatCard />
+          <PairingFormatCard eventId={currentEvent.eventId} />
 
-          <EventSettingsCard by={store.currentUser?.name ?? "Director"} />
+          <EventSettingsCard eventId={currentEvent.eventId} by={store.currentUser?.name ?? "Director"} />
         </div>
       ) : null}
 
@@ -448,14 +449,14 @@ export default function SettingsPage() {
  * below actually changes what the tournament does, everywhere it does it, and every change
  * is written to the audit log.
  */
-function EventSettingsCard({ by }: { by: string }) {
-  const eventSettings = useEventSettings(ACTIVE_EVENT_ID);
+function EventSettingsCard({ eventId, by }: { eventId: string; by: string }) {
+  const eventSettings = useEventSettings(eventId);
   const [saving, setSaving] = React.useState<string | null>(null);
 
   const flip = async (key: keyof EventSettings, label: string) => {
     setSaving(key);
     const result = await writeEventSettings(
-      ACTIVE_EVENT_ID,
+      eventId,
       { [key]: !eventSettings.settings[key] },
       by,
     );
@@ -549,10 +550,10 @@ function EventSettingsCard({ by }: { by: string }) {
  * from the start, and changing format mid-event would leave earlier rounds decided under
  * rules the later ones no longer follow.
  */
-function PairingFormatCard() {
-  const roster = useRoster(ACTIVE_EVENT_ID);
-  const games = useGames(ACTIVE_EVENT_ID);
-  const { format, loaded, save } = useEventFormat(ACTIVE_EVENT_ID, {
+function PairingFormatCard({ eventId }: { eventId: string }) {
+  const roster = useRoster(eventId);
+  const games = useGames(eventId);
+  const { format, loaded, save } = useEventFormat(eventId, {
     rounds: 5,
     roundMinutes: 20,
     system: "swiss",

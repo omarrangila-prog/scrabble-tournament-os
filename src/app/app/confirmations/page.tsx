@@ -22,7 +22,7 @@ import {
   groupByContact,
   whatsappMessage,
 } from "@/lib/domain/confirmationMessages";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { emailDetailsConfirmation } from "@/lib/email/client";
 import { field, importField, numberField } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
@@ -43,7 +43,8 @@ import { supabase } from "@/lib/supabase/client";
  */
 export default function ConfirmationsPage() {
   const app = useStore();
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
   const [sendingAll, setSendingAll] = React.useState<{ done: number; total: number } | null>(null);
@@ -113,7 +114,7 @@ export default function ConfirmationsPage() {
     if (!db) return;
     for (const p of group.players) {
       await db.rpc("staff_mark_confirmation_sent", {
-        p_event_id: ACTIVE_EVENT_ID,
+        p_event_id: currentEvent.eventId,
         p_number: p.number,
         p_channel: channel,
         p_ok: ok,

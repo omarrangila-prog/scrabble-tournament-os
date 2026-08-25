@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import {
   Bar,
   BarChart,
@@ -38,18 +38,25 @@ const DIVISION_COLOR: Record<string, string> = {
 };
 
 
-export default function AnalyticsPage() {
+/**
+ * `eventId` is optional: the flat `/app/analytics` route relies on the nav's current-event
+ * picker, while `/app/events/[eventId]/analytics` passes its own URL segment so a specific
+ * event's analytics can be opened directly regardless of what is currently picked elsewhere.
+ */
+export default function AnalyticsPage({ eventId: eventIdProp }: { eventId?: string } = {}) {
   const store = useStore();
   const { tournament, divisions, audit } = store;
+  const currentEvent = useCurrentEvent();
+  const eventId = eventIdProp ?? currentEvent.eventId;
 
   /*
    * Players and games come from the database. Every figure on this page is derived
    * from them, so reading an empty browser store meant every chart showed zero
    * however much had actually happened.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const roster = useRoster(eventId);
   const players = roster.players;
-  const games = useGames(ACTIVE_EVENT_ID, tournament.id);
+  const games = useGames(eventId, tournament.id);
   const pairings = games.pairings;
 
   const verified = pairings.filter((p) => p.status === "verified" && p.scoreA !== undefined);
@@ -194,7 +201,7 @@ export default function AnalyticsPage() {
            * address. It opens in its own tab because it is a document, not a screen.
            */
           <a
-            href={`/report/${ACTIVE_EVENT_ID}`}
+            href={`/report/${eventId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-control border border-hairline px-3.5 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-sunken"

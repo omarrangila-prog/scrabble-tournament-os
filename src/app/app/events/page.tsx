@@ -15,7 +15,7 @@ import {
   Stat,
 } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
+import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { listEvents, setEventVisibility, type StoredEvent } from "@/lib/supabase/events";
 import { setEventPhase } from "@/lib/supabase/useEventState";
@@ -33,7 +33,8 @@ import { formatDate } from "@/lib/utils";
 export default function EventsPage() {
   const router = useRouter();
   const app = useStore();
-  const roster = useRoster(ACTIVE_EVENT_ID);
+  const currentEvent = useCurrentEvent();
+  const roster = useRoster(currentEvent.eventId);
 
   const [events, setEvents] = React.useState<StoredEvent[]>([]);
   const [loaded, setLoaded] = React.useState(false);

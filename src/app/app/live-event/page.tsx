@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { ACTIVE_EVENT_ID } from "@/lib/domain/eventSeed";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -34,10 +33,6 @@ import {
   Stat,
   Textarea,
 } from "@/components/ui";
-import {
-  selectActiveEvent,
-  useEventStore,
-} from "@/lib/store/useEventStore";
 import { useLiveStore } from "@/lib/store/useLiveStore";
 import { useStore } from "@/lib/store/useStore";
 import { staffCheckIn, staffUndoCheckIn } from "@/lib/supabase/organizer";
@@ -67,6 +62,7 @@ import {
 import { useTablePlan, writeBreakKind, writeTablePlan } from "@/lib/supabase/useTablePlan";
 import { useEventSettings, writeEventSettings } from "@/lib/supabase/useEventSettings";
 import { useActiveLock } from "@/lib/supabase/useActiveLock";
+import { useCurrentEvent, useEventById } from "@/lib/supabase/useCurrentEvent";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Pairing, Player } from "@/lib/domain/types";
 import {
@@ -95,47 +91,57 @@ const DAY_FLOW: EventState[] = [
  *
  * Everything here changes what participants see on their phones, so each
  * control states its consequence rather than just its name.
+ *
+ * `eventId` is optional: the flat `/app/live-event` route relies on the nav's current-event
+ * picker, while `/app/events/[eventId]/live` passes its own URL segment so a specific event's
+ * control room can be opened directly regardless of what is currently picked elsewhere.
  */
-export default function LiveEventPage() {
-  const events = useEventStore();
+export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: string } = {}) {
   const live = useLiveStore();
   const app = useStore();
+  const currentEvent = useCurrentEvent();
+  const eventId = eventIdProp ?? currentEvent.eventId;
 
-  const event = selectActiveEvent(events);
+  /*
+   * The event itself, resolved from Supabase rather than the local `useEventStore` — that
+   * store's `events` array is seeded once from a file and can only ever contain the one event
+   * baked into it, so this whole screen refused to render ("No event") for any other event.
+   */
+  const { event: storedEvent, loaded: eventLoaded } = useEventById(eventId);
 
   /*
    * Who is playing comes from the database. This page used to read registrations
    * from browser storage, which is empty, so the arrival list had no rows and
    * "publish pairings" could never find two players to pair.
    */
-  const roster = useRoster(ACTIVE_EVENT_ID);
-  const tablePlan = useTablePlan(ACTIVE_EVENT_ID);
+  const roster = useRoster(eventId);
+  const tablePlan = useTablePlan(eventId);
 
   /*
    * Games come from the database too, so the round number, the board count and the
    * results all agree with what the score table and the participant board list see.
    */
-  const games = useGames(ACTIVE_EVENT_ID, app.tournament.id);
+  const games = useGames(eventId, app.tournament.id);
 
   /*
    * The stored phase. Reading it back means this screen shows what participants
    * are actually seeing, rather than what this browser last set.
    */
-  const storedPhase = useEventState(ACTIVE_EVENT_ID);
+  const storedPhase = useEventState(eventId);
 
   /*
    * Round length and round count come from the event record, not from this browser: the wall
    * has to show the same clock. Declared with the other subscriptions because it is a hook —
    * below the early return it would run only on some renders.
    */
-  const { format, save: saveFormat } = useEventFormat(ACTIVE_EVENT_ID, {
-    rounds: event?.rounds ?? 5,
-    roundMinutes: event?.roundMinutes ?? 20,
+  const { format, save: saveFormat } = useEventFormat(eventId, {
+    rounds: storedEvent?.details.rounds ?? 5,
+    roundMinutes: storedEvent?.details.roundMinutes ?? 20,
     system: "swiss",
   });
   const [publishing, setPublishing] = React.useState(false);
 
-  const eventSettings = useEventSettings(ACTIVE_EVENT_ID);
+  const eventSettings = useEventSettings(eventId);
   const settings = eventSettings.settings;
   const [settingsSaving, setSettingsSaving] = React.useState(false);
 
@@ -144,7 +150,7 @@ export default function LiveEventPage() {
    * which is not an error — it is exactly the state every event was in before this existed —
    * and pairing falls back to the live check-in count, same as always.
    */
-  const activeLock = useActiveLock(ACTIVE_EVENT_ID);
+  const activeLock = useActiveLock(eventId);
 
   /*
    * The round waiting for a director's eyes before it goes on the wall. `null` means nothing
@@ -161,7 +167,7 @@ export default function LiveEventPage() {
   const toggleQr = async () => {
     setSettingsSaving(true);
     const result = await writeEventSettings(
-      ACTIVE_EVENT_ID,
+      eventId,
       { qrEnabled: !settings.qrEnabled },
       app.currentUser?.name ?? "Director",
     );
@@ -221,7 +227,7 @@ export default function LiveEventPage() {
    * the only screen that knew how long was left was the one that started it.
    */
   const clock = useRoundTimerControls(
-    ACTIVE_EVENT_ID,
+    eventId,
     round,
     app.currentUser?.name ?? "Director",
   );
@@ -250,16 +256,16 @@ export default function LiveEventPage() {
     advanced.current = round;
 
     void (async () => {
-      const written = await setEventPhase(event?.id ?? "", "result-entry");
+      const written = await setEventPhase(eventId, "result-entry");
       if (!written.ok) {
         /* Let it be tried again rather than leaving the room stuck at 00:00. */
         advanced.current = null;
         return;
       }
       storedPhase.reload();
-      announceBoardsChanged(event?.id ?? "");
+      announceBoardsChanged(eventId);
     })();
-  }, [clock.phase, storedPhase, round, event?.id]);
+  }, [clock.phase, storedPhase, round, eventId]);
 
   // Tick once a second so the clock stays live.
   const [, tick] = React.useState(0);
@@ -276,13 +282,16 @@ export default function LiveEventPage() {
     return (id: string) => map.get(id) ?? "Unknown player";
   }, [roster.players]);
 
-  if (!event) {
+  if (!eventLoaded) return null;
+
+  if (!storedEvent) {
     return (
       <Card>
         <EmptyState title="No event" description="Create and publish an event to run it live." />
       </Card>
     );
   }
+  const event = storedEvent;
 
   const timer = clock.timer;
   const phase = clock.phase;
@@ -313,8 +322,12 @@ export default function LiveEventPage() {
    * The phase as the database holds it, which is what participants are seeing.
    * Falls back to this browser's copy only until the first read returns, so the
    * controls do not flicker through a wrong state on load.
+   *
+   * `event.state` is a plain string on `StoredEvent` — the database's own CHECK
+   * constraint (`events_state_check`) is what actually guarantees it is one of the
+   * thirteen real values, not this cast.
    */
-  const eventState = storedPhase.state ?? event.state;
+  const eventState = storedPhase.state ?? (event.state as EventState);
 
 
   /**
@@ -340,8 +353,6 @@ export default function LiveEventPage() {
       return;
     }
 
-    // Kept in step so this screen's own controls stay consistent immediately.
-    events.setEventState(event.id, next);
     storedPhase.reload();
 
     if (next === "round-active") {
@@ -769,8 +780,6 @@ export default function LiveEventPage() {
             app.toast({ title: "Not saved", description: out.message, tone: "critical" });
             return;
           }
-          /* The local store too, so this screen's own controls agree immediately. */
-          events.updateEvent(event.id, { rounds: next.rounds, roundMinutes: next.roundMinutes });
         }}
         onStart={startTheRound}
         onFinishAfterThis={async () => {
@@ -779,7 +788,6 @@ export default function LiveEventPage() {
             app.toast({ title: "Not saved", description: out.message, tone: "critical" });
             return;
           }
-          events.updateEvent(event.id, { rounds: round });
           app.toast({
             title: `Round ${round} is now the last`,
             description:
@@ -793,7 +801,7 @@ export default function LiveEventPage() {
         The closing, at the top where it is looked for at the end of the day rather than
         buried under the controls used all afternoon.
       */}
-      <FinalResults eventId={ACTIVE_EVENT_ID} by={app.currentUser?.name ?? "Tournament director"} />
+      <FinalResults eventId={eventId} by={app.currentUser?.name ?? "Tournament director"} />
 
       {/* Metrics --------------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
