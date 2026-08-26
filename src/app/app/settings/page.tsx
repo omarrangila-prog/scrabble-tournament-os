@@ -39,6 +39,13 @@ import { useGames } from "@/lib/supabase/useGames";
 import { summarizeAuditDetail, useAuditLog } from "@/lib/supabase/useAuditLog";
 import { useRoundSnapshots, type RoundSnapshot } from "@/lib/supabase/useRoundSnapshots";
 import { useEventCategories, writeEventCategories } from "@/lib/supabase/useEventCategories";
+import {
+  useEventDetails,
+  writeEventDetails,
+  writePairingRules,
+  type PairingRules,
+} from "@/lib/supabase/useEventDetails";
+import type { EventDetails } from "@/lib/supabase/events";
 import type { Division } from "@/lib/domain/types";
 import { FormatPicker } from "@/components/forms/FormatPicker";
 import type { PairingSystem } from "@/lib/domain/types";
@@ -54,7 +61,7 @@ import { cn, downloadFile, formatDateTime, toCsv } from "@/lib/utils";
 
 export default function SettingsPage() {
   const store = useStore();
-  const { tournament, role } = store;
+  const { role } = store;
   const currentEvent = useCurrentEvent();
   const [tab, setTab] = React.useState("general");
   const [auditQuery, setAuditQuery] = React.useState("");
@@ -121,34 +128,16 @@ export default function SettingsPage() {
 
       {tab === "general" ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader title="Tournament" subtitle="Basic details for the active event" />
-            <div className="grid gap-3.5 px-5 pb-5 sm:grid-cols-2">
-              <Field label="Name" className="sm:col-span-2">
-                <Input
-                  defaultValue={tournament.name}
-                  onBlur={(e) => store.updateTournament({ name: e.target.value })}
-                />
-              </Field>
-              <Field label="Organizer">
-                <Input defaultValue={tournament.organizer} />
-              </Field>
-              <Field label="City">
-                <Input defaultValue={tournament.city} />
-              </Field>
-              <Field label="Time zone">
-                <Input defaultValue={tournament.timeZone} />
-              </Field>
-              <Field label="Total rounds">
-                <Input
-                  type="number"
-                  defaultValue={tournament.totalRounds}
-                  className="num"
-                  onBlur={(e) => store.updateTournament({ totalRounds: Number(e.target.value) })}
-                />
-              </Field>
-            </div>
-          </Card>
+          <EventDetailsCard
+            eventId={currentEvent.eventId}
+            by={store.currentUser?.name ?? "Director"}
+            onSaved={currentEvent.reload}
+          />
+
+          <PairingRulesCard
+            eventId={currentEvent.eventId}
+            by={store.currentUser?.name ?? "Director"}
+          />
 
           <CategoriesCard
             eventId={currentEvent.eventId}
@@ -896,6 +885,250 @@ function CategoriesCard({ eventId, by }: { eventId: string; by: string }) {
                 anybody is still entered in it — move them first.
               </p>
             )}
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * The event's own details.
+ *
+ * This card used to be five fields that changed nothing: Name and Total rounds wrote to a
+ * browser-only store no Supabase-backed screen has read since this app moved to Postgres, and
+ * Organizer, City and Time zone had no handler attached at all — typing in them did not even
+ * reach the dead store. It has looked editable for the whole life of the app.
+ *
+ * Rounds and round length are not here on purpose. They belong to the day and are set on Live
+ * Event, where a director changes them with the room in front of them.
+ */
+function EventDetailsCard({
+  eventId,
+  by,
+  onSaved,
+}: {
+  eventId: string;
+  by: string;
+  onSaved: () => void;
+}) {
+  const { event, loaded, reload } = useEventDetails(eventId);
+
+  const [draft, setDraft] = React.useState<{ name: string; subtitle: string; details: EventDetails } | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const current = {
+    name: event?.name ?? "",
+    subtitle: event?.subtitle ?? "",
+    details: event?.details ?? ({ startDate: "" } as EventDetails),
+  };
+  const form = draft ?? current;
+
+  const set = (patch: Partial<typeof form>) => setDraft({ ...form, ...patch });
+  const setDetail = (patch: Partial<EventDetails>) =>
+    setDraft({ ...form, details: { ...form.details, ...patch } });
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    const out = await writeEventDetails(eventId, form, by);
+    setSaving(false);
+
+    if (!out.ok) {
+      setError(out.message ?? "Not saved.");
+      return;
+    }
+    setDraft(null);
+    reload();
+    /* The nav picker shows event names, so a rename has to reach it too. */
+    onSaved();
+  };
+
+  return (
+    <Card>
+      <CardHeader title="Event details" subtitle="Everything the public page and every message say about it" />
+      <div className="grid gap-3.5 px-5 pb-5 sm:grid-cols-2">
+        {!loaded ? (
+          <div className="sm:col-span-2 h-40 animate-pulse rounded-feature bg-[rgb(var(--c-surface-soft))]" />
+        ) : (
+          <>
+            <Field label="Name" className="sm:col-span-2">
+              <Input value={form.name} onChange={(e) => set({ name: e.target.value })} />
+            </Field>
+            <Field label="Subtitle" className="sm:col-span-2" hint="Shown under the name on the public page.">
+              <Input value={form.subtitle} onChange={(e) => set({ subtitle: e.target.value })} />
+            </Field>
+            <Field label="Date">
+              <Input
+                type="date"
+                value={form.details.startDate ?? ""}
+                onChange={(e) => setDetail({ startDate: e.target.value })}
+              />
+            </Field>
+            <Field label="Venue">
+              <Input
+                value={form.details.venueName ?? ""}
+                onChange={(e) => setDetail({ venueName: e.target.value })}
+              />
+            </Field>
+            <Field label="Starts">
+              <Input
+                type="time"
+                value={form.details.startTime ?? ""}
+                onChange={(e) => setDetail({ startTime: e.target.value })}
+              />
+            </Field>
+            <Field label="Ends">
+              <Input
+                type="time"
+                value={form.details.endTime ?? ""}
+                onChange={(e) => setDetail({ endTime: e.target.value })}
+              />
+            </Field>
+            <Field label="City">
+              <Input
+                value={form.details.city ?? ""}
+                onChange={(e) => setDetail({ city: e.target.value })}
+              />
+            </Field>
+            <Field label="Entry fee" hint="Per player, in the event's own currency.">
+              <Input
+                type="number"
+                className="num"
+                value={form.details.fee ?? 0}
+                onChange={(e) => setDetail({ fee: Number(e.target.value) })}
+              />
+            </Field>
+
+            {error ? (
+              <p className="sm:col-span-2 rounded-control bg-critical-050 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-critical">
+                {error}
+              </p>
+            ) : null}
+
+            {draft ? (
+              <div className="sm:col-span-2 flex gap-2">
+                <Button variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+                  {saving ? "Saving…" : "Save details"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => {
+                    setDraft(null);
+                    setError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <p className="sm:col-span-2 text-[12px] text-muted">
+                Rounds and round length are set on Live Event, with the room in front of you.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * The rules a round is paired under.
+ *
+ * These were constants in a seed file — the rules a tournament runs by, differing between
+ * events, with no way to change them short of editing code and redeploying.
+ */
+function PairingRulesCard({ eventId, by }: { eventId: string; by: string }) {
+  const { rules, loaded, reload } = useEventDetails(eventId);
+
+  const [draft, setDraft] = React.useState<PairingRules | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const form = draft ?? rules;
+
+  const save = async (next: PairingRules) => {
+    setSaving(true);
+    setError(null);
+    const out = await writePairingRules(eventId, next, by);
+    setSaving(false);
+
+    if (!out.ok) {
+      setError(out.message ?? "Not saved.");
+      return;
+    }
+    setDraft(null);
+    reload();
+  };
+
+  return (
+    <Card>
+      <CardHeader title="Pairing rules" subtitle="How the engine decides who plays whom" />
+      <div className="px-5 pb-5">
+        {!loaded ? (
+          <div className="h-32 animate-pulse rounded-feature bg-[rgb(var(--c-surface-soft))]" />
+        ) : (
+          <>
+            <div className="divide-y divide-line">
+              <Toggle
+                checked={form.avoidRepeatOpponents}
+                disabled={saving}
+                onChange={() => void save({ ...form, avoidRepeatOpponents: !form.avoidRepeatOpponents })}
+                label="Avoid repeat opponents"
+                description="Never put the same two players together twice while any alternative exists. Off, the engine pairs on standings alone and rematches happen freely."
+              />
+              <Toggle
+                checked={form.avoidSameClub}
+                disabled={saving}
+                onChange={() => void save({ ...form, avoidSameClub: !form.avoidSameClub })}
+                label="Keep clubmates apart"
+                description="Only has an effect once players have a club or school recorded against them. Nobody does yet, so this changes nothing today."
+              />
+            </div>
+
+            <Field
+              label="Most byes one player may receive"
+              className="mt-3"
+              hint="A field with an odd number of players has to sit somebody out, so this is at least one."
+            >
+              <Input
+                type="number"
+                min={1}
+                max={5}
+                className="num"
+                value={form.maxByesPerPlayer}
+                onChange={(e) => setDraft({ ...form, maxByesPerPlayer: Number(e.target.value) })}
+              />
+            </Field>
+
+            {draft ? (
+              <div className="mt-3 flex gap-2">
+                <Button variant="primary" size="sm" disabled={saving} onClick={() => void save(form)}>
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={saving}
+                  onClick={() => {
+                    setDraft(null);
+                    setError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : null}
+
+            {error ? (
+              <p className="mt-3 rounded-control bg-critical-050 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-critical">
+                {error}
+              </p>
+            ) : null}
           </>
         )}
       </div>

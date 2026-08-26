@@ -63,6 +63,7 @@ import { useTablePlan, writeBreakKind, writeTablePlan } from "@/lib/supabase/use
 import { useEventSettings, writeEventSettings } from "@/lib/supabase/useEventSettings";
 import { useActiveLock } from "@/lib/supabase/useActiveLock";
 import { useCurrentEvent, useEventById } from "@/lib/supabase/useCurrentEvent";
+import { useEventDetails } from "@/lib/supabase/useEventDetails";
 import { EventState, EVENT_STATE_LABEL } from "@/lib/domain/events";
 import type { Pairing, Player } from "@/lib/domain/types";
 import {
@@ -151,6 +152,10 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
    * and pairing falls back to the live check-in count, same as always.
    */
   const activeLock = useActiveLock(eventId);
+
+  /* The rules this event pairs under — repeat-opponent avoidance and the bye limit — read
+     from the event rather than the seed's constants, so Settings actually decides them. */
+  const { rules: pairingRules } = useEventDetails(eventId);
 
   /*
    * The round waiting for a director's eyes before it goes on the wall. `null` means nothing
@@ -492,7 +497,13 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
      * is the real, per-event setting. Off means exactly what it always has: no board carries a
      * first/second decision at all, not that one is made and then hidden.
      */
-    constraints: { ...app.tournament.constraints, balanceStarts: settings.firstSecondEnabled },
+    constraints: {
+      ...app.tournament.constraints,
+      balanceStarts: settings.firstSecondEnabled,
+      avoidRepeatOpponents: pairingRules.avoidRepeatOpponents,
+      avoidSameClub: pairingRules.avoidSameClub,
+      maxByesPerPlayer: pairingRules.maxByesPerPlayer,
+    },
   };
 
   const openPairingPreview = () => {
