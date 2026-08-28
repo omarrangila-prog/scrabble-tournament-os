@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { CalendarDays, CheckCircle2, Clock, Copy, Mail, MapPin } from "lucide-react";
 import { Badge, Button, Card, EmptyState } from "@/components/ui";
-import { GameOnForm } from "./GameOnForm";
+import { QuickForm, type QuickRegistration } from "./QuickForm";
 import {
   GuestPaymentStatus,
   registrationStatusOf,
@@ -22,7 +22,6 @@ import {
   paymentSummary,
   quoteFee,
 } from "@/lib/domain/gameOn";
-import { redeemDiscount } from "@/lib/domain/events";
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
 import { saveRegistration } from "@/lib/supabase/registrations";
@@ -80,8 +79,7 @@ export default function RegisterPage() {
     token: string;
     registration: GameOnRegistration;
   } | null>(null);
-  const [campaign, setCampaign] = React.useState<CampaignReduction | undefined>();
-  const [codeError, setCodeError] = React.useState<string | null>(null);
+  const [campaign] = React.useState<CampaignReduction | undefined>();
 
   /*
    * Whether the record reached the database, and why not.
@@ -120,50 +118,32 @@ export default function RegisterPage() {
 
   const status = registrationStatusOf(event, registrations.length);
 
-  const applyCode = (raw: string) => {
-    const code = raw.trim().toUpperCase();
-    if (!code) return;
+  /*
+   * Discount codes are not asked for by the short form, so nothing sets a campaign and the
+   * fee is the event's own. The pricing path below still reads `campaign`, so restoring a
+   * code field is one input away rather than a rewrite.
+   */
 
-    /*
-     * Validated in the domain, so expiry is actually enforced. The old check
-     * read `active` and the redemption count but never `expiresAt`, so a dated
-     * code stayed usable for ever — an early bird the organizer could not close.
-     */
-    /*
-     * When the event prices itself, its own coupons are the authority.
-     *
-     * Two code systems were running at once: the event's price rules, which set the fee,
-     * and this older campaign list, which set the message. A code in the first but not the
-     * second reduced the price and was called invalid in the same breath — HHS showed
-     * "PKR 1,000" above "That code is not recognised." Refusing here is only correct for
-     * codes the price rules have never heard of.
-     */
-    const pricedCoupon = event.priceRules?.coupons.some(
-      (c) => c.code.toUpperCase() === code,
-    );
-    if (pricedCoupon) {
-      setCodeError(null);
-      setCampaign(undefined);
-      return;
-    }
-
-    const outcome = redeemDiscount(store.discounts, code, event.id);
-    if ("refusal" in outcome) {
-      setCodeError(outcome.message);
-      setCampaign(undefined);
-      return;
-    }
-    const found = outcome.discount;
-
-    setCodeError(null);
-    setCampaign({
-      code: found.code,
-      label: found.label,
-      percentOff: found.kind === "percentage" ? found.value : 0,
-      amountOff:
-        found.kind === "free-entry" ? event.fee : found.kind === "fixed" ? found.value : 0,
-    });
-  };
+  const submitQuick = (quick: QuickRegistration) =>
+    submit({
+      track: "speed_scrabble",
+      fullName: quick.fullName,
+      email: quick.email,
+      mobile: quick.mobile,
+      dateOfBirth: "",
+      city: "",
+      area: "",
+      requestedLevel: quick.category as GameOnRegistration["requestedLevel"],
+      payAtVenue: quick.payAtVenue,
+      /*
+       * Stated, not left undefined. `quoteFee` reads a member claim as
+       * `membership !== "not-claimed" && membership !== "proof-rejected"`, and `undefined`
+       * satisfies both — so leaving this out silently applied the member discount to every
+       * registration this form produced. Nobody using the short form claims membership,
+       * because it does not ask.
+       */
+      membershipStatus: "not-claimed",
+    } as GameOnRegistration);
 
   const submit = async (reg: GameOnRegistration) => {
     /*
@@ -507,17 +487,12 @@ export default function RegisterPage() {
         </motion.header>
 
         <div className="mt-7">
-          <GameOnForm
-            event={event}
-            onSubmit={submit}
-            /* So the button cannot be pressed twice while the record is being written. */
-            submitting={saving}
-            campaign={campaign}
-            onCampaignCode={applyCode}
-          />
-          {codeError ? (
-            <p className="mt-2 text-center text-[12.5px] text-critical">{codeError}</p>
-          ) : null}
+          {/*
+            * Four questions on one screen, replacing four steps of eighteen. The long form
+            * is still in the tree and still works — it is what this was measured against —
+            * but nobody is sent through it to enter a tournament.
+            */}
+          <QuickForm event={event} saving={saving} error={saveError} onSubmit={submitQuick} />
 
           {/*
             * Saving, and failing to save.
