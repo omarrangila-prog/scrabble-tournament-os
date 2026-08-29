@@ -28,6 +28,7 @@ import {
   TableWrap,
   Td,
   Th,
+  Textarea,
   Toggle,
 } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
@@ -998,6 +999,49 @@ function EventDetailsCard({
                 className="num"
                 value={form.details.fee ?? 0}
                 onChange={(e) => setDetail({ fee: Number(e.target.value) })}
+              />
+            </Field>
+
+            {/*
+              The three blocks of text the registration form prints verbatim. They were
+              readable on the form and editable nowhere, which meant changing a bank
+              account or a refund rule was a code change. Blank hides the block rather
+              than printing an empty heading, so leaving one empty is a way to turn it off.
+            */}
+            <Field
+              label="Registration fees"
+              className="sm:col-span-2"
+              hint="Shown on the form above the payment question. Leave empty to show nothing."
+            >
+              <Textarea
+                rows={5}
+                value={form.details.feeDetails ?? ""}
+                onChange={(e) => setDetail({ feeDetails: e.target.value })}
+                placeholder="Regular — Rs 1,000 per head"
+              />
+            </Field>
+            <Field
+              label="Payment details"
+              className="sm:col-span-2"
+              hint="Shown on the form once somebody chooses to pay online."
+            >
+              <Textarea
+                rows={5}
+                value={form.details.paymentInstructions ?? ""}
+                onChange={(e) => setDetail({ paymentInstructions: e.target.value })}
+                placeholder="Bank name, account title, account number, IBAN"
+              />
+            </Field>
+            <Field
+              label="Terms"
+              className="sm:col-span-2"
+              hint="Shown on the form above the box somebody ticks to agree."
+            >
+              <Textarea
+                rows={4}
+                value={form.details.terms ?? ""}
+                onChange={(e) => setDetail({ terms: e.target.value })}
+                placeholder="Refunds, cancellations, late arrival"
               />
             </Field>
 
