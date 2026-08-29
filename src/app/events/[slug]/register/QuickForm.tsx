@@ -5,7 +5,6 @@ import { Check, Loader2 } from "lucide-react";
 
 import type { PublicEvent } from "@/lib/domain/events";
 import { useEventCategories } from "@/lib/supabase/useEventCategories";
-import { rateFor, type RateCard } from "@/lib/domain/rateCard";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,15 +25,10 @@ export interface QuickRegistration {
   mobile: string;
   category: string;
   playsPsaRanking: boolean;
-  psaMember: boolean;
-  groupOfThree: boolean;
   payAtVenue: boolean;
   heardAbout: string;
   photoConsent: boolean;
   termsAccepted: boolean;
-  /** What the form told them they owe, so the record matches what they were shown. */
-  amountDue: number;
-  rateLabel: string;
 }
 
 /** How somebody found the event. Recorded so an organiser can see what actually worked. */
@@ -48,16 +42,11 @@ const HEARD_ABOUT = [
 
 export function QuickForm({
   event,
-  rateCard,
-  today,
   saving,
   error,
   onSubmit,
 }: {
   event: PublicEvent;
-  rateCard: RateCard;
-  /** Passed in so the fee shown and the fee stored are computed from the same day. */
-  today: string;
   saving: boolean;
   error: string | null;
   onSubmit: (registration: QuickRegistration) => void;
@@ -69,8 +58,6 @@ export function QuickForm({
   const [mobile, setMobile] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [playsPsaRanking, setPlaysPsaRanking] = React.useState<boolean | null>(null);
-  const [psaMember, setPsaMember] = React.useState<boolean | null>(null);
-  const [groupOfThree, setGroupOfThree] = React.useState<boolean | null>(null);
   const [payAtVenue, setPayAtVenue] = React.useState<boolean | null>(null);
   const [heardAbout, setHeardAbout] = React.useState("");
   const [photoConsent, setPhotoConsent] = React.useState<boolean | null>(null);
@@ -88,25 +75,13 @@ export function QuickForm({
   const ageOk = age.trim() !== "" && Number.isFinite(ageNumber) && ageNumber >= 3 && ageNumber <= 110;
   const categoryOk = chosen !== "";
   const psaOk = playsPsaRanking !== null;
-  /* Only asked when the organiser actually offers the rate. */
-  const memberAsked = typeof rateCard.psaMember === "number";
-  const groupAsked = typeof rateCard.group === "number";
-  const memberOk = !memberAsked || psaMember !== null;
-  const groupOk = !groupAsked || groupOfThree !== null;
-
-  const groupMinimum = rateCard.groupMinimum ?? 3;
-  const rate = rateFor(
-    rateCard,
-    { psaMember: psaMember === true, groupSize: groupOfThree === true ? groupMinimum : 1 },
-    today,
-  );
   const payOk = payAtVenue !== null;
   const heardOk = heardAbout !== "";
   const consentOk = photoConsent !== null;
 
   const ready =
-    nameOk && ageOk && mobileOk && categoryOk && psaOk && memberOk && groupOk && payOk &&
-    heardOk && consentOk && termsAccepted;
+    nameOk && ageOk && mobileOk && categoryOk && psaOk && payOk && heardOk && consentOk &&
+    termsAccepted;
 
   const submit = () => {
     setTouched(true);
@@ -117,11 +92,7 @@ export function QuickForm({
       mobile: mobile.trim(),
       category: chosen,
       playsPsaRanking: playsPsaRanking === true,
-      psaMember: psaMember === true,
-      groupOfThree: groupOfThree === true,
       payAtVenue: payAtVenue === true,
-      amountDue: rate.amount,
-      rateLabel: rate.label,
       heardAbout,
       photoConsent: photoConsent === true,
       termsAccepted,
@@ -262,46 +233,6 @@ export function QuickForm({
         <span className={heading}>Do you play in the PSA ranking tournaments?</span>
         {yesNo(playsPsaRanking, setPlaysPsaRanking)}
         {problem(!psaOk, "Please answer yes or no.")}
-      </div>
-
-      {memberAsked ? (
-        <div>
-          <span className={heading}>Are you a PSA member?</span>
-          <p className="text-[12.5px] text-muted">Members pay a lower rate.</p>
-          {yesNo(psaMember, setPsaMember)}
-          {problem(!memberOk, "Please answer yes or no.")}
-        </div>
-      ) : null}
-
-      {groupAsked ? (
-        <div>
-          <span className={heading}>
-            Registering with a group of {groupMinimum} or more?
-          </span>
-          <p className="text-[12.5px] text-muted">Groups pay a lower rate.</p>
-          {yesNo(groupOfThree, setGroupOfThree)}
-          {problem(!groupOk, "Please answer yes or no.")}
-        </div>
-      ) : null}
-
-      {/*
-        What they will actually be asked for, updating as they answer. Shown before the
-        payment question rather than after it, because how much it is changes how somebody
-        chooses to pay — and a fee that only appears on the confirmation is a surprise.
-      */}
-      <div className="rounded-control border border-line bg-[rgb(var(--c-surface-soft))] px-3.5 py-3">
-        <p className="flex items-baseline justify-between gap-3">
-          <span className="text-[14px] font-semibold text-ink">Your entry fee</span>
-          <span className="num text-[20px] font-extrabold text-ink">
-            {rate.currency} {rate.amount.toLocaleString("en-PK")}
-          </span>
-        </p>
-        <p className="mt-0.5 text-[12.5px] text-muted">
-          {rate.label} rate
-          {rate.applicable.length > 1
-            ? ` — the best of ${rate.applicable.length} you qualify for.`
-            : "."}
-        </p>
       </div>
 
       <div>

@@ -7,7 +7,6 @@ import { useParams } from "next/navigation";
 import { CalendarDays, CheckCircle2, Clock, Copy, Mail, MapPin } from "lucide-react";
 import { Badge, Button, Card, EmptyState } from "@/components/ui";
 import { QuickForm, type QuickRegistration } from "./QuickForm";
-import { rateCardFrom } from "@/lib/domain/rateCard";
 import {
   GuestPaymentStatus,
   registrationStatusOf,
@@ -54,14 +53,6 @@ export default function RegisterPage() {
    * its behaviour is unchanged. An event created through the organizer's form is read
    * from the database — before this it had no form at all.
    */
-  /*
-   * The day the rate card is judged against. Fixed once on mount rather than read from the
-   * clock at submit, so the fee somebody was shown is the fee they are charged even if they
-   * leave the form open across midnight. Declared with the other hooks, above the
-   * "event not found" return — a hook cannot sit after one.
-   */
-  const [today] = React.useState(() => new Date().toISOString().slice(0, 10));
-
   const resolved = usePublicEvent(slug);
   const event = resolved.event;
   const registrations = event ? selectRegistrations(store, event.id) : [];
@@ -127,9 +118,6 @@ export default function RegisterPage() {
 
   const status = registrationStatusOf(event, registrations.length);
 
-  /* The rates this event advertises. A plain value, not a hook — it is below the guard. */
-  const rateCard = rateCardFrom({ rates: event.rateCard, currency: event.currency }, event.fee);
-
 
   /*
    * Discount codes are not asked for by the short form, so nothing sets a campaign and the
@@ -158,22 +146,10 @@ export default function RegisterPage() {
       quickAnswers: {
         age: quick.age,
         playsPSARankingTournaments: quick.playsPsaRanking ? "Yes" : "No",
-        psaMember: quick.psaMember ? "Yes" : "No",
-        groupBooking: quick.groupOfThree ? "Yes" : "No",
-        /* The rule that produced the fee, in the organiser's own words, so the desk can see
-           why somebody is being asked for less than the regular rate. */
-        rateApplied: quick.rateLabel,
         heardAbout: quick.heardAbout,
         mediaConsent: quick.photoConsent ? "Yes" : "No",
         termsAcceptedAt: quick.termsAccepted ? new Date().toISOString() : "",
       },
-      /*
-       * The fee as the form showed it. Carried up rather than recomputed on this side: two
-       * calculations of one price is how a registration ends up stored owing an amount
-       * nobody was ever quoted.
-       */
-      quotedBaseFee: quick.amountDue,
-      quotedDiscountAmount: 0,
       /*
        * Stated, not left undefined. `quoteFee` reads a member claim as
        * `membership !== "not-claimed" && membership !== "proof-rejected"`, and `undefined`
@@ -240,13 +216,7 @@ export default function RegisterPage() {
       receiptFileName: reg.receiptFileName,
       // The bundle total when they added another event, so the payment queue
       // shows what they were actually quoted.
-      /*
-       * The rate the form quoted, when it quoted one. `quoteFee` prices the older
-       * membership-and-coupon path off the event's single fee and knows nothing about a rate
-       * card, so letting it decide here would store the regular fee for somebody the form
-       * had just told they owe the early-bird rate.
-       */
-      amountDue: reg.bundleTotal ?? reg.quotedBaseFee ?? quote.payable,
+      amountDue: reg.bundleTotal ?? quote.payable,
       discountCode: campaign?.code,
       /*
        * The reduction the participant was actually shown.
@@ -550,14 +520,7 @@ export default function RegisterPage() {
             * is still in the tree and still works — it is what this was measured against —
             * but nobody is sent through it to enter a tournament.
             */}
-          <QuickForm
-            event={event}
-            rateCard={rateCard}
-            today={today}
-            saving={saving}
-            error={saveError}
-            onSubmit={submitQuick}
-          />
+          <QuickForm event={event} saving={saving} error={saveError} onSubmit={submitQuick} />
 
           {/*
             * Saving, and failing to save.
