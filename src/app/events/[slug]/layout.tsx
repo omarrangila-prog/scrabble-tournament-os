@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { buildEventSeed } from "@/lib/domain/eventSeed";
+import type { PublicEvent } from "@/lib/domain/events";
+import { publicEventFromStored } from "@/lib/domain/publicEvent";
 import { eventJsonLd, lowestPrice, SITE_URL } from "@/lib/seo";
+import { readEventForMetadata } from "@/lib/supabase/serverEvent";
 
 /**
  * Server-side metadata for one event.
@@ -13,8 +16,20 @@ import { eventJsonLd, lowestPrice, SITE_URL } from "@/lib/seo";
  * Every value comes from the event record. A preview quoting a price or a date
  * the page does not show would mislead somebody before they even arrive.
  */
-function findEvent(slug: string) {
-  return buildEventSeed().events.find((e) => e.slug === slug);
+/**
+ * The event behind a slug, from wherever it lives.
+ *
+ * The seed first, because the 23 August event is defined there in full and that definition
+ * is what its page charges from. Everything else is a database row — which is every event a
+ * director creates through the app, and was every event this function used to call missing.
+ * Both paths end in one `PublicEvent`, so the metadata below reads the same either way.
+ */
+async function findEvent(slug: string): Promise<PublicEvent | undefined> {
+  const seeded = buildEventSeed().events.find((e) => e.slug === slug);
+  if (seeded) return seeded;
+
+  const stored = await readEventForMetadata(slug);
+  return stored ? publicEventFromStored(stored) : undefined;
 }
 
 export async function generateMetadata({
@@ -23,7 +38,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const event = findEvent(slug);
+  const event = await findEvent(slug);
 
   if (!event) {
     // Nothing to describe, and nothing that should be indexed.
@@ -69,7 +84,7 @@ export default async function EventLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const event = findEvent(slug);
+  const event = await findEvent(slug);
 
   return (
     <>
