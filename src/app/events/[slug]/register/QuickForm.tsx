@@ -308,7 +308,7 @@ export function QuickForm({
               type="checkbox"
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
-              className="mt-0.5 size-5 shrink-0 accent-[rgb(var(--c-primary))]"
+              className="mt-0.5 size-5 shrink-0 accent-primary"
             />
             <span className="text-[14px] font-semibold text-ink">
               I understand and agree, and I am happy to be contacted about this event
