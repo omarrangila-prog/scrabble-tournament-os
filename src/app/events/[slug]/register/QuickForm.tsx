@@ -235,6 +235,21 @@ export function QuickForm({
         {problem(!psaOk, "Please answer yes or no.")}
       </div>
 
+      {/*
+        The rates as advertised, shown rather than computed. Which bracket applies depends on
+        membership, group size and the date — none of which this form asks — so the desk
+        settles it. Printed here so nobody arrives without knowing what they owe, and placed
+        above the payment question because the amount changes how somebody chooses to pay.
+      */}
+      {event.feeDetails ? (
+        <div className="rounded-control border border-line bg-[rgb(var(--c-surface-soft))] px-3.5 py-3">
+          <p className="text-[14px] font-semibold text-ink">Registration fees</p>
+          <div className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-muted">
+            {event.feeDetails}
+          </div>
+        </div>
+      ) : null}
+
       <div>
         <span className={heading}>Payment method</span>
         {choices(

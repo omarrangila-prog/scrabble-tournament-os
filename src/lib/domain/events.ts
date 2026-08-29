@@ -216,6 +216,14 @@ export interface PublicEvent {
   paymentInstructions?: string;
   /** What somebody is agreeing to when they register: confirmations, refunds, late arrival. */
   terms?: string;
+  /**
+   * The rates as the organiser advertises them, and what the fee covers.
+   *
+   * Shown, not computed. Which bracket somebody falls into depends on membership, group size
+   * and the date, and the form deliberately asks none of that — the desk settles it. Printing
+   * the brackets is what lets somebody arrive knowing what they owe.
+   */
+  feeDetails?: string;
 
   visibility: "public" | "private";
   capacity: number;

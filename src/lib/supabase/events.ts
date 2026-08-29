@@ -27,6 +27,8 @@ export interface EventDetails {
   paymentInstructions?: string;
   /** Shown on the registration form above the "I understand and agree" box. */
   terms?: string;
+  /** The advertised rates and what the fee covers, shown on the registration page. */
+  feeDetails?: string;
 }
 
 export interface StoredEvent {
