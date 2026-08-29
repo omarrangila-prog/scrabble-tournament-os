@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import { CalendarDays, CheckCircle2, Clock, Copy, Mail, MapPin } from "lucide-react";
 import { Badge, Button, Card, EmptyState } from "@/components/ui";
 import { QuickForm, type QuickRegistration } from "./QuickForm";
+import { venueLine, venueMapSrc } from "@/lib/domain/venueMap";
+import type { PublicEvent } from "@/lib/domain/events";
 import {
   GuestPaymentStatus,
   registrationStatusOf,
@@ -541,6 +543,8 @@ export default function RegisterPage() {
           </div>
         </motion.header>
 
+        <VenueMap event={event} />
+
         <div className="mt-7">
           {/*
             * Four questions on one screen, replacing four steps of eighteen. The long form
@@ -826,5 +830,64 @@ function GameOnConfirmation({
         </Link>
       </div>
     </main>
+  );
+}
+
+/**
+ * The venue, as a picture of the street.
+ *
+ * A name and a link both assume somebody either knows the place or is willing to leave a
+ * half-filled form to go and look. A map answers "where is this" in the form itself, which
+ * is the question people ask before deciding to fill one in.
+ *
+ * The address and the Maps link stay underneath. The embed is a third party that can go
+ * blank — a changed endpoint, a blocked network, a phone with images off — and the venue
+ * must still be findable when it does, so the map is an addition to the address rather than
+ * a replacement for it.
+ */
+function VenueMap({ event }: { event: PublicEvent }) {
+  const src = venueMapSrc({
+    coords: event.mapCoords,
+    venueName: event.venueName,
+    address: event.address,
+    city: event.city,
+  });
+
+  if (!src) return null;
+
+  return (
+    <section className="mt-5">
+      <div
+        className="overflow-hidden rounded-[18px] border"
+        style={{ borderColor: `${BROWN}22` }}
+      >
+        <iframe
+          src={src}
+          title={`Map showing ${event.venueName}`}
+          /* Lazy so a slow third party never delays the questions. */
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="block h-[180px] w-full border-0"
+        />
+      </div>
+
+      <p className="mt-2 text-center text-[12.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
+        {venueLine(event.address, event.city)}
+        {event.mapsUrl ? (
+          <>
+            {" · "}
+            <a
+              href={event.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="font-semibold underline decoration-dotted underline-offset-4"
+              style={{ color: FOREST }}
+            >
+              Open in Maps
+            </a>
+          </>
+        ) : null}
+      </p>
+    </section>
   );
 }

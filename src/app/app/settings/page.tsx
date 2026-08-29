@@ -984,6 +984,17 @@ function EventDetailsCard({
                 placeholder="https://maps.app.goo.gl/…"
               />
             </Field>
+            <Field
+              label="Map pin"
+              className="sm:col-span-2"
+              hint="Optional. Right-click the venue in Google Maps and copy the lat, lng — the map on the form pins that exactly instead of searching the address."
+            >
+              <Input
+                value={form.details.mapCoords ?? ""}
+                onChange={(e) => setDetail({ mapCoords: e.target.value })}
+                placeholder="24.8652732, 67.064693"
+              />
+            </Field>
             <Field label="Starts">
               <Input
                 type="time"

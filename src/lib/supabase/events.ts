@@ -31,6 +31,8 @@ export interface EventDetails {
   feeDetails?: string;
   /** A map link for the venue, so the address on the form is tappable. */
   mapsUrl?: string;
+  /** `lat,lng` for the venue, so the map on the form pins the door and not the road. */
+  mapCoords?: string;
 }
 
 export interface StoredEvent {

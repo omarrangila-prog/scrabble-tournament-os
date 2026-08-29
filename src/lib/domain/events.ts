@@ -199,6 +199,8 @@ export interface PublicEvent {
   address: string;
   city: string;
   mapsUrl?: string;
+  /** `lat,lng` for the venue. Pins the embedded map exactly; see `venueMap.ts`. */
+  mapCoords?: string;
 
   startDate: string;
   startTime: string;
