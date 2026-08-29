@@ -216,6 +216,8 @@ export interface PublicEvent {
   paymentInstructions?: string;
   /** What somebody is agreeing to when they register: confirmations, refunds, late arrival. */
   terms?: string;
+  /** The advertised rate card, when the organiser offers more than one price. */
+  rateCard?: Record<string, unknown>;
 
   visibility: "public" | "private";
   capacity: number;

@@ -27,6 +27,8 @@ export interface EventDetails {
   paymentInstructions?: string;
   /** Shown on the registration form above the "I understand and agree" box. */
   terms?: string;
+  /** Rate card: regular, psaMember, group, groupMinimum, earlyBird, earlyBirdUntil. */
+  rateCard?: Record<string, unknown>;
 }
 
 export interface StoredEvent {
