@@ -128,13 +128,27 @@ export default function RegisterPage() {
     submit({
       track: "speed_scrabble",
       fullName: quick.fullName,
-      email: quick.email,
+      /* The form does not ask for one — the organiser reaches people on their cell. */
+      email: "",
       mobile: quick.mobile,
+      /* Age is asked, a date of birth is not; storing a made-up date would be worse. */
       dateOfBirth: "",
       city: "",
       area: "",
       requestedLevel: quick.category as GameOnRegistration["requestedLevel"],
       payAtVenue: quick.payAtVenue,
+      /*
+       * The answers that belong to this organiser's form rather than to every tournament.
+       * Kept whole so the desk sees exactly what was ticked, including the consent and the
+       * agreement, which are the two nobody should have to take on trust afterwards.
+       */
+      quickAnswers: {
+        age: quick.age,
+        playsPSARankingTournaments: quick.playsPsaRanking ? "Yes" : "No",
+        heardAbout: quick.heardAbout,
+        mediaConsent: quick.photoConsent ? "Yes" : "No",
+        termsAcceptedAt: quick.termsAccepted ? new Date().toISOString() : "",
+      },
       /*
        * Stated, not left undefined. `quoteFee` reads a member claim as
        * `membership !== "not-claimed" && membership !== "proof-rejected"`, and `undefined`
@@ -143,6 +157,12 @@ export default function RegisterPage() {
        * because it does not ask.
        */
       membershipStatus: "not-claimed",
+      /*
+       * The same tick. This covers the event terms and being contacted about the event, and
+       * the box beside it says exactly that — an inferred consent nobody was shown would not
+       * be a consent at all.
+       */
+      communicationConsent: quick.termsAccepted,
     } as GameOnRegistration);
 
   const submit = async (reg: GameOnRegistration) => {
@@ -183,6 +203,7 @@ export default function RegisterPage() {
         ...(reg.jammingSessionInterest
           ? { jammingSessionInterest: reg.jammingSessionInterest }
           : {}),
+        ...(reg.quickAnswers ?? {}),
       },
       // No payment method is configured until the organizer sets one, so the
       // participant is not asked to choose one that does not exist yet.
@@ -255,11 +276,17 @@ export default function RegisterPage() {
          * dashboard can count it as due rather than as received — nobody has handed anything
          * over yet, and a registration that says otherwise would overstate the takings.
          */
+        /*
+         * Somebody paying online who has not sent a screenshot yet is "not-submitted" — money
+         * owed with no proof. It used to fall through to whatever the browser store happened
+         * to hold, which is "cash-at-venue", so choosing "Pay online" put them on the desk's
+         * cash list and the room expected notes from somebody about to transfer.
+         */
         paymentStatus: reg.payAtVenue
           ? "cash-at-venue"
           : reg.receiptFileName
             ? "receipt-uploaded"
-            : local.paymentStatus,
+            : "not-submitted",
       },
     });
 
@@ -328,7 +355,7 @@ export default function RegisterPage() {
             ? "cash-at-venue"
             : reg.receiptFileName
               ? "receipt-uploaded"
-              : localExtra.paymentStatus,
+              : "not-submitted",
         },
       });
 

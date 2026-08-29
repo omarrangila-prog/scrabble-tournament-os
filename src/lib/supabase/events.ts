@@ -23,6 +23,10 @@ export interface EventDetails {
   capacity?: number;
   rounds?: number;
   roundMinutes?: number;
+  /** Shown on the registration form when paying online. */
+  paymentInstructions?: string;
+  /** Shown on the registration form above the "I understand and agree" box. */
+  terms?: string;
 }
 
 export interface StoredEvent {

@@ -208,6 +208,15 @@ export interface PublicEvent {
   contactPhone: string;
   contactEmail: string;
 
+  /**
+   * How to pay, shown when somebody chooses to pay online — bank name, account title and
+   * number, and where to send the screenshot. Free text because every organiser writes it
+   * differently, and per event because a different tournament banks somewhere else.
+   */
+  paymentInstructions?: string;
+  /** What somebody is agreeing to when they register: confirmations, refunds, late arrival. */
+  terms?: string;
+
   visibility: "public" | "private";
   capacity: number;
 

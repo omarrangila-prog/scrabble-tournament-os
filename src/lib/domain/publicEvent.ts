@@ -76,6 +76,9 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
     contactPhone: "",
     contactEmail: "",
 
+    paymentInstructions: d.paymentInstructions,
+    terms: d.terms,
+
     visibility: "public",
     /* Zero means no stated limit, the same as it does for the seeded event. */
     capacity: d.capacity ?? 0,

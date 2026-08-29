@@ -197,6 +197,15 @@ export interface GameOnRegistration {
   typicalScore?: number;
 
   /**
+   * Answers belonging to one organiser's form rather than to every tournament — age, how
+   * they heard about it, whether they play PSA ranking events, and the two agreements.
+   *
+   * Kept as given rather than mapped onto fields that mean something else: a consent is a
+   * record of what somebody actually ticked, and it has to survive as that.
+   */
+  quickAnswers?: Record<string, string>;
+
+  /**
    * The uploaded payment screenshot, by filename.
    *
    * Deliberately not part of the autosaved draft: a file cannot be restored
