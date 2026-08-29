@@ -500,17 +500,44 @@ export default function RegisterPage() {
             {[
               { icon: <CalendarDays className="size-3.5" />, text: formatDate(event.startDate) },
               { icon: <Clock className="size-3.5" />, text: event.timeDisplay ?? event.startTime },
-              { icon: <MapPin className="size-3.5" />, text: event.venueName },
-            ].map((item, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 text-[12.5px]"
-                style={{ color: `${BROWN}CC` }}
-              >
-                <span style={{ color: GOLD }}>{item.icon}</span>
-                {item.text}
-              </span>
-            ))}
+              {
+                icon: <MapPin className="size-3.5" />,
+                text: event.venueName,
+                /*
+                 * The venue opens in Maps when the event has a link for it. Nearly every
+                 * registration is filled in on a phone, where a venue name that does nothing
+                 * when tapped is a screenshot and a paste away from being directions.
+                 */
+                href: event.mapsUrl,
+              },
+            ].map((item, i) => {
+              const body = (
+                <>
+                  <span style={{ color: GOLD }}>{item.icon}</span>
+                  {item.text}
+                </>
+              );
+              return item.href ? (
+                <a
+                  key={i}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[12.5px] underline decoration-dotted underline-offset-4"
+                  style={{ color: `${BROWN}CC` }}
+                >
+                  {body}
+                </a>
+              ) : (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 text-[12.5px]"
+                  style={{ color: `${BROWN}CC` }}
+                >
+                  {body}
+                </span>
+              );
+            })}
           </div>
         </motion.header>
 

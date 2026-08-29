@@ -973,6 +973,17 @@ function EventDetailsCard({
                 onChange={(e) => setDetail({ venueName: e.target.value })}
               />
             </Field>
+            <Field
+              label="Map link"
+              className="sm:col-span-2"
+              hint="Makes the venue on the registration form open in Maps. Paste a Google Maps share link."
+            >
+              <Input
+                value={form.details.mapsUrl ?? ""}
+                onChange={(e) => setDetail({ mapsUrl: e.target.value })}
+                placeholder="https://maps.app.goo.gl/…"
+              />
+            </Field>
             <Field label="Starts">
               <Input
                 type="time"

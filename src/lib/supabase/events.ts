@@ -29,6 +29,8 @@ export interface EventDetails {
   terms?: string;
   /** The advertised rates and what the fee covers, shown on the registration page. */
   feeDetails?: string;
+  /** A map link for the venue, so the address on the form is tappable. */
+  mapsUrl?: string;
 }
 
 export interface StoredEvent {
