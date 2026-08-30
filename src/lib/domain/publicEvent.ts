@@ -14,6 +14,7 @@
 
 import type { StoredEvent } from "@/lib/supabase/events";
 
+import { eventTimeLine } from "./eventTime";
 import { PublicEvent, EventState } from "./events";
 import type { PlayerCategory } from "./identity";
 
@@ -71,6 +72,8 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
     startDate: d.startDate,
     startTime: d.startTime ?? "",
     expectedFinish: d.endTime ?? "",
+    /* Derived, so a stored finish time is actually shown. See `eventTime.ts`. */
+    timeDisplay: eventTimeLine(d.startTime, d.endTime) || undefined,
     timeZone: "Asia/Karachi (PKT, UTC+5)",
 
     contactPhone: "",
