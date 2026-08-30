@@ -25,12 +25,18 @@ export interface EventSettings {
   firstSecondEnabled: boolean;
 }
 
-/** Every flag on, except first/second — the behaviour this app already had before flags existed. */
+/**
+ * What a new event gets, matching the column defaults in migration 0061.
+ *
+ * The three flags that decide who holds authority are off: at an organizer-run tournament
+ * the desk records the scores and players play. QR stays on because it changes nothing about
+ * authority — it only helps somebody find their board.
+ */
 export const DEFAULT_EVENT_SETTINGS: EventSettings = {
   qrEnabled: true,
-  selfCheckinEnabled: true,
-  playerScoreEntryEnabled: true,
-  opponentConfirmationEnabled: true,
+  selfCheckinEnabled: false,
+  playerScoreEntryEnabled: false,
+  opponentConfirmationEnabled: false,
   certificatesEnabled: true,
   emailEnabled: true,
   whatsappEnabled: true,
@@ -71,11 +77,17 @@ export async function readPublicEventSettings(eventId: string): Promise<{
   playerScoreEntryEnabled: boolean;
   opponentConfirmationEnabled: boolean;
 }> {
+  /*
+   * Fails closed. These four answer "may a player do this without staff", and an
+   * unreachable server is not a yes. The old fallback said yes to all of them, which put a
+   * submit-score button in front of somebody whose submission the database would refuse
+   * anyway — a control that cannot work is worse than one that is not offered.
+   */
   const fallback = {
-    qrEnabled: true,
-    selfCheckinEnabled: true,
-    playerScoreEntryEnabled: true,
-    opponentConfirmationEnabled: true,
+    qrEnabled: false,
+    selfCheckinEnabled: false,
+    playerScoreEntryEnabled: false,
+    opponentConfirmationEnabled: false,
   };
   const db = supabase();
   if (!db) return fallback;
@@ -85,10 +97,10 @@ export async function readPublicEventSettings(eventId: string): Promise<{
 
   const row = data[0] as Record<string, unknown>;
   return {
-    qrEnabled: Boolean(row.out_qr_enabled ?? true),
-    selfCheckinEnabled: Boolean(row.out_self_checkin_enabled ?? true),
-    playerScoreEntryEnabled: Boolean(row.out_player_score_entry_enabled ?? true),
-    opponentConfirmationEnabled: Boolean(row.out_opponent_confirmation_enabled ?? true),
+    qrEnabled: Boolean(row.out_qr_enabled),
+    selfCheckinEnabled: Boolean(row.out_self_checkin_enabled),
+    playerScoreEntryEnabled: Boolean(row.out_player_score_entry_enabled),
+    opponentConfirmationEnabled: Boolean(row.out_opponent_confirmation_enabled),
   };
 }
 

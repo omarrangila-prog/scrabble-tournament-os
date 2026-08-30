@@ -87,6 +87,11 @@ const REFUSALS: Record<string, string> = {
   "no-result": "There is no score on this board yet.",
   "missing-score": "Enter both scores.",
   "out-of-range": "Those numbers do not look right. Check them and try again.",
+  /*
+   * Not a fault. This event records its scores at the desk, which is the normal
+   * arrangement for a run tournament, so the message says where to take the slip.
+   */
+  disabled: "Scores are recorded by the desk at this event. Please hand your slip to a member of staff.",
 };
 
 /**
