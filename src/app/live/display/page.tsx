@@ -56,11 +56,16 @@ const SCENE_FOR: Record<EventState, Scene> = {
   preparing: "check-in",
   "check-in-open": "check-in",
   "check-in-closed": "pairings",
+  /* The room must not see a round the organiser is still deciding about. */
+  "round-preview": "pairings",
   "round-published": "pairings",
   "round-active": "playing",
   "result-entry": "results",
+  "result-review": "results",
+  "round-finalized": "standings",
   break: "break",
   "final-review": "standings",
+  awards: "standings",
   completed: "standings",
   archived: "closed",
 };

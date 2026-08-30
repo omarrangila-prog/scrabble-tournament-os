@@ -178,6 +178,20 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     secondary: [nav("standings", "View standings", "live")],
   },
 
+  /*
+   * The organiser has a round in front of them that nobody else has seen. The only two
+   * useful actions are to accept it or to build it again, so those are the only two offered.
+   */
+  "round-preview": {
+    status: "A round is drawn up but not published. Nobody can see it yet.",
+    next: "Check the boards, then publish the round to the room.",
+    primary: move("publish-round", "Publish round", "round-published", "Shows these boards to players and the venue screen."),
+    secondary: [
+      move("back-to-pairing", "Draw it again", "preparing", "Discards this draft and re-pairs."),
+      nav("pairings", "View pairings", "live"),
+    ],
+  },
+
   "round-published": {
     status: "Pairings are published. Players are finding their boards.",
     next: "Start the round clock when everyone is seated.",
@@ -208,6 +222,31 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
     ],
   },
 
+  /*
+   * Every board has a score, and the round has not yet been made history. This is the last
+   * point at which a correction is cheap, which is exactly why the state exists.
+   */
+  "result-review": {
+    status: "Every board has a result. Nothing is locked yet.",
+    next: "Check the scores, then finalize the round.",
+    primary: move("finalize-round", "Finalize round", "round-finalized", "Locks the round and takes the standings snapshot."),
+    secondary: [
+      move("reopen-entry", "Back to score entry", "result-entry", "Reopens the round for corrections."),
+      nav("standings", "View standings", "live"),
+    ],
+  },
+
+  "round-finalized": {
+    status: "The round is finalized and locked.",
+    next: "Prepare the next round, or move to final review after the last one.",
+    primary: move("next-round", "Prepare next round", "preparing", "Pairs the next round from these standings."),
+    secondary: [
+      move("start-break", "Start break", "break"),
+      move("final-review", "Go to final review", "final-review"),
+      nav("standings", "View standings", "live"),
+    ],
+  },
+
   break: {
     status: "The event is on a break.",
     next: "Prepare the next round, or move to final review after the last one.",
@@ -226,6 +265,13 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
       nav("awards", "Assign prizes", "awards"),
       move("complete", "Mark event complete", "completed", undefined, true),
     ],
+  },
+
+  awards: {
+    status: "Final standings are settled. This is the presentation.",
+    next: "Close the event once the awards are done.",
+    primary: move("complete-event", "Complete event", "completed", "Closes the event and opens the public results."),
+    secondary: [nav("awards-board", "Awards board", "awards")],
   },
 
   completed: {

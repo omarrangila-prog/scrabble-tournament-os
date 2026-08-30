@@ -19,6 +19,19 @@ import { PriceRules, Rate } from "./pricing";
  * Event state drives what the public QR opens, which participant actions are
  * available, and which organizer controls are enabled.
  */
+/**
+ * Where an event is in its day.
+ *
+ * The names are this project's, and four of them are the specification's own states under
+ * different names: `check-in-closed` is its check-in-locked, `preparing` its
+ * round-preparation, `final-review` its tournament-finalizing, `completed` its
+ * tournament-complete. Renaming them would rewrite live rows and every switch in the app to
+ * buy nothing, so the four genuinely missing states were added instead.
+ *
+ * Which of these an event may move to next is not decided here. `event_state_transitions`
+ * in the database holds the legal edges and `transition_event_state` is the only way through
+ * them — this union says which names exist, not which moves are allowed.
+ */
 export type EventState =
   | "draft"
   | "registration-open"
@@ -26,11 +39,15 @@ export type EventState =
   | "preparing"
   | "check-in-open"
   | "check-in-closed"
+  | "round-preview"
   | "round-published"
   | "round-active"
   | "result-entry"
+  | "result-review"
+  | "round-finalized"
   | "break"
   | "final-review"
+  | "awards"
   | "completed"
   | "archived";
 
@@ -41,11 +58,15 @@ export const EVENT_STATE_LABEL: Record<EventState, string> = {
   preparing: "Preparing Event",
   "check-in-open": "Check-in Open",
   "check-in-closed": "Check-in Closed",
+  "round-preview": "Pairings in Preview",
   "round-published": "Pairings Published",
   "round-active": "Round Active",
   "result-entry": "Result Entry Open",
+  "result-review": "Results Under Review",
+  "round-finalized": "Round Finalized",
   break: "Break",
   "final-review": "Final Results Review",
+  awards: "Awards",
   completed: "Completed",
   archived: "Archived",
 };
@@ -58,11 +79,17 @@ export const STATE_DESTINATION: Record<EventState, string> = {
   preparing: "closed",
   "check-in-open": "check-in",
   "check-in-closed": "pairing",
+  /* Preview is the organiser checking a round nobody has been told about yet, so a player
+     scanning during it still sees the round they are actually playing. */
+  "round-preview": "pairing",
   "round-published": "pairing",
   "round-active": "pairing",
   "result-entry": "submit-result",
+  "result-review": "standings",
+  "round-finalized": "standings",
   break: "standings",
   "final-review": "standings",
+  awards: "standings",
   completed: "results",
   archived: "results",
 };

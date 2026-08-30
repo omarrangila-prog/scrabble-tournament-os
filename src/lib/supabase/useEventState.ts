@@ -75,25 +75,70 @@ export function useEventState(
   return { state, loaded, reload };
 }
 
-/** Moves the event to a new phase. Staff only, enforced in the database. */
+/**
+ * Moves the event to a new phase.
+ *
+ * The database decides. `transition_event_state` holds the legal edges and the conditions
+ * on them, so this is a request rather than an instruction — and the refusal it sends back
+ * is the useful part.
+ *
+ * That refusal used to be discarded and replaced with "Could not change the phase. Please
+ * try again", which was survivable while every transition succeeded and is not now: the
+ * server says "1 board(s) in round 1 still have no score", and telling a director to try
+ * again instead is worse than saying nothing. Postgres prefixes its errors, so only the
+ * prefix is trimmed.
+ */
 export async function setEventPhase(
   eventId: string,
   state: EventState,
+  options: { by?: string; reason?: string; force?: boolean } = {},
 ): Promise<{ ok: boolean; message?: string }> {
   const db = supabase();
   if (!db) return { ok: false, message: "The database is not reachable right now." };
 
-  const { error } = await db.rpc("staff_set_event_state", {
-    p_event_id: eventId,
-    p_state: state,
-  });
+  const { error } = options.force
+    ? await db.rpc("transition_event_state", {
+        p_event_id: eventId,
+        p_target: state,
+        p_by: options.by ?? null,
+        p_reason: options.reason ?? null,
+        p_force: true,
+      })
+    : await db.rpc("staff_set_event_state", { p_event_id: eventId, p_state: state });
 
   if (error) {
     if (error.message.toLowerCase().includes("could not find the function")) {
-      return { ok: false, message: "Changing the event phase needs migration 0022 applied." };
+      return { ok: false, message: "Changing the event phase needs migration 0060 applied." };
     }
-    return { ok: false, message: "Could not change the phase. Please try again." };
+    return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
   }
 
   return { ok: true };
+}
+
+/** One phase the event may move to, and why it cannot yet if it cannot. */
+export interface NextState {
+  state: EventState;
+  /** Null when the move is available now. A sentence to show beside a disabled control. */
+  blockedReason: string | null;
+}
+
+/**
+ * The phases this event may move to next, straight from the graph.
+ *
+ * Blocked moves are returned rather than hidden, because "Finalize round" greyed out with
+ * "2 boards still have no score" tells a director what to do, and a button that has
+ * disappeared tells them the software is broken.
+ */
+export async function readNextStates(eventId: string): Promise<NextState[]> {
+  const db = supabase();
+  if (!db) return [];
+
+  const { data, error } = await db.rpc("event_next_states", { p_event_id: eventId });
+  if (error || !Array.isArray(data)) return [];
+
+  return (data as Record<string, unknown>[]).map((row) => ({
+    state: String(row.out_state ?? "") as EventState,
+    blockedReason: (row.out_blocked_reason as string | null) ?? null,
+  }));
 }
