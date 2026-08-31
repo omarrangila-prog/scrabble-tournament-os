@@ -296,6 +296,49 @@ export async function staffCheckIn(
   };
 }
 
+/**
+ * Puts somebody who has just arrived into the next round that has not gone up.
+ *
+ * The roster lock is what makes pairings safe — they come from a roster that does not move
+ * underneath them — and it is also why somebody walking in during round one had no route in
+ * at all. This is that route. It never touches a published round: the room has read those
+ * boards, and people are sitting at them.
+ *
+ * Harmless to call for a player who is already on the roster, and it declines politely for
+ * an event whose roster has not been locked, where everybody checked in is already playing.
+ */
+export async function addLatePlayer(
+  eventId: string,
+  recordId: string,
+  by?: string,
+): Promise<{ ok: boolean; fromRound?: number; message: string }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_add_late_player", {
+    p_event_id: eventId,
+    p_registration_id: recordId,
+    p_by: by ?? null,
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("could not find the function")) {
+      return { ok: false, message: "Adding a late arrival needs migration 0066 applied." };
+    }
+    return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
+  }
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  const fromRound = row?.out_from_round == null ? undefined : Number(row.out_from_round);
+
+  return {
+    /* A round number means they are on it. No round number means the message explains why. */
+    ok: fromRound !== undefined,
+    fromRound,
+    message: String(row?.out_message ?? "Nothing happened."),
+  };
+}
+
 /** Reverses a check-in, for when staff tap the wrong row. */
 export async function staffUndoCheckIn(recordId: string): Promise<boolean> {
   const db = supabase();

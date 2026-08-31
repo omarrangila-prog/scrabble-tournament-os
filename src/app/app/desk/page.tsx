@@ -9,6 +9,7 @@ import { useRoster } from "@/lib/supabase/useRoster";
 import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useStore } from "@/lib/store/useStore";
 import {
+  addLatePlayer,
   decidePayment,
   field,
   importField,
@@ -160,10 +161,27 @@ export default function DeskPage() {
       }
     }
 
+    /*
+     * Somebody arriving once the tournament is under way is the most ordinary thing that
+     * happens at an event, and until now checking them in was as far as the desk could take
+     * them: they were checked in, and playing nothing. Rounds are paired from the locked
+     * roster, and they were not on it.
+     *
+     * So the desk finishes the job. Adding them is the obvious intent of checking somebody
+     * in mid-tournament, and it is safe to do without asking: it never touches a round
+     * already published, it declines for an event whose roster is not locked, and it says
+     * nothing new for somebody already on the roster.
+     */
+    const late = await addLatePlayer(currentEvent.eventId, recordId, app.currentUser?.name ?? "Desk");
+
     roster.reload();
     app.toast({
       title: outcome.already ? `${name} was already in` : `${name} is checked in`,
-      description: outcome.already ? "The original arrival time was kept." : "Recorded just now.",
+      description: late.ok
+        ? late.message
+        : outcome.already
+          ? "The original arrival time was kept."
+          : "Recorded just now.",
       tone: "success",
     });
   };
