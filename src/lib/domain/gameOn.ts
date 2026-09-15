@@ -169,6 +169,14 @@ export interface GameOnRegistration {
    */
   quotedBaseFee?: number;
   quotedDiscountAmount?: number;
+  /**
+   * The amount owed, as the participant was shown it.
+   *
+   * Set by a form that prices from the event's rate card. `bundleTotal` cannot carry this:
+   * it means the total across several events, and a single registration priced at a
+   * reduced rate is not a bundle.
+   */
+  quotedAmountDue?: number;
 
   /* Board-game answers, asked only of that track. */
   playedModernBoardGames?: boolean;
