@@ -138,7 +138,7 @@ export default function RegisterPage() {
       dateOfBirth: "",
       city: "",
       area: "",
-      requestedLevel: quick.category as GameOnRegistration["requestedLevel"],
+      requestedLevel: (quick.category || "recreational") as GameOnRegistration["requestedLevel"],
       payAtVenue: quick.payAtVenue,
       /*
        * The answers that belong to this organiser's form rather than to every tournament.
@@ -147,7 +147,32 @@ export default function RegisterPage() {
        */
       quickAnswers: {
         age: quick.age,
-        playsPSARankingTournaments: quick.playsPsaRanking ? "Yes" : "No",
+        ...(quick.activity
+          ? {
+              activity:
+                quick.activity === "painting"
+                  ? "Painting"
+                  : quick.activity === "scrabble"
+                    ? "Scrabble Tournament"
+                    : "BOTH!",
+            }
+          : {}),
+        ...(quick.chairs ? { chairs: quick.chairs } : {}),
+        ...(quick.chairsOther ? { chairsOther: quick.chairsOther } : {}),
+        ...(quick.chairCount ? { chairCount: String(quick.chairCount) } : {}),
+        /*
+         * The claim, and the rate it earned, stored side by side.
+         *
+         * The desk has to be able to see what somebody said to get their price. Storing
+         * only the amount leaves a Rs 800 entry with nothing to check it against, and the
+         * person at the table no way to tell a member from a mistake.
+         */
+        psaMember: quick.psaMember ? "Yes" : "No",
+        ...(quick.groupOfThree ? { groupRegistration: "Yes" } : {}),
+        ...(quick.groupName ? { groupName: quick.groupName } : {}),
+        rateApplied: quick.quotedRateLabel,
+        rateId: quick.quotedRateId,
+        ...(quick.quotedRateNeedsCheck ? { rateNeedsCheck: "Yes" } : {}),
         heardAbout: quick.heardAbout,
         mediaConsent: quick.photoConsent ? "Yes" : "No",
         termsAcceptedAt: quick.termsAccepted ? new Date().toISOString() : "",
@@ -159,7 +184,23 @@ export default function RegisterPage() {
        * registration this form produced. Nobody using the short form claims membership,
        * because it does not ask.
        */
-      membershipStatus: "not-claimed",
+      /*
+       * The membership claim, stated.
+       *
+       * This was hardcoded to "not-claimed" because the form asked nothing that could set
+       * it. It now asks, and `quoteFee` is no longer what prices this form — the rate card
+       * below is — but a claim recorded as absent would still mislead every screen that
+       * reads it.
+       */
+      membershipStatus: quick.psaMember ? "review-required" : "not-claimed",
+      /*
+       * The price the participant was shown, carried rather than recomputed. See
+       * `quotedBaseFee` on `GameOnRegistration` for what happened the last time two
+       * calculations of one fee were allowed to disagree.
+       */
+      quotedAmountDue: quick.quotedAmount,
+      quotedBaseFee: quick.quotedStandardAmount,
+      quotedDiscountAmount: Math.max(0, quick.quotedStandardAmount - quick.quotedAmount),
       /*
        * The same tick. This covers the event terms and being contacted about the event, and
        * the box beside it says exactly that — an inferred consent nobody was shown would not
@@ -218,7 +259,7 @@ export default function RegisterPage() {
       receiptFileName: reg.receiptFileName,
       // The bundle total when they added another event, so the payment queue
       // shows what they were actually quoted.
-      amountDue: reg.bundleTotal ?? quote.payable,
+      amountDue: reg.quotedAmountDue ?? reg.bundleTotal ?? quote.payable,
       discountCode: campaign?.code,
       /*
        * The reduction the participant was actually shown.
@@ -333,7 +374,8 @@ export default function RegisterPage() {
         },
         paymentMethod: reg.payAtVenue ? "cash" : event.paymentMethods[0] ?? "cash",
         receiptFileName: reg.receiptFileName,
-        amountDue: quote.payable,
+        /* Per person, at the rate the parent was quoted — see `amountDue` on the first. */
+        amountDue: reg.quotedAmountDue ?? quote.payable,
         /* The same reduction the parent was shown, so the record explains the amount. */
         discountAmount: reg.quotedDiscountAmount ?? quote.totalOff,
         currency: event.currency,
@@ -394,7 +436,18 @@ export default function RegisterPage() {
      * recorded so the page can say whether it actually went — anything else is a
      * promise nobody checked.
      */
-    void emailConfirmation(token, event.id).then((outcome) => setEmailed(outcome.ok));
+    /*
+     * Only where there is somewhere to send it.
+     *
+     * The short form does not ask for an email, so every registration it made called this
+     * and the server correctly refused with a 422 — an error in the console of somebody
+     * who has done nothing wrong, on the happiest page in the app. Not asked for is not
+     * the same as failed to send: `emailed` stays null and the page says nothing about
+     * mail, which is the truth.
+     */
+    if (reg.email.trim() !== "") {
+      void emailConfirmation(token, event.id).then((outcome) => setEmailed(outcome.ok));
+    }
   };
 
   if (submitted) {
