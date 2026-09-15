@@ -61,6 +61,17 @@ export function rateAvailability(
       reason: `Needs ${rate.minGroupSize} or more people registering together.`,
     };
 
+  /*
+   * An early-bird amount with no end date is not a rate — it is a permanent discount with
+   * the wrong name. Refuse it until somebody sets when it closes.
+   */
+  if (rate.id === "early-bird" && !rate.availableUntil) {
+    return {
+      available: false,
+      reason: "Early bird needs an end date before it can be offered.",
+    };
+  }
+
   if (rate.availableUntil) {
     const closes = new Date(rate.availableUntil).getTime();
     const now = new Date(context.at).getTime();
@@ -134,10 +145,13 @@ export function describeRate(result: PriceResult, currency = "PKR"): string {
 export function cheaperRateHint(
   result: PriceResult,
   context: RateContext,
+  currency = "PKR",
 ): string | null {
   const cheaper = result.unavailable
     .filter(({ rate }) => rate.amount < result.perPerson)
     .filter(({ rate }) => {
+      // Incomplete early-bird (no end date) is not something they can act on.
+      if (rate.id === "early-bird" && !rate.availableUntil) return false;
       // A closed early-bird rate cannot be reached; a group size can.
       if (!rate.availableUntil) return true;
       return new Date(rate.availableUntil).getTime() >= new Date(context.at).getTime();
@@ -146,11 +160,13 @@ export function cheaperRateHint(
 
   if (!cheaper) return null;
 
+  const money = `${currency} ${cheaper.rate.amount.toLocaleString("en-PK")}`;
+
   if (cheaper.rate.minGroupSize)
-    return `Registering ${cheaper.rate.minGroupSize} or more together brings this down to PKR ${cheaper.rate.amount.toLocaleString("en-PK")} each.`;
+    return `Registering ${cheaper.rate.minGroupSize} or more together brings this down to ${money} each.`;
 
   if (cheaper.rate.id === "member")
-    return `Association members pay PKR ${cheaper.rate.amount.toLocaleString("en-PK")}.`;
+    return `Association members pay ${money}.`;
 
   return null;
 }
@@ -276,4 +292,58 @@ export function resolvePrice(rules: PriceRules, context: PriceContext): Resolved
     appliedKind: "regular",
     saving: 0,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* The rate card an event charges from                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The rates an event charges from.
+ *
+ * An organiser who has entered nothing beyond the entry fee has one rate, and it is the
+ * fee — so a form reading this prices correctly for an event that was never given a rate
+ * card, rather than falling through to zero.
+ *
+ * The reason this exists: the brackets used to live in `feeDetails`, a free-text box that
+ * was printed on the form and read by nothing. Somebody ticking "PSA member" was charged
+ * the regular fee, because no code anywhere connected the sentence to the price. A rate
+ * card is the same information in a shape that can be charged from.
+ */
+export function rateCardFor(event: { fee: number; currency?: string; rates?: Rate[] }): Rate[] {
+  const configured = (event.rates ?? []).filter((r) => Number.isFinite(r.amount) && r.amount >= 0);
+
+  const standard: Rate = {
+    id: "standard",
+    label: "Regular",
+    amount: Math.max(0, event.fee),
+    basis: "The regular entry fee.",
+  };
+
+  if (configured.length === 0) return [standard];
+
+  /*
+   * Entry fee is the regular rate. A card that already has `standard` keeps its label, but
+   * the amount always follows `fee` — otherwise Settings can change the entry fee while the
+   * form keeps charging an older number buried in the rate card.
+   */
+  if (configured.some((r) => r.id === "standard")) {
+    return configured.map((r) =>
+      r.id === "standard" ? { ...r, amount: Math.max(0, event.fee) } : r,
+    );
+  }
+
+  return [standard, ...configured];
+}
+
+/**
+ * Whether the desk has to see something before this rate is honoured.
+ *
+ * A membership and a group of three are both claims made by the person registering, and
+ * neither can be checked from here. The price they are quoted is the price they claimed,
+ * and the desk settles it — so the claim travels with the registration instead of being
+ * silently trusted or silently ignored.
+ */
+export function rateNeedsVerification(rate: Rate): boolean {
+  return rate.id === "member" || rate.id === "family";
 }

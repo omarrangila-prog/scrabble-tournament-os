@@ -8,6 +8,8 @@ import {
   rateAvailability,
   PriceContext,
   PriceRules,
+  rateCardFor,
+  rateNeedsVerification,
   resolvePrice,
 } from "./pricing";
 import { ACTIVE_EVENT, ALPHABATTLE_SCHOOL_CODES } from "./eventSeed";
@@ -66,6 +68,15 @@ describe("rateAvailability", () => {
     expect(
       rateAvailability(RATES[3], ctx({ at: "2026-08-08T00:00:00+05:00" })).available,
     ).toBe(true);
+  });
+
+  it("refuses an early-bird amount that has no end date", () => {
+    const r = rateAvailability(
+      { id: "early-bird", label: "Early bird", amount: 700, basis: "…" },
+      ctx(),
+    );
+    expect(r.available).toBe(false);
+    expect(r.reason).toContain("end date");
   });
 
   it("always gives a reason", () => {
@@ -510,5 +521,146 @@ describe("the KAS rate", () => {
     expect(resolvePrice(rules, { isMember: false, code: "EARLYBIRD", at: onTheDay }).coupon.status)
       .toBe("expired");
     expect(resolvePrice(rules, { isMember: false, code: "KAS", at: onTheDay }).final).toBe(850);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* The rate card an event charges from                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The Cafe Leap brackets, as the organiser advertised them.
+ *
+ * These sat in a free-text box for the life of the event's registration: the form printed
+ * them, asked about membership beside them, and billed the regular fee to all thirty-six
+ * people who registered. The cases below are the four sentences, as prices.
+ */
+const CAFE_LEAP: Rate[] = [
+  { id: "standard", label: "Regular", amount: 1000, basis: "The regular entry fee." },
+  { id: "member", label: "PSA member", amount: 800, basis: "Members, checked at the desk." },
+  {
+    id: "family",
+    label: "Group of 3 or more",
+    amount: 750,
+    basis: "Three or more registering together.",
+    minGroupSize: 3,
+  },
+  {
+    id: "early-bird",
+    label: "Early bird",
+    amount: 700,
+    basis: "Registering before the closing date.",
+    availableUntil: "2026-09-07T23:59:59+05:00",
+  },
+];
+
+describe("rateCardFor", () => {
+  it("prices from the entry fee when no rates are configured", () => {
+    const card = rateCardFor({ fee: 1000 });
+    expect(card).toHaveLength(1);
+    expect(card[0].id).toBe("standard");
+    expect(card[0].amount).toBe(1000);
+  });
+
+  it("never prices at zero for an event that was given no rate card", () => {
+    const priced = priceRegistration(rateCardFor({ fee: 1000 }), ctx({ isMember: true }));
+    expect(priced.perPerson).toBe(1000);
+  });
+
+  it("keeps the configured rates when they include a standard one", () => {
+    expect(rateCardFor({ fee: 1000, rates: CAFE_LEAP })).toEqual(CAFE_LEAP);
+  });
+
+  it("keeps the entry fee as the regular amount even when the card has an older figure", () => {
+    const card = rateCardFor({
+      fee: 1200,
+      rates: CAFE_LEAP,
+    });
+    expect(card.find((r) => r.id === "standard")?.amount).toBe(1200);
+    expect(card.find((r) => r.id === "member")?.amount).toBe(CAFE_LEAP.find((r) => r.id === "member")?.amount);
+  });
+
+  it("supplies the standard rate when the organiser configured only reductions", () => {
+    const reductions = CAFE_LEAP.filter((r) => r.id !== "standard");
+    const card = rateCardFor({ fee: 1000, rates: reductions });
+    expect(card[0]).toMatchObject({ id: "standard", amount: 1000 });
+    expect(card).toHaveLength(4);
+  });
+
+  it("ignores a rate with no usable amount rather than charging NaN", () => {
+    const card = rateCardFor({
+      fee: 1000,
+      rates: [{ id: "member", label: "PSA member", amount: Number.NaN, basis: "" }],
+    });
+    expect(card).toHaveLength(1);
+    expect(card[0].amount).toBe(1000);
+  });
+});
+
+describe("the Cafe Leap brackets", () => {
+  /* Registration day: after the early bird closed on 7 September. */
+  const onTheDay = (over: Partial<RateContext> = {}): RateContext =>
+    ({ isMember: false, groupSize: 1, at: "2026-09-11T12:00:00+05:00", ...over });
+
+  it("charges the regular fee to somebody claiming nothing", () => {
+    expect(priceRegistration(CAFE_LEAP, onTheDay()).perPerson).toBe(1000);
+  });
+
+  it("charges a PSA member 800 — the bug this rate card exists to fix", () => {
+    const priced = priceRegistration(CAFE_LEAP, onTheDay({ isMember: true }));
+    expect(priced.perPerson).toBe(800);
+    expect(priced.applied.id).toBe("member");
+    expect(priced.savedPerPerson).toBe(200);
+  });
+
+  it("charges a group of three 750 each", () => {
+    expect(priceRegistration(CAFE_LEAP, onTheDay({ groupSize: 3 })).perPerson).toBe(750);
+  });
+
+  it("does not give the group rate to two people", () => {
+    expect(priceRegistration(CAFE_LEAP, onTheDay({ groupSize: 2 })).perPerson).toBe(1000);
+  });
+
+  it("has closed the early bird by the time of the event", () => {
+    const priced = priceRegistration(CAFE_LEAP, onTheDay({ isMember: true, groupSize: 3 }));
+    expect(priced.perPerson).toBe(750);
+    expect(priced.qualified.map((r) => r.id)).not.toContain("early-bird");
+  });
+
+  it("gave the early bird its 700 while it was open", () => {
+    const priced = priceRegistration(
+      CAFE_LEAP,
+      { isMember: false, groupSize: 1, at: "2026-09-05T12:00:00+05:00" },
+    );
+    expect(priced.perPerson).toBe(700);
+  });
+
+  it("includes 7 September itself, the day the rate says it closes", () => {
+    const priced = priceRegistration(
+      CAFE_LEAP,
+      { isMember: false, groupSize: 1, at: "2026-09-07T20:00:00+05:00" },
+    );
+    expect(priced.applied.id).toBe("early-bird");
+  });
+
+  it("never stacks a membership onto a group", () => {
+    const priced = priceRegistration(CAFE_LEAP, onTheDay({ isMember: true, groupSize: 3 }));
+    expect(priced.perPerson).toBe(750);
+    expect(priced.perPerson).toBeGreaterThan(0);
+  });
+});
+
+describe("rateNeedsVerification", () => {
+  it("sends a membership and a group claim to the desk", () => {
+    expect(rateNeedsVerification(CAFE_LEAP[1])).toBe(true);
+    expect(rateNeedsVerification(CAFE_LEAP[2])).toBe(true);
+  });
+
+  it("asks nothing of somebody paying the regular fee", () => {
+    expect(rateNeedsVerification(CAFE_LEAP[0])).toBe(false);
+  });
+
+  it("asks nothing of an early bird, which the date already settles", () => {
+    expect(rateNeedsVerification(CAFE_LEAP[3])).toBe(false);
   });
 });
