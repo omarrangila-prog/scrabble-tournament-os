@@ -24,7 +24,8 @@ import { ROLE_LABEL } from "@/lib/store/permissions";
 import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useTheme } from "@/lib/design/theme";
 import { cn, formatTime } from "@/lib/utils";
-import { ALL_ROUTES, EXTRA_NAV, NAV_ITEMS } from "./nav";
+import { ALL_ROUTES, NAV_ITEMS, navFor } from "./nav";
+import { useStaffRole } from "@/lib/supabase/useStaffRole";
 import { CommandPalette } from "./CommandPalette";
 import { Toaster } from "./Toaster";
 
@@ -93,11 +94,15 @@ function NavList({
     );
   };
 
+  /* Only the screens this account can use. The database decides what it may do. */
+  const staff = useStaffRole();
+  const shown = navFor(staff.loaded ? staff.capability : null);
+
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Main">
-      {NAV_ITEMS.map(renderItem)}
-      <div className="my-3 h-px bg-line" />
-      {EXTRA_NAV.map(renderItem)}
+      {shown.primary.map(renderItem)}
+      {shown.extra.length > 0 ? <div className="my-3 h-px bg-line" /> : null}
+      {shown.extra.map(renderItem)}
     </nav>
   );
 }

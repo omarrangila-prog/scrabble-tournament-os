@@ -37,21 +37,45 @@ export interface RosterSource {
 /**
  * Which division a stated playing level belongs to.
  *
- * The public form offers three levels in plain language; the engine works in
- * division ids. "Masters" is deliberately absent — the user removed it, on the
- * grounds that those players enter as advanced.
+ * The form offers levels in plain language; the engine works in division ids.
  *
- * An unrecognised value maps to `recreational` rather than being dropped. A
- * person who registered and paid must appear on the roster; putting them in the
- * middle division is a judgement the director can correct, whereas losing them
- * is a person turned away at the door.
+ * Masters is recognised again. It was dropped earlier on the grounds that those players
+ * enter as advanced — reasonable for a three-category event, wrong for a four-category one,
+ * and the word "masters" fell through to `recreational`, the catch-all. So somebody who
+ * wrote Masters on the form was filed two categories below where they belong. Recognising it
+ * forces nothing: an event that offers three categories still runs three, because the
+ * categories an event offers are its own setting.
+ *
+ * Order matters. Masters is checked first, so "advanced masters player" lands in Masters.
+ *
+ * An unrecognised value maps to `recreational` rather than being dropped. A person who
+ * registered and paid must appear on the roster; putting them in the middle division is a
+ * judgement the director can correct, whereas losing them is a person turned away at the
+ * door.
+ *
+ * `division_for` in the database is the same function in SQL, and the two must agree — a
+ * roster that classified players differently from the engine that paired them would be worse
+ * than one that said nothing, because it would look right.
  */
 export function divisionFor(playingLevel: string): DivisionId {
   const level = playingLevel.trim().toLowerCase();
 
+  if (level.includes("master") || level.includes("expert")) return "masters";
   if (level.includes("beginner") || level.includes("new")) return "beginner";
   if (level.includes("advanced") || level.includes("regular")) return "advanced";
   return "recreational";
+}
+
+/**
+ * Whether anybody actually named a category.
+ *
+ * `divisionFor` always answers — blank becomes recreational — so the engine can seat
+ * everybody. The desk still needs the other question: was that recreational because they
+ * said so, or because nobody asked. A blank playing level is the latter, and pairing must
+ * not treat it as settled.
+ */
+export function categoryWasStated(playingLevel: string): boolean {
+  return playingLevel.trim() !== "";
 }
 
 /** Arrival state. A recorded arrival time is the only thing that proves arrival. */

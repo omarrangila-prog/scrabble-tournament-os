@@ -16,6 +16,15 @@ import type { jsPDF } from "jspdf";
 export interface CertificateDoc {
   name: string;
   division: string;
+  /**
+   * The venue and date this event was held at.
+   *
+   * Both were written into this file for the August event, so a certificate downloaded for a
+   * different event carried the wrong venue and the wrong date — on a document people keep.
+   * Defaulted to the August values so every file already handed out is unchanged.
+   */
+  venue?: string;
+  dateLabel?: string;
   /** "1st place, Advanced division" for the two who placed; absent for everybody else. */
   placement?: string;
   position: string | null;
@@ -52,11 +61,20 @@ export async function buildCertificatePdf(
     orientation: "landscape",
   });
 
+  const venue = entry.venue ?? "Chai Chatt";
+
+  /*
+   * The venue's signature is loaded only for the venue it belongs to. A signature is a
+   * person; printing Chai Chatt's representative under a Cafe Leap event would be putting
+   * somebody's name to something they did not sign.
+   */
   const [paper, artwork, signHani, signChai] = await Promise.all([
     loadImage("/certificate/paper.jpg", 1000, "jpeg"),
     loadImage("/certificate/artwork.png", 760, "png"),
     loadImage("/certificate/signature-hani.png", 420, "png"),
-    loadImage("/certificate/signature-chai.png", 260, "png"),
+    venue === "Chai Chatt"
+      ? loadImage("/certificate/signature-chai.png", 260, "png")
+      : Promise.resolve(null),
   ]);
 
   drawCertificate(doc, entry, { paper, artwork, signHani, signChai });
@@ -84,7 +102,7 @@ function drawCertificate(doc: jsPDF, entry: CertificateDoc, art: Art) {
   doc.rect(0.4, 0.4, W - 0.8, H - 0.8);
 
   doc.setTextColor(INK);
-  centred(doc, "BLUFY'S ALPHABATTLE X CHAI CHATT", pct(H, 5.6), {
+  centred(doc, `BLUFY'S ALPHABATTLE X ${(entry.venue ?? "Chai Chatt").toUpperCase()}`, pct(H, 5.6), {
     font: ["helvetica", "bold"],
     size: pt(2.1),
     spacing: 1.9,
@@ -120,11 +138,11 @@ function drawCertificate(doc: jsPDF, entry: CertificateDoc, art: Art) {
   const sentence = isAward
     ? [
         `for ${entry.placement}`,
-        "at Blufy's Alphabattle's Speed Scrabble Competition, Chai Chatt.",
+        `at Blufy's Alphabattle's Speed Scrabble Competition, ${entry.venue ?? "Chai Chatt"}.`,
       ]
     : [
         "for participating in Blufy's Alphabattle's",
-        "Speed Scrabble Competition at Chai Chatt.",
+        `Speed Scrabble Competition at ${entry.venue ?? "Chai Chatt"}.`,
       ];
   const size = pt(isAward ? 2.5 : 2.9);
   sentence.forEach((line, i) => {
@@ -148,7 +166,7 @@ function drawCertificate(doc: jsPDF, entry: CertificateDoc, art: Art) {
     );
   }
 
-  centred(doc, "Dated:  23rd August, 2026", pct(H, 74.5), {
+  centred(doc, `Dated:  ${entry.dateLabel ?? "23rd August, 2026"}`, pct(H, 74.5), {
     font: ["helvetica", "bold"],
     size: pt(2.6),
   });
@@ -162,15 +180,18 @@ function drawCertificate(doc: jsPDF, entry: CertificateDoc, art: Art) {
     "Founder - Blufy's Alphabattle",
     "sign-hani",
   );
-  signature(
-    doc,
-    art.signChai,
-    pct(W, 55),
-    pct(W, 8),
-    "",
-    "Chai Chatt",
-    "sign-chai",
-  );
+  /* Only where that venue actually signed. */
+  if (art.signChai) {
+    signature(
+      doc,
+      art.signChai,
+      pct(W, 55),
+      pct(W, 8),
+      "",
+      entry.venue ?? "Chai Chatt",
+      "sign-chai",
+    );
+  }
 }
 
 function signature(

@@ -12,6 +12,11 @@ describe("asEmail", () => {
     expect(asEmail("admin")).toBe("admin@blufys.pk");
   });
 
+  it("maps the director's preferred username onto the existing admin account", () => {
+    expect(asEmail("hani")).toBe("admin@blufys.pk");
+    expect(asEmail("  Hani ")).toBe("admin@blufys.pk");
+  });
+
   it("leaves a real address alone", () => {
     expect(asEmail("mahmedrangila@gmail.com")).toBe("mahmedrangila@gmail.com");
   });

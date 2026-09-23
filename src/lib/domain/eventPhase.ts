@@ -66,8 +66,10 @@ export interface PhaseAction {
   /** Why this action, in the organizer's terms. Shown on the primary action. */
   hint?: string;
   kind: "navigate" | "transition" | "handler";
-  /** Tab to open, for navigate actions. */
+  /** Tab to open, for navigate actions that stay inside the workspace tabs. */
   tab?: WorkspaceTab;
+  /** Absolute path, when the destination is not a workspace tab (desk, score entry). */
+  href?: string;
   /** State to move to, for transition actions. */
   to?: EventState;
   /** True when the action cannot be undone and should confirm first. */
@@ -89,6 +91,15 @@ const nav = (id: string, label: string, tab: WorkspaceTab, hint?: string): Phase
   id,
   label,
   tab,
+  hint,
+  kind: "navigate",
+});
+
+/** Navigate to a concrete path that is not one of the workspace tabs. */
+const go = (id: string, label: string, href: string, hint?: string): PhaseAction => ({
+  id,
+  label,
+  href,
   hint,
   kind: "navigate",
 });
@@ -167,7 +178,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "check-in-open": {
     status: "Check-in is open.",
     next: "Close check-in once everyone has arrived, then publish the first round.",
-    primary: nav("check-in", "Open check-in screen", "live", "Mark players present as they arrive."),
+    primary: go("open-desk", "Open the desk", "/app/desk", "Mark players present and take cash as they arrive."),
     secondary: [move("close-check-in", "Close check-in", "check-in-closed")],
   },
 
@@ -215,7 +226,7 @@ const GUIDANCE: Record<EventState, PhaseGuidance> = {
   "result-entry": {
     status: "Results are being submitted and confirmed.",
     next: "Every board must be verified before the next round.",
-    primary: nav("verify-scores", "Verify scores", "live", "Confirm results and settle any conflicts."),
+    primary: go("enter-scores", "Enter scores", "/app/score-entry", "Type results as slips come in."),
     secondary: [
       move("start-break", "Start break", "break"),
       nav("standings", "View standings", "live"),

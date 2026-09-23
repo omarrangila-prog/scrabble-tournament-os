@@ -52,6 +52,7 @@ export async function listGames(eventId: string): Promise<GameRow[]> {
     verifiedAt: (r.out_verified_at as string | null) ?? null,
     note: (r.out_note as string | null) ?? null,
     aPlaysFirst: (r.out_a_plays_first as boolean | null) ?? null,
+    pairingReason: (r.out_pairing_reason as string | null) ?? null,
   }));
 }
 
@@ -86,6 +87,8 @@ export async function publishRound(
       playerA: b.playerA,
       playerB: b.playerB ?? "",
       aPlaysFirst: b.aPlaysFirst ?? null,
+      /* Kept, so a published board can still answer "why these two". */
+      reason: b.reason ?? "",
     })),
     p_by: by ?? null,
   });

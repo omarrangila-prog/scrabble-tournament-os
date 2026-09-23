@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Grid3x3, Megaphone, Pause, Play, Timer, Trophy } from "lucide-react";
 import { Avatar, Badge, Button } from "@/components/ui";
 import { useStore } from "@/lib/store/useStore";
+import { useSearchParams } from "next/navigation";
+
 import { useLiveEvent } from "@/lib/supabase/useLiveEvent";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
@@ -54,8 +56,18 @@ function TvDisplay() {
   const pairings = games.pairings;
   const round = games.round;
 
-  const [index, setIndex] = React.useState(0);
-  const [playing, setPlaying] = React.useState(true);
+  /*
+   * `?pin=countdown` holds one panel on screen and never rotates.
+   *
+   * The venue usually wants two screens: one cycling through standings and pairings, and one
+   * that is only ever the clock — a player looking up mid-turn should not have to wait for
+   * the countdown to come round again. Pinning is the whole of that second screen.
+   */
+  const params = useSearchParams();
+  const pinned = PANELS.findIndex((x) => x.id === params.get("pin"));
+
+  const [index, setIndex] = React.useState(pinned >= 0 ? pinned : 0);
+  const [playing, setPlaying] = React.useState(pinned < 0);
   const [secondsLeft, setSecondsLeft] = React.useState(PANELS[0].seconds);
   const [controlsVisible, setControlsVisible] = React.useState(true);
 

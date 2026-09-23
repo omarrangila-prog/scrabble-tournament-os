@@ -47,9 +47,20 @@ import { PhaseGuidance } from "@/components/organizer/PhaseGuidance";
 import { AutoRun } from "@/components/organizer/AutoRun";
 import { FinalResults } from "@/components/organizer/FinalResults";
 import { RunTheDay } from "@/components/organizer/RunTheDay";
+import { EventDayRunbook } from "@/components/organizer/EventDayRunbook";
 import { PairingPreview } from "@/components/organizer/PairingPreview";
+import { PreliminaryDrawCard } from "@/components/organizer/PreliminaryDrawCard";
 import { useEventFormat } from "@/lib/supabase/useEventFormat";
 import { generateRound, markBye, pairUnpaired, swapPlayers, unpairPlayer } from "@/lib/engine/pairing";
+import {
+  historyFromBoards,
+  validateRosterForPairing,
+  validateRoundPlan,
+  type Finding,
+  type ValidatorRules,
+} from "@/lib/engine/pairingValidator";
+import { runbookFor, type StepAction } from "@/lib/domain/runbook";
+import { categoryWasStated } from "@/lib/domain/roster";
 import { fullRoundProgress, validateBoardPlan, type BoardPlan } from "@/lib/domain/games";
 import {
   assignTables,
@@ -168,6 +179,8 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
     null,
   );
   const [previewSession, setPreviewSession] = React.useState(0);
+  /** Which runbook step is mid-write, so only that step's button spins. */
+  const [runbookBusy, setRunbookBusy] = React.useState<string | null>(null);
 
   const toggleQr = async () => {
     setSettingsSaving(true);
@@ -324,6 +337,72 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
   const liveUrl = origin ? `${origin}/live/${event.slug}` : `/live/${event.slug}`;
 
   /*
+   * The day as seven numbered steps, from what is actually true rather than from the phase
+   * name. Built here because this is the one screen that already holds every count it needs.
+   */
+  const playingLevelById = new Map(roster.registrations.map((r) => [r.id, r.playingLevel]));
+  const pairingPool = activeLock.ids
+    ? roster.players.filter((p) => activeLock.ids!.includes(p.id))
+    : attending.filter((p) => p.checkIn === "checked-in");
+
+  const runbook = runbookFor({
+    state: storedPhase.state ?? (event.state as EventState),
+    round,
+    totalRounds: format.rounds,
+    registered: attending.length,
+    checkedIn,
+    rosterLocked: activeLock.ids !== null,
+    boardsPublished: boards.totalBoards,
+    resultsRecorded: boards.verified,
+    resultsOutstanding: boards.outstanding,
+    disputes: progress.conflicts,
+    /*
+     * Pairing cannot place somebody with no category. Counted from the players who would
+     * actually be paired — and from whether a category was actually stated, not from
+     * `Player.division`, which always has a value (blank maps to recreational).
+     */
+    playersWithoutCategory: pairingPool.filter(
+      (p) => !categoryWasStated(playingLevelById.get(p.id) ?? ""),
+    ).length,
+    pairingPreviewOpen: preview !== null,
+  });
+
+  /*
+   * The step's intent, carried out by the handler that already owns it. Nothing here is a
+   * second implementation: locking, pairing, starting and advancing are the same functions
+   * the rest of this screen calls.
+   */
+  const runStep = async (action: StepAction) => {
+    setRunbookBusy(runbook.current.id);
+    try {
+      switch (action.kind) {
+        case "lock-roster":
+          await lockPlayers();
+          break;
+        case "pair":
+          openPairingPreview();
+          break;
+        case "start-round":
+          await startTheRound();
+          break;
+        case "next-round":
+        case "finalize-round":
+          /* Finishing a round is pairing the next one: publishing it is what closes this one. */
+          openPairingPreview();
+          break;
+        case "finish-tournament":
+          await setState("final-review");
+          break;
+        case "navigate":
+          /* Handled inside the component, which needs no write. */
+          break;
+      }
+    } finally {
+      setRunbookBusy(null);
+    }
+  };
+
+  /*
    * The phase as the database holds it, which is what participants are seeing.
    * Falls back to this browser's copy only until the first read returns, so the
    * controls do not flicker through a wrong state on load.
@@ -470,7 +549,7 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
         : `${outcome.count} player${outcome.count === 1 ? "" : "s"} locked`,
       description: outcome.alreadyPublished
         ? "A round already exists for this event, so the active list cannot change now."
-        : "Pairing will use exactly this list from here on, checked in or not.",
+        : "Later check-ins will not change who is in this list.",
       tone: outcome.alreadyPublished ? "warning" : "success",
     });
   };
@@ -506,7 +585,26 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
     },
   };
 
-  const openPairingPreview = () => {
+  const validatorRules: ValidatorRules = {
+    divisions: app.divisions.map((d) => d.id),
+    repeatPolicy: pairingRules.avoidRepeatOpponents ? "avoid-repeat" : "unlimited",
+    maxByesPerPlayer: pairingRules.maxByesPerPlayer,
+    crossDivisionPairing: false,
+    firstSecondEnabled: settings.firstSecondEnabled,
+  };
+
+  /** Active roster as the validator wants it — blank stated category stays blank. */
+  const asValidatorPlayers = (active: Player[]) => {
+    const activeIds = new Set(active.map((p) => p.id));
+    return roster.players.map((p) => ({
+      id: p.id,
+      division: categoryWasStated(playingLevelById.get(p.id) ?? "") ? p.division : "",
+      active: activeIds.has(p.id),
+      withdrawn: p.checkIn === "withdrawn",
+    }));
+  };
+
+  const openPairingPreview = (keep: Pairing[] = []) => {
     if (format.system === "knockout") {
       app.toast({
         title: "Knockout isn't supported yet",
@@ -529,6 +627,16 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
       return;
     }
 
+    const rosterCheck = validateRosterForPairing(asValidatorPlayers(present), validatorRules);
+    if (!rosterCheck.ok) {
+      app.toast({
+        title: "Cannot pair yet",
+        description: rosterCheck.blocking[0]?.message ?? "Fix the roster before pairing.",
+        tone: "critical",
+      });
+      return;
+    }
+
     const nextRound = games.round + 1;
 
     const generated = generateRound({
@@ -536,6 +644,12 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
       pairings: games.pairings,
       tournament: pairingTournament,
       round: nextRound,
+      /*
+       * Pairs the morning kept from the night-before draw. The engine carries them through
+       * exactly and pairs everybody else around them — which is the whole saving of having
+       * drawn the night before.
+       */
+      locked: keep.length > 0 ? keep : undefined,
       /*
        * The opening round is drawn at random. Without it the queue comes out close to
        * alphabetical, which seats siblings — who share a surname — against each other.
@@ -583,6 +697,8 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
       playerA: p.playerAId,
       playerB: p.playerBId,
       aPlaysFirst: p.aPlaysFirst,
+      /* The engine's own words, kept so a published board can still say why. */
+      reason: p.reason,
     }));
 
     /*
@@ -669,6 +785,8 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
       playerA: p.playerAId,
       playerB: p.playerBId,
       aPlaysFirst: p.aPlaysFirst,
+      /* The engine's own words, kept so a published board can still say why. */
+      reason: p.reason,
     }));
 
     const check = validateBoardPlan(plan);
@@ -676,6 +794,44 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
       app.toast({
         title: "These pairings are not valid",
         description: check.problems[0] ?? "Please try again.",
+        tone: "critical",
+      });
+      return;
+    }
+
+    const activeForRound = (() => {
+      const seated = preview.pairings.flatMap((p) =>
+        [p.playerAId, p.playerBId].filter(Boolean) as string[],
+      );
+      return roster.players.filter(
+        (p) => seated.includes(p.id) || preview.unpaired.includes(p.id),
+      );
+    })();
+
+    const roundCheck = validateRoundPlan(
+      preview.pairings.map((p) => ({
+        board: p.playerBId === null ? 0 : p.board,
+        division: p.division,
+        playerA: p.playerAId,
+        playerB: p.playerBId,
+        aPlaysFirst: p.aPlaysFirst ?? undefined,
+      })),
+      asValidatorPlayers(activeForRound),
+      validatorRules,
+      historyFromBoards(
+        games.games.map((g) => ({
+          round: g.round,
+          playerA: g.playerA,
+          playerB: g.playerB,
+        })),
+        preview.round,
+      ),
+    );
+
+    if (!roundCheck.ok) {
+      app.toast({
+        title: "These pairings are not valid",
+        description: roundCheck.blocking[0]?.message ?? "Please fix the draw and try again.",
         tone: "critical",
       });
       return;
@@ -706,6 +862,36 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
 
     setPreview(null);
   };
+
+  /** Live findings for the open draw — recomputed after every swap or manual pair. */
+  const previewFindings: Finding[] = (() => {
+    if (!preview) return [];
+    const seated = preview.pairings.flatMap((p) =>
+      [p.playerAId, p.playerBId].filter(Boolean) as string[],
+    );
+    const activeForRound = roster.players.filter(
+      (p) => seated.includes(p.id) || preview.unpaired.includes(p.id),
+    );
+    return validateRoundPlan(
+      preview.pairings.map((p) => ({
+        board: p.playerBId === null ? 0 : p.board,
+        division: p.division,
+        playerA: p.playerAId,
+        playerB: p.playerBId,
+        aPlaysFirst: p.aPlaysFirst ?? undefined,
+      })),
+      asValidatorPlayers(activeForRound),
+      validatorRules,
+      historyFromBoards(
+        games.games.map((g) => ({
+          round: g.round,
+          playerA: g.playerA,
+          playerB: g.playerB,
+        })),
+        preview.round,
+      ),
+    ).findings;
+  })();
 
   /**
    * One press: the boards, the clock, the wall and every phone.
@@ -824,14 +1010,36 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
       </div>
 
       {/*
-        * What to do next, from the phase table that has always defined it. This was
-        * computed and tested but never rendered, leaving the phase dropdown as the only
-        * guide — nine state names, no indication of which applied or what it would change.
+        * The day, step by step, before anything else on the page.
+        *
+        * `PhaseGuidance` below it still offers the phase-specific extras — sharing the
+        * registration link, jumping to standings — but it answers from the state name alone
+        * and cannot say that three boards are missing scores. The runbook can, so it leads.
         */}
+      <div className="mt-4">
+        <EventDayRunbook runbook={runbook} busy={runbookBusy} onAction={(a) => void runStep(a)} />
+      </div>
+
+      {/*
+        Round 1 the night before, reconciled on the morning. Shown only until Round 1 exists,
+        and only ever hands the engine locked boards — it never publishes anything itself.
+      */}
+      <div className="mt-4">
+        <PreliminaryDrawCard
+          eventId={event.id}
+          players={roster.players}
+          divisions={app.divisions.map((d) => d.id)}
+          roundOnePublished={games.round >= 1}
+          by={app.currentUser?.name ?? "Director"}
+          onUseSurvivors={(keep) => openPairingPreview(keep)}
+        />
+      </div>
+
       <div className="mt-4">
         <PhaseGuidance
           state={eventState}
           busy={publishing}
+          quiet
           onTransition={(to) => void setState(to)}
           onHandler={{
             /* Copies the registration link, which is what "Share registration" means. */
@@ -1107,7 +1315,7 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
                     variant="primary"
                     className="w-full"
                     icon={<Grid3x3 className="size-4" />}
-                    onClick={openPairingPreview}
+                    onClick={() => openPairingPreview()}
                     disabled={publishing || roster.access !== "ok"}
                   >
                     {`Review round ${games.round + 1} pairings`}
@@ -1221,7 +1429,7 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
          * on the wall without a look first, which is the one guarantee this whole preview
          * step exists to make.
          */
-        onPublish={openPairingPreview}
+        onPublish={() => openPairingPreview()}
         onPhase={setState}
       />
 
@@ -1262,6 +1470,7 @@ export default function LiveEventPage({ eventId: eventIdProp }: { eventId?: stri
         unpaired={preview?.unpaired ?? []}
         players={roster.players}
         nameOf={nameOfPlayer}
+        findings={previewFindings}
         onSwap={swapInPreview}
         onPairFromPool={pairFromPool}
         onUnpair={unpairFromPreview}
@@ -1392,7 +1601,7 @@ function ArrivalList({
           onClick={() => setHideArrived((v) => !v)}
           className="sm:ml-auto"
         >
-          {hideArrived ? "Showing not arrived" : "Show everyone"}
+          {hideArrived ? "Show arrived too" : "Not arrived only"}
         </Button>
       </div>
 

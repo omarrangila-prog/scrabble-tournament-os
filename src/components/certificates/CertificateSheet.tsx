@@ -27,6 +27,24 @@ const FRAME = "#4A2E2A";
 
 export interface CertificateSheetProps {
   recipientName: string;
+  /**
+   * The venue this event was actually held at.
+   *
+   * Was written into the artwork line, the sentence and the co-signature — all three naming
+   * Chai Chatt, where the August event was held. A certificate handed out at a different
+   * venue naming the wrong one is wrong in the way people notice and keep.
+   *
+   * Defaults to Chai Chatt so every certificate already issued reads exactly as it did.
+   */
+  venue?: string;
+  /**
+   * The venue's co-signature, where they have one on file.
+   *
+   * Left off rather than substituted when a different venue is named: a signature belongs to
+   * a person, and printing one venue's representative under another venue's event is not a
+   * layout detail.
+   */
+  venueSignature?: { image: string; name?: string } | null;
   /** The event's date, already formatted for print. */
   dateLabel: string;
   /** The verification code printed on the back. Absent where none was issued. */
@@ -65,6 +83,8 @@ export interface CertificateSheetProps {
 
 export function CertificateSheet({
   recipientName,
+  venue = "Chai Chatt",
+  venueSignature,
   dateLabel,
   code,
   verifyUrl,
@@ -100,7 +120,7 @@ export function CertificateSheet({
           className="absolute inset-x-0 text-center font-semibold"
           style={{ top: "5.6%", fontSize: "2.1cqw", letterSpacing: "0.28em" }}
         >
-          BLUFY&rsquo;S ALPHABATTLE X CHAI CHATT
+          BLUFY&rsquo;S ALPHABATTLE X {venue.toUpperCase()}
         </p>
 
         {/*
@@ -185,13 +205,14 @@ export function CertificateSheet({
               for {placement}
               <br />
               at Blufy&rsquo;s Alphabattle&rsquo;s Speed Scrabble Competition,
-              Chai Chatt.
+              {" "}
+              {venue}.
             </>
           ) : (
             <>
               for participating in Blufy&rsquo;s Alphabattle&rsquo;s
               <br />
-              Speed Scrabble Competition at Chai Chatt.
+              Speed Scrabble Competition at {venue}.
             </>
           )}
         </p>
@@ -245,18 +266,33 @@ export function CertificateSheet({
           name="Hani Garib"
           title="Founder - Blufy&rsquo;s Alphabattle"
         />
-        <Signature
-          left="55%"
-          image="/certificate/signature-chai.png"
-          imageWidth="8cqw"
-          /*
-           * No name under this one. The template left a placeholder here and it printed
-           * literally — three dots where a person's name goes reads as an unfinished
-           * document, which is not what anybody wants to be handed.
-           */
-          name=""
-          title="Chai Chatt"
-        />
+        {/*
+          The venue's signature, where that venue has one on file.
+          Defaulted for Chai Chatt so nothing already issued changes; omitted for any other
+          venue until they supply one, because a signature is a person and not a placeholder.
+        */}
+        {venueSignature === undefined && venue === "Chai Chatt" ? (
+          <Signature
+            left="55%"
+            image="/certificate/signature-chai.png"
+            imageWidth="8cqw"
+            /*
+             * No name under this one. The template left a placeholder here and it printed
+             * literally — three dots where a person's name goes reads as an unfinished
+             * document, which is not what anybody wants to be handed.
+             */
+            name=""
+            title="Chai Chatt"
+          />
+        ) : venueSignature ? (
+          <Signature
+            left="55%"
+            image={venueSignature.image}
+            imageWidth="8cqw"
+            name={venueSignature.name ?? ""}
+            title={venue}
+          />
+        ) : null}
 
         {draftNotice ? (
           /*

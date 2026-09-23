@@ -239,6 +239,8 @@ async function call(
 /* -------------------------------------------------------------------------- */
 
 export interface PublicStanding {
+  /** The published placing, where the table came from other software. */
+  rank?: number;
   division: string;
   name: string;
   played: number;
@@ -272,6 +274,48 @@ export async function publicStandings(eventId: string): Promise<PublicStanding[]
     draws: Number(row.out_draws ?? 0),
     spread: Number(row.out_spread ?? 0),
   }));
+}
+
+/**
+ * The official table where an event has one, and the derived one otherwise.
+ *
+ * An event run in other software — tsh, for the 20 September event — publishes its own final
+ * standings, and those are the figures that were read out and rated. Recomputing them from
+ * the games this application happens to hold could only disagree with the published report,
+ * and of the two the published one is correct.
+ *
+ * So: official first, derived second. Every public surface calls this rather than
+ * `publicStandings` directly, so the wall, the results page and the certificates cannot
+ * disagree about who won.
+ */
+export async function officialOrDerivedStandings(
+  eventId: string,
+): Promise<{ rows: PublicStanding[]; official: boolean; source: string | null }> {
+  const db = supabase();
+  if (!db) return { rows: [], official: false, source: null };
+
+  const { data } = await db.rpc("event_official_standings", { p_event_id: eventId });
+  const table = data as { source?: string; rows?: unknown[] } | null;
+
+  if (table && Array.isArray(table.rows) && table.rows.length > 0) {
+    const rows = (table.rows as Record<string, unknown>[])
+      .map((r) => ({
+        division: String(r.division ?? ""),
+        name: String(r.name ?? ""),
+        played: Number(r.played ?? 0),
+        wins: Number(r.wins ?? 0),
+        losses: Number(r.losses ?? 0),
+        draws: Number(r.draws ?? 0),
+        spread: Number(r.spread ?? 0),
+        /* The published order, kept. Re-sorting here would be a second opinion about it. */
+        rank: Number(r.rank ?? 0),
+      }))
+      .sort((a, b) => a.rank - b.rank);
+
+    return { rows, official: true, source: table.source ?? null };
+  }
+
+  return { rows: await publicStandings(eventId), official: false, source: null };
 }
 
 /** One arrival on the wall's list: what a badge already says, and nothing more. */

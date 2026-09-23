@@ -1154,13 +1154,13 @@ export function GameOnForm({
                     isMember: reg.membershipStatus !== "not-claimed",
                     groupSize: Math.max(1, (reg.accompanyingCount ?? 0) + 1),
                     at: new Date().toISOString(),
-                  }) ? (
+                  }, event.currency) ? (
                     <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">
                       {cheaperRateHint(rateResult, {
                         isMember: reg.membershipStatus !== "not-claimed",
                         groupSize: Math.max(1, (reg.accompanyingCount ?? 0) + 1),
                         at: new Date().toISOString(),
-                      })}
+                      }, event.currency)}
                     </p>
                   ) : null}
                 </div>

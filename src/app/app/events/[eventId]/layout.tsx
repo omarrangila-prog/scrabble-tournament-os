@@ -7,7 +7,7 @@ import { CalendarDays, ExternalLink, MapPin, Users } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Skeleton } from "@/components/ui";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { WORKSPACE_TABS } from "@/lib/domain/eventPhase";
-import { useEventById } from "@/lib/supabase/useCurrentEvent";
+import { useEventById, writeCurrentEventId } from "@/lib/supabase/useCurrentEvent";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -27,6 +27,19 @@ export default function EventWorkspaceLayout({ children }: { children: React.Rea
 
   const eventId = params.eventId;
   const { event, loaded } = useEventById(eventId);
+
+  /*
+   * Opening a workspace URL must also become the flat-screen default.
+   *
+   * Desk, Score Entry and the sidebar Live Event link all read `useCurrentEvent`,
+   * which used to keep pointing at whichever event this browser last picked — often
+   * a newer sandbox — even while the director was deep inside AlphaBattle's live
+   * page. Syncing here means entering any `/app/events/[id]/…` tab also updates
+   * Score Entry and Desk without a separate picker click.
+   */
+  React.useEffect(() => {
+    if (eventId) writeCurrentEventId(eventId);
+  }, [eventId]);
 
   /*
    * Registrations from the database, not from browser storage.

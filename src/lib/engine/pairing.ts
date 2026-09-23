@@ -306,6 +306,64 @@ export function generateRound(input: PairingInput): PairingResult {
 }
 
 /**
+ * Which player sits out.
+ *
+ * The rule, in order: the fewest byes so far; then somebody who did not sit out last round;
+ * then the lowest-ranked of whoever is left. `queue` arrives in standings order, so the last
+ * entry is the lowest-ranked.
+ *
+ * The version this replaces looked from the bottom of the queue for the first player still
+ * under the event's bye limit, and when nobody was under it — which is every round after the
+ * first in a small division — fell back to `queue.length - 1`, the lowest-ranked player.
+ * That is the same person round after round, because a player who keeps sitting out keeps
+ * losing ground and stays at the bottom. In a division of three over five rounds the
+ * simulator caught one player sitting out three of them while the other two sat out one
+ * each. The limit was never the interesting part: a bye in an odd division has to go to
+ * somebody, and the only real question is whether it goes to the person who has had the
+ * fewest.
+ */
+function chooseByeIndex(
+  queue: Player[],
+  byes: Map<string, number>,
+  byeLastRound: Set<string>,
+): number {
+  let best = -1;
+  let bestKey: [number, number, number] | null = null;
+
+  for (let i = 0; i < queue.length; i += 1) {
+    const player = queue[i];
+    const key: [number, number, number] = [
+      byes.get(player.id) ?? 0,
+      byeLastRound.has(player.id) ? 1 : 0,
+      /* Later in the queue is lower-ranked, and lower-ranked is preferred, so negate. */
+      -i,
+    ];
+
+    if (bestKey === null || lexLess(key, bestKey)) {
+      best = i;
+      bestKey = key;
+    }
+  }
+
+  return best === -1 ? queue.length - 1 : best;
+}
+
+/** Lexicographic comparison of two sort keys, lowest wins. */
+function lexLess(a: [number, number, number], b: [number, number, number]): boolean {
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return a[i] < b[i];
+  }
+  return false;
+}
+
+/** Who sat out the round before this one — a bye two rounds running is worth avoiding. */
+function byesInRound(pairings: Pairing[], round: number): Set<string> {
+  return new Set(
+    pairings.filter((p) => p.round === round && p.playerBId === null).map((p) => p.playerAId),
+  );
+}
+
+/**
  * Swiss fold with repeat-opponent avoidance and backtracking. Locked pairings are preserved
  * exactly. This was the engine's only pairing system before formats existed as a real,
  * per-event choice — everything about its behaviour is unchanged.
@@ -333,6 +391,7 @@ function generateSwissRound(input: PairingInput): PairingResult {
   }
 
   const records = buildRecords(players, pairings, round - 1);
+  const previousByes = byesInRound(pairings, round - 1);
   const ctx = { all: records, players: playerMap, pairings };
 
   const lockedList = input.locked ?? [];
@@ -358,17 +417,9 @@ function generateSwissRound(input: PairingInput): PairingResult {
     const opening = input.random && !pairings.some((x) => x.round < round);
     const queue = opening ? shuffled(pool, input.random!) : [...pool];
 
-    // Bye first: lowest-ranked eligible player who has not had one.
+    // Bye first: fewest byes so far, then not last round's, then lowest-ranked.
     if (queue.length % 2 === 1) {
-      let byeIdx = -1;
-      for (let i = queue.length - 1; i >= 0; i--) {
-        if ((byes.get(queue[i].id) ?? 0) < constraints.maxByesPerPlayer) {
-          byeIdx = i;
-          break;
-        }
-      }
-      if (byeIdx === -1) byeIdx = queue.length - 1;
-      const byePlayer = queue.splice(byeIdx, 1)[0];
+      const byePlayer = queue.splice(chooseByeIndex(queue, byes, previousByes), 1)[0];
       out.push({
         id: `pr-${round}-bye-${byePlayer.id}`,
         tournamentId: tournament.id,
@@ -572,6 +623,7 @@ function generateKothRound(input: PairingInput): PairingResult {
   }
 
   const records = buildRecords(players, pairings, round - 1);
+  const previousByes = byesInRound(pairings, round - 1);
   const ctx = { all: records, players: playerMap, pairings };
 
   const out: Pairing[] = [];
@@ -583,18 +635,10 @@ function generateKothRound(input: PairingInput): PairingResult {
       .filter((p) => p.division === divisionId)
       .sort((x, y) => compareByRules(records.get(x.id)!, records.get(y.id)!, tournament.rankingRules, ctx));
 
-    // Bye to the lowest-ranked eligible player who has not already had one — same rule Swiss
-    // uses, so a player's bye entitlement means the same thing whichever format is running.
+    // The same rule Swiss uses, so a player's bye entitlement means the same thing whichever
+    // format is running.
     if (queue.length % 2 === 1) {
-      let byeIdx = -1;
-      for (let i = queue.length - 1; i >= 0; i--) {
-        if ((byes.get(queue[i].id) ?? 0) < roundConstraints.maxByesPerPlayer) {
-          byeIdx = i;
-          break;
-        }
-      }
-      if (byeIdx === -1) byeIdx = queue.length - 1;
-      const byePlayer = queue.splice(byeIdx, 1)[0];
+      const byePlayer = queue.splice(chooseByeIndex(queue, byes, previousByes), 1)[0];
       out.push({
         id: `pr-${round}-bye-${byePlayer.id}`,
         tournamentId: tournament.id,

@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, ArrowLeftRight, Loader2, UserX } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Loader2 } from "lucide-react";
 
 import { Badge, Button, Modal } from "@/components/ui";
 import type { Pairing, Player } from "@/lib/domain/types";
+import type { Finding } from "@/lib/engine/pairingValidator";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,6 +37,7 @@ export function PairingPreview({
   unpaired,
   players,
   nameOf,
+  findings = [],
   onSwap,
   onPairFromPool,
   onUnpair,
@@ -53,6 +55,8 @@ export function PairingPreview({
   /** For a division lookup on pool players — a tap across divisions is refused. */
   players: Player[];
   nameOf: (id: string) => string;
+  /** From `validateRoundPlan` — blocking findings refuse Publish. */
+  findings?: Finding[];
   onSwap: (playerOneId: string, playerTwoId: string) => void;
   onPairFromPool: (playerOneId: string, playerTwoId: string) => void;
   onUnpair: (playerId: string) => void;
@@ -94,6 +98,14 @@ export function PairingPreview({
 
   const conflictCount = pairings.filter((p) => p.conflicts.length > 0).length;
   const byRound = [...pairings].sort((a, b) => a.board - b.board);
+  const blocking = findings.filter((f) => f.severity === "blocking");
+  const advisory = findings.filter((f) => f.severity === "advisory");
+
+  const namedFinding = (f: Finding) =>
+    (f.playerIds ?? []).reduce(
+      (msg, id) => msg.replaceAll(`Player ${id}`, nameOf(id)),
+      f.message,
+    );
 
   const playerMap = new Map(players.map((p) => [p.id, p]));
   const poolByDivision = new Map<string, string[]>();
@@ -102,7 +114,56 @@ export function PairingPreview({
     poolByDivision.set(division, [...(poolByDivision.get(division) ?? []), id]);
   }
 
+  /*
+   * Boards under their category, not in one column.
+   *
+   * This screen used to list every board in table order with nothing saying which category
+   * any of them belonged to — so a three-category event read as boards 1 to 22 in a single
+   * run, with a beginner at table 7 directly above an advanced player at table 8. A tester
+   * reported the categories were mixed together. They were not: the engine had paired each
+   * category separately all along and this list simply never said so, which from the outside
+   * is the same thing. There is no way to check a draw you cannot see the shape of.
+   */
+  const boardsByDivision = new Map<string, Pairing[]>();
+  for (const board of byRound) {
+    boardsByDivision.set(board.division, [...(boardsByDivision.get(board.division) ?? []), board]);
+  }
+
+  /*
+   * Every category the round touches, whether it has boards or only unpaired players. A
+   * category whose players are all still in the pool has to appear, or manual pairing loses
+   * track of a whole group.
+   */
+  const divisionsInRound = [
+    ...new Set([...boardsByDivision.keys(), ...poolByDivision.keys()]),
+  ].sort();
+
+  /** One line per category, so the count can be checked against the room. */
+  const divisionSummary = (division: string) => {
+    const boards = boardsByDivision.get(division) ?? [];
+    const games = boards.filter((b) => b.playerBId !== null).length;
+    const byes = boards.filter((b) => b.playerBId === null).length;
+    const waiting = (poolByDivision.get(division) ?? []).length;
+    const seated = games * 2 + byes;
+
+    const parts = [`${seated} player${seated === 1 ? "" : "s"}`, `${games} game${games === 1 ? "" : "s"}`];
+    if (byes > 0) parts.push(`${byes} bye${byes === 1 ? "" : "s"}`);
+    if (waiting > 0) parts.push(`${waiting} still unpaired`);
+    return parts.join(" · ");
+  };
+
+  const tableRange = (division: string) => {
+    const tables = (boardsByDivision.get(division) ?? [])
+      .filter((b) => b.playerBId !== null)
+      .map((b) => b.board);
+    if (tables.length === 0) return null;
+    const low = Math.min(...tables);
+    const high = Math.max(...tables);
+    return low === high ? `Table ${low}` : `Tables ${low}–${high}`;
+  };
+
   const ready = isManual ? pool.length === 0 : true;
+  const canPublish = ready && blocking.length === 0;
 
   return (
     <Modal
@@ -111,13 +172,15 @@ export function PairingPreview({
       size="lg"
       title={`Round ${round} — before it goes on the wall`}
       subtitle={
-        isManual
-          ? pool.length > 0
-            ? `${pool.length} player(s) still need a board or a bye. Tap two names in the pool to pair them.`
-            : "Everyone has a board or a bye. Tap two names to swap them if something looks wrong."
-          : conflictCount > 0
-            ? `${conflictCount} board${conflictCount === 1 ? "" : "s"} could not avoid a repeat opponent. Tap two names to swap them.`
-            : "No repeat opponents. Tap two names to swap them if something looks wrong."
+        blocking.length > 0
+          ? `${blocking.length} problem${blocking.length === 1 ? "" : "s"} must be fixed before this round can publish.`
+          : isManual
+            ? pool.length > 0
+              ? `${pool.length} player(s) still need a board or a bye. Tap two names in the pool to pair them.`
+              : "Everyone has a board or a bye. Tap two names to swap them if something looks wrong."
+            : conflictCount > 0
+              ? `${conflictCount} board${conflictCount === 1 ? "" : "s"} could not avoid a repeat opponent. Tap two names to swap them.`
+              : "No repeat opponents. Tap two names to swap them if something looks wrong."
       }
       footer={
         <div className="flex w-full items-center justify-between gap-3">
@@ -132,17 +195,57 @@ export function PairingPreview({
               variant="primary"
               icon={busy ? <Loader2 className="size-4 animate-spin" /> : undefined}
               onClick={onPublish}
-              disabled={busy || !ready}
+              disabled={busy || !canPublish}
             >
-              {busy ? "Publishing…" : `Publish round ${round} and start the clock`}
+              {busy ? "Publishing…" : `Publish round ${round} to the wall`}
             </Button>
           </div>
         </div>
       }
     >
-      {byRound.length > 0 ? (
+      {blocking.length > 0 || advisory.length > 0 ? (
+        <ul className="mb-4 space-y-1.5">
+          {blocking.map((f, i) => (
+            <li
+              key={`b-${f.code}-${i}`}
+              className="flex items-start gap-2 rounded-control border border-warning-200 bg-warning-050 px-3 py-2 text-[12.5px] font-semibold text-warning-700"
+            >
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              {namedFinding(f)}
+            </li>
+          ))}
+          {advisory.map((f, i) => (
+            <li
+              key={`a-${f.code}-${i}`}
+              className="rounded-control border border-line bg-[rgb(var(--c-surface-soft))] px-3 py-2 text-[12.5px] text-muted"
+            >
+              {namedFinding(f)}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {divisionsInRound.length > 0 ? (
+        <div className="space-y-5">
+          {divisionsInRound.map((division) => (
+            <section key={division}>
+              {/*
+                The heading is the point of this whole screen. A director checking a draw is
+                checking it one category at a time, because that is how the tournament is
+                actually run.
+              */}
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-line pb-1.5">
+                <h3 className="text-[14px] font-bold capitalize text-ink">
+                  {division.replace(/-/g, " ")}
+                </h3>
+                <p className="text-[12px] text-muted">
+                  {divisionSummary(division)}
+                  {tableRange(division) ? ` · ${tableRange(division)}` : ""}
+                </p>
+              </div>
+
         <ul className="space-y-2">
-          {byRound.map((p) => (
+          {(boardsByDivision.get(division) ?? []).map((p) => (
             <li
               key={p.id}
               className={cn(
@@ -193,9 +296,9 @@ export function PairingPreview({
                     type="button"
                     onClick={() => onUnpair(p.playerAId)}
                     title="Send back to the unpaired pool"
-                    className="shrink-0 rounded-control p-1.5 text-muted transition hover:bg-critical-050 hover:text-critical"
+                    className="shrink-0 rounded-control px-2 py-1 text-[11.5px] font-bold text-muted transition hover:bg-critical-050 hover:text-critical"
                   >
-                    <UserX className="size-3.5" />
+                    Unpair
                   </button>
                 ) : (
                   <ArrowLeftRight className="size-3.5 shrink-0 text-muted" />
@@ -215,47 +318,55 @@ export function PairingPreview({
             </li>
           ))}
         </ul>
+
+              {/*
+                The unpaired players for this category, under this category. They used to sit
+                in one pool at the bottom of the screen, which meant a director building a
+                manual round had to hold in their head which of the remaining names belonged
+                to which group — and a tap across categories is refused anyway.
+              */}
+              {isManual && (poolByDivision.get(division) ?? []).length > 0 ? (
+                <div className="mt-2.5">
+                  <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-faint">
+                    Unpaired
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(poolByDivision.get(division) ?? []).map((id) => (
+                      <span key={id} className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => tap(id)}
+                          className={cn(
+                            "rounded-control border px-2.5 py-1.5 text-[13px] font-semibold transition",
+                            armed === id
+                              ? "border-primary bg-primary-100 text-primary-700"
+                              : "border-line bg-[rgb(var(--c-surface))] text-ink hover:bg-[rgb(var(--c-surface-strong))]",
+                          )}
+                        >
+                          {nameOf(id)}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onMarkBye(id)}
+                          title="Give this player a bye"
+                          className="rounded-control border border-line px-2 py-1 text-[11.5px] font-bold uppercase tracking-[0.04em] text-muted transition hover:bg-[rgb(var(--c-surface-strong))] hover:text-ink"
+                        >
+                          Bye
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          ))}
+        </div>
       ) : isManual ? (
         <p className="rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] leading-relaxed text-muted">
           Nothing is paired yet. Tap two names below to put them on a board together.
         </p>
       ) : null}
 
-      {isManual && pool.length > 0 ? (
-        <div className={cn("space-y-3", byRound.length > 0 && "mt-4")}>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted">Unpaired</p>
-          {[...poolByDivision.entries()].map(([division, ids]) => (
-            <div key={division}>
-              <p className="mb-1.5 text-[11.5px] font-semibold capitalize text-faint">{division.replace(/-/g, " ")}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {ids.map((id) => (
-                  <span key={id} className="inline-flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => tap(id)}
-                      className={cn(
-                        "rounded-control border px-2.5 py-1.5 text-[13px] font-semibold transition",
-                        armed === id
-                          ? "border-primary bg-primary-100 text-primary-700"
-                          : "border-line bg-[rgb(var(--c-surface-strong))] text-ink hover:bg-[rgb(var(--c-surface-soft))]",
-                      )}
-                    >
-                      {nameOf(id)}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onMarkBye(id)}
-                      className="rounded-control px-2 py-1.5 text-[11.5px] font-semibold text-muted transition hover:bg-[rgb(var(--c-surface-strong))] hover:text-ink"
-                    >
-                      Bye
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
     </Modal>
   );
 }

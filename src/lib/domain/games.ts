@@ -34,6 +34,8 @@ export interface GameRow {
   note: string | null;
   /** Whether the player in `playerA` plays first. Null: no decision was made. */
   aPlaysFirst: boolean | null;
+  /** The engine's justification, stored at publish. Null on rounds published before it was. */
+  pairingReason?: string | null;
 }
 
 /** One board being proposed for publication. */
@@ -45,6 +47,14 @@ export interface BoardPlan {
   /** Whether `playerA` plays first. Omitted: no decision was made (start balancing off, or a
    * manually-built board). */
   aPlaysFirst?: boolean | null;
+  /**
+   * The engine's justification for this board, carried through to the database.
+   *
+   * Published rounds used to keep no record of why anybody was paired, so "why am I playing
+   * him again?" had no answer once the preview closed. Omitted on a hand-built board, where
+   * the honest answer is that a director decided.
+   */
+  reason?: string;
 }
 
 const STATUSES: PairingStatus[] = [
@@ -95,15 +105,16 @@ export function pairingsFromGames(rows: GameRow[], tournamentId: string): Pairin
          * A published round is settled: the boards are on the wall and people are
          * sitting at them, so every board is locked against regeneration.
          *
-         * The pairing engine's own fields — its justification, its confidence and
-         * the conflicts it noticed — belong to the moment a round was proposed and
-         * are not stored. Reporting an empty conflict list is honest: what is known
-         * about this game is who played whom and what the score was. Inventing a
-         * confidence figure for a game already played would be worse than omitting
-         * one.
+         * The justification is now stored at publish and read back here, so a board can
+         * still say why these two were put together after the preview has closed. Confidence
+         * and the conflict list are not kept: both describe how sure the engine was at the
+         * moment it proposed the round, and inventing a figure for a game already played
+         * would be worse than omitting one.
          */
         locked: true,
-        reason: "Published round, read from the database.",
+        reason: row.pairingReason?.trim()
+          ? row.pairingReason
+          : "Published round — no pairing note was stored.",
         confidence: 0,
         conflicts: [],
         aPlaysFirst: row.aPlaysFirst,

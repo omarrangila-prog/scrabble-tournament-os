@@ -54,6 +54,21 @@ export default function LiveEventPage() {
     );
   }
 
+  /*
+   * Wait for the database phase before choosing a screen.
+   *
+   * Falling back to the seed's state showed "Registration is open" all day for AlphaBattle
+   * — the seed is frozen there — while the wall correctly showed result entry. A short
+   * loading state is better than sending a room full of players to the wrong door.
+   */
+  if (!phase.loaded) {
+    return (
+      <Shell>
+        <EmptyState title="Opening…" description="Finding where the event is right now." />
+      </Shell>
+    );
+  }
+
   const state = phase.state ?? event.state;
   const destination = STATE_DESTINATION[state];
 

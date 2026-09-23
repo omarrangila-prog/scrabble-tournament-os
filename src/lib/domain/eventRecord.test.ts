@@ -12,9 +12,6 @@ import {
   playedRounds,
 } from "./eventRecord";
 
-const division = (code: string) =>
-  EVENT.divisions.find((d) => d.code === code)!;
-
 describe("the official record", () => {
   it("holds every player from all three divisions", () => {
     expect(EVENT.divisions.map((d) => d.name).sort()).toEqual([

@@ -24,7 +24,7 @@ import {
 } from "@/lib/domain/confirmationMessages";
 import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { emailDetailsConfirmation } from "@/lib/email/client";
-import { field, importField, numberField } from "@/lib/supabase/organizer";
+import { field, importField, numberField, answer } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
 import { supabase } from "@/lib/supabase/client";
@@ -84,7 +84,7 @@ export default function ConfirmationsPage() {
         email: r.email ?? "",
         area: field(r, "city") ?? "",
         division: field(r, "preferredDivision") ?? "",
-        psa: importField(r, "playsPSARankingTournaments") ?? "",
+        psa: answer(r, "psaMember") ?? importField(r, "playsPSARankingTournaments") ?? "",
         mediaConsent: importField(r, "mediaConsent") ?? "",
         amount: numberField(r, "amountDue"),
         paymentStatus: r.paymentStatus ?? "",

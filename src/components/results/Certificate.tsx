@@ -25,9 +25,20 @@ import {
 export function Certificate({
   name,
   placement,
+  venue,
+  dateLabel = "23rd August, 2026",
   document: doc,
 }: {
   name: string;
+  /**
+   * The venue and date this event was held at.
+   *
+   * Both were written into this file for the August event. A certificate for a different
+   * event carried that event's venue and date, which is the kind of mistake somebody frames
+   * and then notices.
+   */
+  venue?: string;
+  dateLabel?: string;
   /** "1st place, Advanced division" for the two who placed; absent for everybody else. */
   placement?: string;
   /** Everything the downloaded file needs, so the button works with no server. */
@@ -61,7 +72,10 @@ export function Certificate({
       <div className="mt-4 overflow-hidden rounded-xl shadow-sm">
         <CertificateSheet
           recipientName={name}
-          dateLabel="23rd August, 2026"
+          venue={venue}
+          /* No signature for a venue that has not supplied one — see `CertificateSheet`. */
+          venueSignature={venue && venue !== "Chai Chatt" ? null : undefined}
+          dateLabel={dateLabel}
           placement={placement}
           showBack={false}
         />

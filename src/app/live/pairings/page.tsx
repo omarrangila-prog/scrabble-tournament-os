@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 
 import { PairingSheet } from "@/components/public/PairingSheet";
 import { useLiveEvent } from "@/lib/supabase/useLiveEvent";
@@ -13,11 +14,23 @@ import { useLiveEvent } from "@/lib/supabase/useLiveEvent";
  */
 function PairingsWall() {
   const { eventId, name, resolved } = useLiveEvent();
+  const params = useSearchParams();
+  /*
+   * `?mode=clock` is the countdown alone, for a second screen; `?mode=sheet` pins the whole
+   * round on one long page. The default rotates categories only when the round outgrows the
+   * screen.
+   */
+  const asked = params.get("mode");
+  const mode =
+    asked === "sheet" ? "sheet"
+      : asked === "clock" ? "clock"
+        : asked === "winners" ? "winners"
+          : "auto";
 
   if (!resolved) return <WallMessage>Loading…</WallMessage>;
   if (!eventId) return <WallMessage>No tournament is running right now.</WallMessage>;
 
-  return <PairingSheet eventId={eventId} eventName={name ?? ""} />;
+  return <PairingSheet eventId={eventId} eventName={name ?? ""} mode={mode} />;
 }
 
 export default function PairingsWallPage() {

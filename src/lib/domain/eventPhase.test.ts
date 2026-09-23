@@ -147,13 +147,17 @@ describe("phaseGuidance", () => {
     expect(ids).not.toContain("open-registration");
   });
 
-  it("navigates only to real tabs", () => {
+  it("navigates only to real tabs or concrete paths", () => {
     for (const state of ALL_STATES) {
       const g = phaseGuidance(state);
       for (const action of [g.primary, ...g.secondary]) {
         if (action.kind === "navigate") {
-          expect(action.tab).toBeDefined();
-          expect(isWorkspaceTab(action.tab!)).toBe(true);
+          if (action.href) {
+            expect(action.href.startsWith("/")).toBe(true);
+          } else {
+            expect(action.tab).toBeDefined();
+            expect(isWorkspaceTab(action.tab!)).toBe(true);
+          }
         }
       }
     }

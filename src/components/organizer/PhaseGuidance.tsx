@@ -11,6 +11,7 @@ import {
   type WorkspaceTab,
 } from "@/lib/domain/eventPhase";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
+import { cn } from "@/lib/utils";
 
 /**
  * Where the event is, and the one thing to do next.
@@ -37,6 +38,7 @@ export function PhaseGuidance({
   onTransition,
   onHandler,
   busy = false,
+  quiet = false,
 }: {
   state: EventState;
   /** Moves the event. The caller owns the write and the reporting. */
@@ -44,6 +46,11 @@ export function PhaseGuidance({
   /** Screen-specific actions, by action id. Unhandled ids are not offered. */
   onHandler?: Record<string, () => void>;
   busy?: boolean;
+  /**
+   * Soften this card when the runbook already answers "what next".
+   * Keeps phase extras (share link, standings) without competing for attention.
+   */
+  quiet?: boolean;
 }) {
   const router = useRouter();
   const guidance = phaseGuidance(state);
@@ -55,9 +62,15 @@ export function PhaseGuidance({
   const runnable = (a: PhaseAction) => a.kind !== "handler" || !!onHandler?.[a.id];
 
   const act = (a: PhaseAction) => {
-    if (a.kind === "navigate" && a.tab) {
-      router.push(TAB_ROUTE[a.tab]);
-      return;
+    if (a.kind === "navigate") {
+      if (a.href) {
+        router.push(a.href);
+        return;
+      }
+      if (a.tab) {
+        router.push(TAB_ROUTE[a.tab]);
+        return;
+      }
     }
 
     if (a.kind === "transition" && a.to) {
@@ -81,19 +94,21 @@ export function PhaseGuidance({
   return (
     <Card>
       <CardHeader
-        title="What to do next"
+        title={quiet ? "Also useful" : "What to do next"}
         subtitle={guidance.status}
         icon={<Compass className="size-4.5" />}
         action={<Badge tone="neutral">{EVENT_STATE_LABEL[state]}</Badge>}
       />
       <div className="px-5 pb-5">
-        <p className="text-[13.5px] leading-relaxed text-muted">{guidance.next}</p>
+        {quiet ? null : (
+          <p className="text-[13.5px] leading-relaxed text-muted">{guidance.next}</p>
+        )}
 
-        <div className="mt-3.5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className={cn("flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center", quiet ? "" : "mt-3.5")}>
           {runnable(guidance.primary) ? (
             <Button
-              variant="primary"
-              icon={<ArrowRight className="size-4" />}
+              variant={quiet ? "secondary" : "primary"}
+              icon={quiet ? undefined : <ArrowRight className="size-4" />}
               disabled={busy}
               onClick={() => act(guidance.primary)}
               className="w-full sm:w-auto"

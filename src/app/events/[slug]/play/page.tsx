@@ -235,10 +235,21 @@ function Find({
   /* Searching as they type, a beat behind, so the list settles rather than flickering. */
   React.useEffect(() => {
     const q = query;
+    let live = true;
     const id = window.setTimeout(async () => {
-      setHits(await searchPlayers(eventId, q));
+      const hits = await searchPlayers(eventId, q);
+      /*
+       * Drop a reply that belongs to an older query. Without this, typing "Aariz" after
+       * "Kiflain" can briefly show Kiflain's row under Aariz's letters — a slow reply to the
+       * first search landing after the second one was already typed.
+       */
+      if (!live) return;
+      setHits(hits);
     }, 220);
-    return () => window.clearTimeout(id);
+    return () => {
+      live = false;
+      window.clearTimeout(id);
+    };
   }, [query, eventId]);
 
   /*

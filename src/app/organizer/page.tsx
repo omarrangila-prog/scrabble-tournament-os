@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 
 import { Button, Field, Input } from "@/components/ui";
 import { currentOrganizer, signIn } from "@/lib/supabase/organizer";
+import { homeFor } from "@/components/shell/nav";
+import { supabase } from "@/lib/supabase/client";
 
 const CREAM = "#F5F0E4";
 const FOREST = "#2F5D3A";
@@ -33,6 +35,27 @@ export default function OrganizerSignInPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [checking, setChecking] = React.useState(true);
 
+  /*
+   * Where this account belongs, from the database.
+   *
+   * A desk volunteer signing in lands on the desk, not on a dashboard of twelve screens they
+   * cannot use. The role comes from `staff_role`, which resolves the caller from their own
+   * session — nothing the browser holds is consulted.
+   */
+  const landing = async (): Promise<string> => {
+    const db = supabase();
+    if (!db) return "/app";
+    const { data } = await db.rpc("staff_role", { org: "org-federation" });
+    const role = (data as string | null) ?? null;
+    const capability =
+      role === "director" ? "director"
+        : role === "results" || role === "scorekeeper" || role === "arbiter" ? "results"
+          : role === "desk" || role === "checkin" ? "desk"
+            : role === "viewer" ? "viewer"
+              : "none";
+    return homeFor(capability);
+  };
+
   React.useEffect(() => {
     let live = true;
 
@@ -41,7 +64,7 @@ export default function OrganizerSignInPage() {
       if (!live) return;
 
       if (who) {
-        router.replace("/app");
+        router.replace(await landing());
         return;
       }
       setChecking(false);
@@ -62,7 +85,7 @@ export default function OrganizerSignInPage() {
       setError(outcome.message);
       return;
     }
-    router.replace("/app");
+    router.replace(await landing());
   };
 
   return (

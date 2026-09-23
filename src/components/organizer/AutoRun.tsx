@@ -47,7 +47,7 @@ export function AutoRun({
    * Held in this browser rather than in the database: it is a preference of the device
    * running the day, and two laptops both auto-running would race each other.
    */
-  const [on, setOn] = React.useState(true);
+  const [on, setOn] = React.useState(false);
   /*
    * The countdown is held as a number of seconds and decremented, rather than as an end
    * time compared against the clock while rendering. Reading `Date.now()` during render
@@ -149,12 +149,13 @@ export function AutoRun({
           </>
         ) : on ? (
           <span className="text-muted">
-            Running the day by itself. Rounds are paired when every result is in, and started
-            once the boards have been up for half a minute.
+            Will pair and start rounds on its own unless you press Not yet. Turn off if you
+            want every step by hand.
           </span>
         ) : (
           <span className="text-muted">
-            Paused. Pair rounds and start them yourself from the controls below.
+            Off by default. Turn on to pair rounds when every result is in, and start them
+            after the boards have been up for half a minute.
           </span>
         )}
       </p>

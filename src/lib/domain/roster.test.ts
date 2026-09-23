@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { checkInFor, divisionFor, hueFor, initialsFor, paymentFor, reportStatusFor, rosterCounts, rosterFromRegistrations, type RosterSource } from "./roster";
+import { categoryWasStated, checkInFor, divisionFor, hueFor, initialsFor, paymentFor, reportStatusFor, rosterCounts, rosterFromRegistrations, type RosterSource } from "./roster";
 
 function source(over: Partial<RosterSource> = {}): RosterSource {
   return {
@@ -36,10 +36,39 @@ describe("divisionFor", () => {
     expect(divisionFor("no idea")).toBe("recreational");
   });
 
-  it("never returns masters, which was removed from the event", () => {
-    for (const level of ["masters", "master", "expert", "pro"]) {
-      expect(divisionFor(level)).not.toBe("masters");
+  it("returns masters again, now that events run a fourth category", () => {
+    /*
+     * This used to assert the opposite. Masters had been removed on the grounds that those
+     * players enter as advanced, and while that held, the word fell through to the
+     * catch-all — so somebody writing "Masters" on the form was filed as recreational, two
+     * categories below where they belong. The event now being planned runs four categories,
+     * so the word means what it says.
+     */
+    for (const level of ["masters", "Master", "expert", "Masters Division"]) {
+      expect(divisionFor(level)).toBe("masters");
     }
+  });
+
+  it("puts a masters player in masters even when they also say advanced", () => {
+    expect(divisionFor("advanced masters player")).toBe("masters");
+  });
+
+  it("still sends anything it does not recognise to recreational", () => {
+    for (const level of ["pro", "quite good", ""]) {
+      expect(divisionFor(level)).toBe("recreational");
+    }
+  });
+});
+
+describe("categoryWasStated", () => {
+  it("is false when nobody named a category", () => {
+    expect(categoryWasStated("")).toBe(false);
+    expect(categoryWasStated("   ")).toBe(false);
+  });
+
+  it("is true when a category was named, even if it maps to recreational", () => {
+    expect(categoryWasStated("recreational")).toBe(true);
+    expect(categoryWasStated("beginner")).toBe(true);
   });
 });
 

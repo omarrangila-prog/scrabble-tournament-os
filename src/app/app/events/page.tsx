@@ -287,7 +287,10 @@ export default function EventsPage() {
                       <Button
                         size="sm"
                         variant="primary"
-                        onClick={() => router.push(`/app/events/${event.id}/payments`)}
+                        onClick={() => {
+                          currentEvent.setCurrentEventId(event.id);
+                          router.push(`/app/events/${event.id}/live`);
+                        }}
                       >
                         Open
                       </Button>

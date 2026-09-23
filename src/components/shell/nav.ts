@@ -5,6 +5,7 @@ import {
   BarChart3,
   CalendarDays,
   CircleHelp,
+  ClipboardList,
   Gauge,
   IdCard,
   Radio,
@@ -51,8 +52,14 @@ export const NAV_ITEMS: NavItem[] = [
    * The database-backed list, now inside the dashboard shell rather than on its own
    * page. One set of navigation, so no screen is a dead end.
    */
-  /* The desk sits above the reference screens: it is the one used while standing up. */
+  /*
+   * The two screens an event is actually run from, above the reference ones.
+   *
+   * Desk is arrivals; Results & Pairings is the draw, the clock and the scores. Everything
+   * below them is admin, and on event day nobody should need any of it.
+   */
   { href: "/app/desk", label: "Desk", icon: Search },
+  { href: "/app/results", label: "Results & Pairings", icon: ClipboardList },
   { href: "/app/registrations", label: "Registrations", icon: IdCard },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
@@ -92,7 +99,53 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
    */
   { href: "/app/events", label: "Tournaments" },
   { href: "/app/events/new", label: "Create tournament" },
+  { href: "/app/results", label: "Results & Pairings" },
   { href: "/app/score-entry", label: "Score Entry" },
   { href: "/app/standings", label: "Live Standings" },
   { href: "/app/certificates", label: "Certificates" },
 ];
+
+/* -------------------------------------------------------------------------- */
+/* What each role sees                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The navigation a role is shown.
+ *
+ * The database already refuses a desk account every action outside the desk, so this is not
+ * where the protection lives. What it decides is what the person sees when they sign in: a
+ * volunteer on the door does not need twelve screens they cannot use, and a results table
+ * does not need Payments. A director sees everything.
+ *
+ * `null` for the capability means it is not known yet, and the answer is the full list — a
+ * screen that flickers from twelve items to one as the role loads is worse than one that
+ * shows twelve for half a second.
+ */
+export function navFor(
+  capability: "desk" | "results" | "director" | "viewer" | "none" | null,
+): { primary: NavItem[]; extra: NavItem[] } {
+  switch (capability) {
+    case "desk":
+      return { primary: NAV_ITEMS.filter((n) => n.href === "/app/desk"), extra: [] };
+    case "results":
+      return { primary: NAV_ITEMS.filter((n) => n.href === "/app/results"), extra: [] };
+    case "viewer":
+      return { primary: [], extra: [] };
+    default:
+      return { primary: NAV_ITEMS, extra: EXTRA_NAV };
+  }
+}
+
+/** Where a role lands after signing in. The one screen that is theirs. */
+export function homeFor(
+  capability: "desk" | "results" | "director" | "viewer" | "none" | null,
+): string {
+  switch (capability) {
+    case "desk":
+      return "/app/desk";
+    case "results":
+      return "/app/results";
+    default:
+      return "/app";
+  }
+}

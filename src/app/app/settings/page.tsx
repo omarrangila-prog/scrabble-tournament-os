@@ -40,6 +40,7 @@ import { useGames } from "@/lib/supabase/useGames";
 import { summarizeAuditDetail, useAuditLog } from "@/lib/supabase/useAuditLog";
 import { useRoundSnapshots, type RoundSnapshot } from "@/lib/supabase/useRoundSnapshots";
 import { useEventCategories, writeEventCategories } from "@/lib/supabase/useEventCategories";
+import type { Rate, RateId } from "@/lib/domain/pricing";
 import {
   useEventDetails,
   writeEventDetails,
@@ -894,6 +895,146 @@ function CategoriesCard({ eventId, by }: { eventId: string; by: string }) {
 }
 
 /**
+ * The reduced rates the event offers.
+ *
+ * These used to be a sentence in a text box. The form printed the sentence — "PSA members
+ * — Rs 800 per head" — asked a question about membership beside it, and then billed every
+ * single registration the regular fee, because no code anywhere connected the two. The
+ * discount was real to everyone reading the form and had never existed in the software.
+ *
+ * A rate is offered when it has a price. Clearing the price withdraws it, which is the same
+ * gesture as leaving it blank in the first place — there is no separate switch to forget.
+ * Nobody stacks: a participant qualifying for several pays the cheapest one.
+ */
+function RateCardFields({
+  fee,
+  currency,
+  rates,
+  onChange,
+}: {
+  fee: number;
+  currency: string;
+  rates: Rate[];
+  onChange: (rates: Rate[]) => void;
+}) {
+  const find = (id: RateId) => rates.find((r) => r.id === id) ?? null;
+
+  /** Writes one rate, or removes it when its price is cleared. */
+  const put = (id: RateId, patch: Partial<Rate> | null) => {
+    const rest = rates.filter((r) => r.id !== id);
+    if (patch === null) {
+      onChange(rest);
+      return;
+    }
+    const existing = find(id);
+    const next = { ...(existing ?? DEFAULT_RATE[id]), ...patch, id } as Rate;
+    /* Kept in the order they are offered, so the card reads the same everywhere. */
+    onChange([...rest, next].sort((a, b) => RATE_ORDER.indexOf(a.id) - RATE_ORDER.indexOf(b.id)));
+  };
+
+  const priceField = (id: RateId, label: string, hint: string) => {
+    const rate = find(id);
+    return (
+      <Field label={label} hint={hint}>
+        <Input
+          type="number"
+          className="num"
+          placeholder="Not offered"
+          value={rate ? rate.amount : ""}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === "") {
+              put(id, null);
+              return;
+            }
+            put(id, { amount: Math.max(0, Number(raw)) });
+          }}
+        />
+      </Field>
+    );
+  };
+
+  const member = find("member");
+  const family = find("family");
+  const early = find("early-bird");
+
+  return (
+    <div className="rounded-feature border border-line px-4 py-3.5">
+      <p className="text-[13.5px] font-semibold text-ink">Reduced rates</p>
+      <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+        Charged from, not just printed. Somebody qualifying for more than one pays the
+        cheapest. Leave a price empty to withdraw that rate.
+      </p>
+
+      <div className="mt-3 grid gap-3.5 sm:grid-cols-2">
+        {priceField("member", "Member rate", `Regular is ${currency} ${fee.toLocaleString("en-PK")}. Claimed on the form, checked at the desk.`)}
+        <Field label="Which body" hint="Named on the form: “Are you a PSA member?”">
+          <Input
+            placeholder="PSA member"
+            value={member?.label ?? ""}
+            disabled={!member}
+            onChange={(e) => put("member", { label: e.target.value })}
+          />
+        </Field>
+
+        {priceField("family", "Group rate", "For people registering together.")}
+        <Field label="Group size" hint="How many, at least, to earn it.">
+          <Input
+            type="number"
+            className="num"
+            placeholder="3"
+            value={family?.minGroupSize ?? ""}
+            disabled={!family}
+            onChange={(e) => put("family", { minGroupSize: Math.max(2, Number(e.target.value) || 2) })}
+          />
+        </Field>
+
+        {priceField("early-bird", "Early bird", "Needs an end date beside it — without one it is not offered.")}
+        <Field label="Open until" hint="Required. The last day it applies, end of day.">
+          <Input
+            type="date"
+            value={(early?.availableUntil ?? "").slice(0, 10)}
+            disabled={!early}
+            onChange={(e) =>
+              put("early-bird", {
+                /* End of the stated day, in event time — "until 7 September" includes it. */
+                availableUntil: e.target.value ? `${e.target.value}T23:59:59+05:00` : undefined,
+              })
+            }
+          />
+        </Field>
+        {early && !early.availableUntil ? (
+          <p className="sm:col-span-2 text-[12.5px] font-medium text-warning-700">
+            Set an end date, or clear the early-bird amount. Without a date it will not be charged.
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+const RATE_ORDER: RateId[] = ["standard", "member", "family", "early-bird"];
+
+/** What a rate looks like before the organiser has said anything but its price. */
+const DEFAULT_RATE: Record<RateId, Rate> = {
+  standard: { id: "standard", label: "Regular", amount: 0, basis: "The regular entry fee." },
+  member: { id: "member", label: "PSA member", amount: 0, basis: "Members, checked at the desk." },
+  family: {
+    id: "family",
+    label: "Group of 3 or more",
+    amount: 0,
+    basis: "Three or more registering together.",
+    minGroupSize: 3,
+  },
+  "early-bird": {
+    id: "early-bird",
+    label: "Early bird",
+    amount: 0,
+    basis: "Registering before the closing date.",
+  },
+};
+
+/**
  * The event's own details.
  *
  * This card used to be five fields that changed nothing: Name and Total rounds wrote to a
@@ -1015,7 +1156,7 @@ function EventDetailsCard({
                 onChange={(e) => setDetail({ city: e.target.value })}
               />
             </Field>
-            <Field label="Entry fee" hint="Per player, in the event's own currency.">
+            <Field label="Entry fee" hint={`Per player, in ${form.details.currency ?? "PKR"}. The regular rate.`}>
               <Input
                 type="number"
                 className="num"
@@ -1023,6 +1164,14 @@ function EventDetailsCard({
                 onChange={(e) => setDetail({ fee: Number(e.target.value) })}
               />
             </Field>
+            <div className="sm:col-span-2">
+              <RateCardFields
+                fee={form.details.fee ?? 0}
+                currency={form.details.currency ?? "PKR"}
+                rates={form.details.rates ?? []}
+                onChange={(rates) => setDetail({ rates })}
+              />
+            </div>
 
             {/*
               The three blocks of text the registration form prints verbatim. They were
@@ -1031,15 +1180,15 @@ function EventDetailsCard({
               than printing an empty heading, so leaving one empty is a way to turn it off.
             */}
             <Field
-              label="Registration fees"
+              label="What the fee covers"
               className="sm:col-span-2"
-              hint="Shown on the form above the payment question. Leave empty to show nothing."
+              hint="Printed under the rate card. The rates themselves come from the boxes above — do not repeat them here, or the form will say one thing twice and charge only one of them."
             >
               <Textarea
-                rows={5}
+                rows={3}
                 value={form.details.feeDetails ?? ""}
                 onChange={(e) => setDetail({ feeDetails: e.target.value })}
-                placeholder="Regular — Rs 1,000 per head"
+                placeholder="Includes tea and the certificate."
               />
             </Field>
             <Field

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { AlertTriangle, CheckCircle2, RefreshCw, Undo2 } from "lucide-react";
 import {
   Badge,
@@ -73,7 +74,52 @@ export default function ScoreEntryPage() {
     );
   });
 
-  const done = boards.filter((g) => g.scoreA !== null).length;
+  const scoreable = boards.filter((g) => g.playerB !== null);
+  const done = scoreable.filter((g) => g.scoreA !== null).length;
+  const outstanding = scoreable.filter((g) => g.scoreA === null).length;
+
+  /*
+   * The boards under their category, in table order within it.
+   *
+   * This table listed every board of the round in one run with nothing naming the category,
+   * so a staff member typing scores for a three-category event saw boards 1 to 22 in a single
+   * column — a beginner's game directly above an advanced one. A tester reading the same
+   * shape on the pairing screen reported the categories were mixed together. They were not,
+   * and they are not here either, but a list that never says so cannot be checked against
+   * the room.
+   *
+   * A heading row per category, rather than three tables: staff work down the sheet in one
+   * pass, and splitting it would mean three scroll positions and three search boxes.
+   */
+  const grouped = React.useMemo(() => {
+    const order: string[] = [];
+    const byDivision = new Map<string, typeof filtered>();
+
+    for (const g of filtered) {
+      const division = g.division || "unspecified";
+      if (!byDivision.has(division)) {
+        byDivision.set(division, []);
+        order.push(division);
+      }
+      byDivision.get(division)!.push(g);
+    }
+
+    return order.map((division) => {
+      const rows = byDivision.get(division)!;
+      const needingScore = rows.filter((g) => g.playerB !== null);
+      return {
+        division,
+        rows,
+        recorded: needingScore.filter((g) => g.scoreA !== null).length,
+        /* A bye needs no score, so it is not something the desk is waiting on. */
+        awaiting: needingScore.filter((g) => g.scoreA === null).length,
+        needingScore: needingScore.length,
+      };
+    });
+  }, [filtered]);
+
+  /* One heading is noise, not orientation: a single-category event gets none. */
+  const showDivisionHeadings = grouped.length > 1;
 
   const setField = (id: string, key: "a" | "b", value: string) =>
     setDraft((d) => ({ ...d, [id]: { a: d[id]?.a ?? "", b: d[id]?.b ?? "", [key]: value } }));
@@ -190,15 +236,32 @@ export default function ScoreEntryPage() {
               <MiniStat label="Recorded" value={done} tone="success" />
               <MiniStat
                 label="Outstanding"
-                value={boards.length - done}
-                tone={boards.length - done ? "warning" : "success"}
+                value={outstanding}
+                tone={outstanding ? "warning" : "success"}
               />
             </div>
+
+            {round > 0 && outstanding === 0 && scoreable.length > 0 ? (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-feature border border-success-200 bg-success-050 px-4 py-3">
+                <p className="text-[13.5px] font-semibold text-success-700">
+                  Every score for round {round} is in.
+                </p>
+                <Link href="/app/live-event">
+                  <Button variant="primary" size="sm">
+                    Back to Live Event
+                  </Button>
+                </Link>
+              </div>
+            ) : null}
 
             <Card>
               <CardHeader
                 title={`Round ${round}`}
-                subtitle={`${done} of ${boards.length} boards recorded`}
+                subtitle={
+                  scoreable.length === 0
+                    ? `${boards.length} bye${boards.length === 1 ? "" : "s"} — nothing to enter`
+                    : `${done} of ${scoreable.length} boards recorded`
+                }
                 icon={<CheckCircle2 className="size-4.5" />}
               />
               <div className="px-4 pb-4">
@@ -223,7 +286,29 @@ export default function ScoreEntryPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.map((g) => {
+                      {grouped.flatMap(({ division, rows, recorded: doneHere, awaiting, needingScore }) => [
+                        showDivisionHeadings ? (
+                          <tr key={`head-${division}`}>
+                            <Td
+                              colSpan={5}
+                              className="bg-[rgb(var(--c-surface-soft))] py-2"
+                            >
+                              <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                                <span className="text-[13px] font-bold capitalize text-ink">
+                                  {division.replace(/-/g, " ")}
+                                </span>
+                                <span className="text-[11.5px] text-muted">
+                                  {needingScore === 0
+                                    ? "all byes"
+                                    : `${doneHere} of ${needingScore} recorded${
+                                        awaiting > 0 ? ` · ${awaiting} to enter` : " · all in"
+                                      }`}
+                                </span>
+                              </span>
+                            </Td>
+                          </tr>
+                        ) : null,
+                        ...rows.map((g) => {
                         const recorded = g.scoreA !== null;
                         const entry = draft[g.id] ?? { a: "", b: "" };
                         const bye = g.playerB === null;
@@ -239,12 +324,23 @@ export default function ScoreEntryPage() {
                               <span className="block truncate text-[12px] text-muted">
                                 {bye ? "Bye — no opponent" : `v ${nameOf(g.playerB)}`}
                               </span>
+                              {/*
+                                Why the engine put these two together, kept at publish. Staff
+                                get asked this at the table more than anything else, and until
+                                now nobody behind the desk had an answer either.
+                              */}
+                              {g.pairingReason ? (
+                                <span className="mt-0.5 block truncate text-[11.5px] text-faint" title={g.pairingReason}>
+                                  {g.pairingReason}
+                                </span>
+                              ) : null}
                             </Td>
                             <Td>
-                              {recorded ? (
+                              {bye ? (
+                                <span className="text-[13px] font-medium text-muted">—</span>
+                              ) : recorded ? (
                                 <span className="num text-[14px] font-bold text-ink">
-                                  {g.scoreA}
-                                  {bye ? "" : ` – ${g.scoreB}`}
+                                  {g.scoreA} – {g.scoreB}
                                 </span>
                               ) : (
                                 <span className="flex items-center gap-1.5">
@@ -256,19 +352,15 @@ export default function ScoreEntryPage() {
                                     aria-label={`Score for ${nameOf(g.playerA)}`}
                                     invalid={!!errors[g.id]}
                                   />
-                                  {bye ? null : (
-                                    <>
-                                      <span className="text-muted">–</span>
-                                      <Input
-                                        value={entry.b}
-                                        onChange={(e) => setField(g.id, "b", e.target.value)}
-                                        inputMode="numeric"
-                                        className="num w-20"
-                                        aria-label={`Score for ${nameOf(g.playerB)}`}
-                                        invalid={!!errors[g.id]}
-                                      />
-                                    </>
-                                  )}
+                                  <span className="text-muted">–</span>
+                                  <Input
+                                    value={entry.b}
+                                    onChange={(e) => setField(g.id, "b", e.target.value)}
+                                    inputMode="numeric"
+                                    className="num w-20"
+                                    aria-label={`Score for ${nameOf(g.playerB)}`}
+                                    invalid={!!errors[g.id]}
+                                  />
                                 </span>
                               )}
                               {errors[g.id] ? (
@@ -278,7 +370,9 @@ export default function ScoreEntryPage() {
                               ) : null}
                             </Td>
                             <Td>
-                              {recorded ? (
+                              {bye ? (
+                                <Badge tone="success">bye</Badge>
+                              ) : recorded ? (
                                 <span className="block">
                                   {/*
                                     A disputed board says so. It reads "recorded" only when
@@ -307,11 +401,13 @@ export default function ScoreEntryPage() {
                               )}
                             </Td>
                             <Td>
-                              {recorded ? (
-                                <span className="flex gap-1">
+                              {bye ? (
+                                <span className="text-[12.5px] text-muted">No score needed</span>
+                              ) : recorded ? (
+                                <span className="flex flex-wrap gap-1">
                                   <Button
                                     size="sm"
-                                    variant="ghost"
+                                    variant="secondary"
                                     disabled={working}
                                     onClick={() => setCorrecting(g)}
                                   >
@@ -331,9 +427,18 @@ export default function ScoreEntryPage() {
                                     size="sm"
                                     variant="ghost"
                                     disabled={working}
-                                    onClick={() => reopen(g)}
+                                    onClick={() => {
+                                      if (
+                                        !window.confirm(
+                                          `Clear the score on board ${g.board}?\n\nYou will need to enter it again.`,
+                                        )
+                                      ) {
+                                        return;
+                                      }
+                                      reopen(g);
+                                    }}
                                     icon={<Undo2 className="size-3.5" />}
-                                    aria-label={`Reopen board ${g.board}`}
+                                    aria-label={`Clear score on board ${g.board}`}
                                   />
                                 </span>
                               ) : (
@@ -349,7 +454,8 @@ export default function ScoreEntryPage() {
                             </Td>
                           </tr>
                         );
-                      })}
+                        }),
+                      ])}
                     </tbody>
                   </TableWrap>
                 )}

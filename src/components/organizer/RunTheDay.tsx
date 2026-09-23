@@ -59,7 +59,7 @@ export function RunTheDay({
    */
   const next =
     boardsTotal === 0
-      ? `Pair round ${round} and start the clock`
+      ? `Open round ${round} draw`
       : running
         ? `Round ${round} is running`
         : `Start round ${round} — ${format.roundMinutes} minutes`;
@@ -116,8 +116,9 @@ export function RunTheDay({
 
       <p className="mt-2.5 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted">
         <Clock className="mt-0.5 size-3 shrink-0" />
-        One press does the lot — the boards, the clock, the wall and every phone. The
-        television shows {format.roundMinutes} minutes because that is what is set here.
+        {boardsTotal === 0
+          ? "Opens the draw for you to check. Publishing puts boards on the wall; starting the clock is the next step."
+          : `Starts the clock for ${format.roundMinutes} minutes on the wall and every phone.`}
       </p>
     </div>
   );
