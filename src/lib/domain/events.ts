@@ -10,6 +10,7 @@
 import { PaymentMethod, PlayerCategory } from "./identity";
 import { ParticipationTrack } from "../firebase/schema";
 import { PriceRules, Rate } from "./pricing";
+import type { ActivityOption } from "./registrationParticipants";
 
 /* -------------------------------------------------------------------------- */
 /* Event lifecycle                                                             */
@@ -335,6 +336,15 @@ export interface PublicEvent {
    * pays the cheapest, never a stack.
    */
   rates?: Rate[];
+
+  /**
+   * The activities this event sells, where it sells more than one.
+   *
+   * An empty or absent list means one thing is on offer and the rate card prices it —
+   * which is every ordinary tournament. A list means the form asks which activity, prices
+   * the ticket from the chosen one, and asks who is doing what.
+   */
+  activities?: ActivityOption[];
 
   /**
    * Percentage off for a verified Alliance Française member.

@@ -4,12 +4,22 @@ import * as React from "react";
 import { Banknote, Check, Search, UserCheck } from "lucide-react";
 
 import { Badge, Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
+import { RoleGate } from "@/components/organizer/RoleGate";
 import { RosterGate } from "@/components/organizer/RosterGate";
+import { ParticipantLines, PaymentProofButton } from "@/components/organizer/RegistrationDetails";
+import { ProvisionalDraw } from "@/components/organizer/ProvisionalDraw";
+import { WalkInForm } from "@/components/organizer/WalkInForm";
+import { useActiveLock } from "@/lib/supabase/useActiveLock";
+import { useEventCategories } from "@/lib/supabase/useEventCategories";
+import { useGames } from "@/lib/supabase/useGames";
+import { useRoundTimer } from "@/lib/supabase/useRoundTimer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { useStore } from "@/lib/store/useStore";
 import {
   addLatePlayer,
+  answer,
+  waitingPlayers,
   decidePayment,
   field,
   importField,
@@ -39,10 +49,55 @@ export default function DeskPage() {
   const app = useStore();
   const currentEvent = useCurrentEvent();
   const roster = useRoster(currentEvent.eventId);
+  const { categories } = useEventCategories(currentEvent.eventId);
+  const activeLock = useActiveLock(currentEvent.eventId);
+  const games = useGames(currentEvent.eventId);
+  const clock = useRoundTimer(currentEvent.eventId, games.round);
+
+  /* Who is checked in with nobody to play — the desk's other headline number. */
+  const [waitingCount, setWaitingCount] = React.useState(0);
+  React.useEffect(() => {
+    if (games.round < 1) return;
+    let live = true;
+    (async () => {
+      const list = await waitingPlayers(currentEvent.eventId, games.round);
+      if (live) setWaitingCount(list.length);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [currentEvent.eventId, games.round, games.games, roster.players]);
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
 
   const term = query.trim().toLowerCase();
+
+  /*
+   * How full the room is, overall and by category.
+   *
+   * Counted from the roster this screen already holds rather than asked for separately, so
+   * the number beside the search box and the list underneath it can never disagree. Somebody
+   * who has withdrawn is not somebody still to arrive, so they are out of both totals.
+   */
+  const arrivals = React.useMemo(() => {
+    const playing = roster.players.filter((p) => p.checkIn !== "withdrawn");
+    const here = playing.filter((p) => p.checkIn === "checked-in").length;
+
+    const seen = new Map<string, { division: string; here: number; total: number }>();
+    for (const p of playing) {
+      const division = p.division || "no category";
+      const row = seen.get(division) ?? { division, here: 0, total: 0 };
+      row.total += 1;
+      if (p.checkIn === "checked-in") row.here += 1;
+      seen.set(division, row);
+    }
+
+    return {
+      here,
+      total: playing.length,
+      byCategory: [...seen.values()].sort((a, b) => a.division.localeCompare(b.division)),
+    };
+  }, [roster.players]);
 
   /*
    * Nothing until something is typed. A list of thirty-five people on a phone is a list
@@ -78,13 +133,18 @@ export default function DeskPage() {
         .slice(0, 12)
     : [];
 
-  const takeCash = async (recordId: string, name: string, amount: number | null) => {
+  const takeCash = async (
+    recordId: string,
+    name: string,
+    amount: number | null,
+    currency = "PKR",
+  ) => {
     setBusy(recordId);
     const written = await decidePayment({
       recordId,
       status: "verified",
       by: app.currentUser?.name ?? roster.signedInAs ?? "Desk",
-      note: amount === null ? "Cash taken at the desk" : `Cash taken at the desk — PKR ${amount}`,
+      note: amount === null ? "Cash taken at the desk" : `Cash taken at the desk — ${currency} ${amount}`,
     });
     setBusy(null);
 
@@ -99,16 +159,12 @@ export default function DeskPage() {
       description:
         amount === null
           ? "Recorded as paid. No amount was on file — set one on Payments."
-          : `${money(amount, "PKR")} recorded against your name.`,
+          : `${money(amount, currency)} recorded against your name.`,
       tone: "success",
     });
   };
 
-  const moveDivision = async (
-    recordId: string,
-    name: string,
-    division: "beginner" | "recreational" | "advanced",
-  ) => {
+  const moveDivision = async (recordId: string, name: string, division: string) => {
     setBusy(recordId);
     const written = await setDivision(
       recordId,
@@ -172,7 +228,28 @@ export default function DeskPage() {
      * already published, it declines for an event whose roster is not locked, and it says
      * nothing new for somebody already on the roster.
      */
-    const late = await addLatePlayer(currentEvent.eventId, recordId, app.currentUser?.name ?? "Desk");
+    /*
+     * Rolling entry: if a round is running, the desk decides whether this person joins it or
+     * starts with the next one. Asked only when the choice exists — a round that has ended,
+     * or no round at all, has only one answer, and asking would be a question with one
+     * button.
+     */
+    let joinCurrent = false;
+    if (games.round >= 1 && clock.phase !== "finished") {
+      const left = clock.phase === "running" ? ` (${clock.clock} left)` : "";
+      joinCurrent = window.confirm(
+        `${name} is checked in.\n\nJoin round ${games.round} now${left}?\n\n` +
+          `OK — find them an opponent in round ${games.round}.\n` +
+          `Cancel — they start from round ${games.round + 1}.`,
+      );
+    }
+
+    const late = await addLatePlayer(
+      currentEvent.eventId,
+      recordId,
+      app.currentUser?.name ?? "Desk",
+      joinCurrent,
+    );
 
     roster.reload();
     app.toast({
@@ -200,6 +277,18 @@ export default function DeskPage() {
   const collected = roster.registrations
     .filter((r) => r.paymentStatus === "verified")
     .reduce((sum, r) => sum + (numberField(r, "amountDue") ?? 0), 0);
+  const currency =
+    roster.registrations.find((r) => r.currency)?.currency ?? "PKR";
+
+  /*
+   * People with no category yet — the runbook sends the desk here when pairing is blocked.
+   * Shown before search so a volunteer does not have to guess who to look up.
+   */
+  const needsCategory = roster.registrations.filter((r) => {
+    if (r.registrationStatus === "rejected" || r.registrationStatus === "withdrawn") return false;
+    const stated = (field(r, "confirmedDivision") ?? field(r, "preferredDivision") ?? "").trim();
+    return !stated;
+  });
 
   return (
     <div className="mx-auto max-w-[720px]">
@@ -208,7 +297,109 @@ export default function DeskPage() {
         subtitle="Find somebody, take their cash, check them in. Built for a phone."
       />
 
+      <RoleGate need="desk">
       <RosterGate access={roster.access} loaded={roster.loaded}>
+        {/*
+          How the room is filling up, before anything else.
+          The desk is asked "how many are here?" more often than any other question, and it
+          was the one thing this screen could not answer without counting the list by hand.
+        */}
+        <Card className="mb-3 p-4">
+          {/*
+            The round first, because the desk is asked "has it started?" before anything
+            else, and the answer changes what checking somebody in means.
+          */}
+          {games.round >= 1 ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <p className="text-[15px] font-extrabold text-ink">Round {games.round}</p>
+                <Badge
+                  tone={
+                    clock.phase === "running" ? "critical" : clock.phase === "finished" ? "neutral" : "warning"
+                  }
+                >
+                  {clock.phase === "running"
+                    ? "LIVE"
+                    : clock.phase === "paused"
+                      ? "PAUSED"
+                      : clock.phase === "finished"
+                        ? "ENDED"
+                        : "NOT STARTED"}
+                </Badge>
+              </div>
+              <p className="num text-[20px] font-extrabold tabular-nums text-ink">{clock.clock}</p>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p className="text-[15px] font-extrabold text-ink">
+              Checked in: <span className="num">{arrivals.here}</span>
+              <span className="num text-muted"> / {arrivals.total}</span>
+            </p>
+            {waitingCount > 0 ? (
+              <p className="text-[13px] font-semibold text-warning-700">
+                <span className="num">{waitingCount}</span> waiting for an opponent
+              </p>
+            ) : null}
+          </div>
+          {arrivals.total - arrivals.here > 0 ? (
+            <p className="text-[12.5px] text-muted">{arrivals.total - arrivals.here} still to arrive</p>
+          ) : (
+            <p className="text-[12.5px] font-semibold text-success-700">Everybody is here</p>
+          )}
+
+          {arrivals.byCategory.length > 1 ? (
+            <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-2.5">
+              {arrivals.byCategory.map((c) => (
+                <p key={c.division} className="text-[12.5px] text-muted">
+                  <span className="font-semibold capitalize text-ink">
+                    {c.division.replace(/-/g, " ")}
+                  </span>{" "}
+                  <span className="num">
+                    {c.here}/{c.total}
+                  </span>
+                </p>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-3">
+            <WalkInForm
+              eventId={currentEvent.eventId}
+              categories={categories}
+              by={app.currentUser?.name ?? roster.signedInAs ?? "Desk"}
+              fee={0}
+              onAdded={(added) => {
+                roster.reload();
+                app.toast({
+                  title: `${added.name} added as #${added.playerNumber}`,
+                  description: `Checked in. Code ${added.checkInCode}.`,
+                  tone: "success",
+                });
+              }}
+            />
+          </div>
+        </Card>
+
+        {/*
+          Only while the door is still open. Once the roster is locked this is no longer a
+          guess that improves, and a card of provisional pairs beside a published round is
+          exactly how somebody ends up reading the wrong names out.
+        */}
+        <ProvisionalDraw
+          locked={activeLock.ids !== null}
+          divisions={categories.map((c) => c.id)}
+          players={roster.players
+            .filter((p) => p.checkIn === "checked-in")
+            .map((p) => ({
+              id: p.id,
+              fullName: p.fullName,
+              playerNumber: p.playerId,
+              division: p.division,
+              checkedInAt: p.checkInAt ?? "",
+            }))}
+        />
+
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -221,6 +412,60 @@ export default function DeskPage() {
 
         {!term ? (
           <>
+            {needsCategory.length > 0 ? (
+              <Card className="mt-4 border-warning-200">
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <p className="text-[14px] font-bold text-warning-700">
+                    {needsCategory.length === 1
+                      ? "1 player has no category"
+                      : `${needsCategory.length} players have no category`}
+                  </p>
+                  <p className="text-[12.5px] text-muted">Assign before pairing</p>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {needsCategory.map((r) => {
+                    const number =
+                      importField(r, "playerNumber") ?? field(r, "playerNumber") ?? "—";
+                    const working = busy === r.id;
+                    return (
+                      <div
+                        key={r.id}
+                        className="rounded-control bg-warning-050 px-3 py-2.5"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="num shrink-0 rounded-control px-2 py-0.5 text-[13px] font-extrabold"
+                            style={{ background: "rgba(216,172,90,0.18)", color: "#8A6A1F" }}
+                          >
+                            {number}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold text-ink">
+                            {r.fullName}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {(["beginner", "recreational", "advanced"] as const).map((d) => (
+                            <button
+                              key={d}
+                              type="button"
+                              disabled={working}
+                              onClick={() => void moveDivision(r.id, r.fullName, d)}
+                              className={cn(
+                                "rounded-control border-2 border-line bg-white px-3 py-1.5 text-[12.5px] font-bold capitalize text-ink transition-colors hover:border-primary/45",
+                                working && "opacity-50",
+                              )}
+                            >
+                              {d}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            ) : null}
+
             {/*
               What is left to collect, before anybody types anything.
               A volunteer's real question is "who still owes", not "where is this one person",
@@ -234,7 +479,7 @@ export default function DeskPage() {
                     : `${owing.length} still to pay`}
                 </p>
                 <p className="num text-[13px] text-muted">
-                  {money(collected, "PKR")} in · {money(owed, "PKR")} to come
+                  {money(collected, currency)} in · {money(owed, currency)} to come
                 </p>
               </div>
 
@@ -266,7 +511,7 @@ export default function DeskPage() {
                         <Button
                           variant="secondary"
                           disabled={working}
-                          onClick={() => void takeCash(r.id, r.fullName, amount)}
+                          onClick={() => void takeCash(r.id, r.fullName, amount, r.currency)}
                           className="shrink-0"
                         >
                           {working ? "…" : "Paid"}
@@ -314,6 +559,12 @@ export default function DeskPage() {
                 r.paymentStatus === "receipt-uploaded" ||
                 r.paymentStatus === "processing";
               const claimsPaid = underReview && amount !== null;
+              /*
+               * A reduced rate rests on something the desk has to see: a membership card, or
+               * the other two people in a group. The amount alone does not say which, so a
+               * volunteer handed PKR 800 has nothing to check it against.
+               */
+              const rateClaim = answer(r, "rateNeedsCheck") === "Yes" ? answer(r, "rateApplied") : undefined;
               const here = Boolean(r.checkedInAt);
               const working = busy === r.id;
 
@@ -358,15 +609,45 @@ export default function DeskPage() {
                   </div>
 
                   {/*
+                    Who is doing what, when the ticket covers two people.
+                    A combo ticket can name a player and a painter, and the volunteer has to
+                    be able to say which of the two in front of them is on the board sheet.
+                  */}
+                  <ParticipantLines reg={r} className="mt-3" showPayment />
+
+                  {/*
                     Said next to the button that would take the money, because that is where
                     the mistake happens. It does not disable anything — the desk may well have
                     decided the receipt is no good — it just refuses to let "Cash received" be
                     the obvious next tap for somebody who says they have already paid.
                   */}
                   {claimsPaid ? (
-                    <p className="mt-3 text-[12.5px] leading-relaxed text-warning">
-                      Says they paid {money(amount, r.currency)}, not yet confirmed. Check the
-                      receipt on Payments before taking cash.
+                    <div className="mt-3">
+                      <p className="text-[12.5px] leading-relaxed text-warning">
+                        Says they paid {money(amount, r.currency)}, not yet confirmed. Check the
+                        receipt before taking cash.
+                      </p>
+                      {/*
+                        The receipt itself, here rather than on another screen.
+                        This message used to say "check the receipt on Payments", which meant
+                        leaving the desk queue mid-check-in with somebody standing in front of
+                        you. The file is one press away instead.
+                      */}
+                      <PaymentProofButton
+                        reg={r}
+                        className="mt-2"
+                        onProblem={(description) =>
+                          app.toast({ title: "Receipt not opened", description, tone: "warning" })
+                        }
+                      />
+                    </div>
+                  ) : null}
+
+                  {rateClaim && !paid ? (
+                    <p className="mt-3 text-[12.5px] leading-relaxed text-muted">
+                      Claimed the {rateClaim.toLowerCase()} rate
+                      {answer(r, "groupName") ? ` with ${answer(r, "groupName")}` : ""}. Check it
+                      before taking the money.
                     </p>
                   ) : null}
 
@@ -380,7 +661,7 @@ export default function DeskPage() {
                         variant="primary"
                         icon={<Banknote className="size-4" />}
                         disabled={working}
-                        onClick={() => void takeCash(r.id, r.fullName, amount)}
+                        onClick={() => void takeCash(r.id, r.fullName, amount, r.currency)}
                         className={cn("flex-1", "min-w-[9rem]")}
                       >
                         {working ? "Recording…" : "Cash received"}
@@ -421,7 +702,13 @@ export default function DeskPage() {
                       Category
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {(["beginner", "recreational", "advanced"] as const).map((d) => {
+                      {/*
+                        The event's own categories, not a fixed three. This list was
+                        hardcoded, so a four-category event had a desk that could never put
+                        anybody into Masters.
+                      */}
+                      {categories.map((c) => {
+                        const d = c.id;
                         const current = (field(r, "confirmedDivision") ?? field(r, "preferredDivision")) === d;
                         return (
                           <button
@@ -438,7 +725,7 @@ export default function DeskPage() {
                             )}
                             aria-pressed={current}
                           >
-                            {d}
+                            {c.name}
                           </button>
                         );
                       })}
@@ -450,6 +737,7 @@ export default function DeskPage() {
           </div>
         )}
       </RosterGate>
+      </RoleGate>
     </div>
   );
 }

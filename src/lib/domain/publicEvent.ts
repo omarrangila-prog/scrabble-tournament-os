@@ -15,27 +15,21 @@
 import type { StoredEvent } from "@/lib/supabase/events";
 
 import { eventTimeLine } from "./eventTime";
-import { PublicEvent, EventState } from "./events";
+import { EVENT_STATE_LABEL, PublicEvent, EventState } from "./events";
 import type { PlayerCategory } from "./identity";
+import { activityOptionsFrom } from "./registrationParticipants";
 
-const EVENT_STATES: EventState[] = [
-  "draft",
-  "registration-open",
-  "registration-closed",
-  "preparing",
-  "check-in-open",
-  "check-in-closed",
-  "round-published",
-  "round-active",
-  "result-entry",
-  "break",
-  "final-review",
-  "completed",
-  "archived",
-];
-
+/*
+ * Read off the label map rather than listed again.
+ *
+ * This file kept its own copy of the thirteen state names. Four more were added elsewhere
+ * and this copy was not updated, so an event in `round-preview` or `result-review` read
+ * back as `draft` — and a draft has no public page at all. The label map is typed
+ * `Record<EventState, string>`, so the compiler keeps it complete and this cannot drift
+ * again.
+ */
 function stateOf(value: string): EventState {
-  return (EVENT_STATES as string[]).includes(value) ? (value as EventState) : "draft";
+  return Object.hasOwn(EVENT_STATE_LABEL, value) ? (value as EventState) : "draft";
 }
 
 /**
@@ -82,6 +76,19 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
     paymentInstructions: d.paymentInstructions,
     terms: d.terms,
     feeDetails: d.feeDetails,
+    /*
+     * The rate card, so a database event prices the same way a seeded one does. Without
+     * this the registration form fell back to the single `fee` and a reduced rate the
+     * organiser had set was charged at the regular price.
+     */
+    rates: d.rates,
+    /*
+     * What this event sells, where it sells more than Scrabble. Read rather than assumed:
+     * the three Cafe Leap tickets used to be an array inside the registration form, keyed
+     * off the event slug, so the prices a participant was charged could not be changed by
+     * anybody running the event.
+     */
+    activities: activityOptionsFrom(d.activities),
     mapsUrl: d.mapsUrl,
     mapCoords: d.mapCoords,
 

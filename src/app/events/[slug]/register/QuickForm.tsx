@@ -1,16 +1,41 @@
 "use client";
 
 import * as React from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, FileText, ImageIcon, Loader2, Paperclip, X } from "lucide-react";
 
 import type { PublicEvent } from "@/lib/domain/events";
 import {
+  checkProofFile,
+  megabytes,
+  PROOF_ACCEPT,
+  proofRequired,
+  type PaymentChoice,
+} from "@/lib/domain/paymentProof";
+import {
   cheaperRateHint,
+  priceActivity,
   priceRegistration,
   rateCardFor,
   rateNeedsVerification,
+  type ActivityPrice,
   type RateContext,
 } from "@/lib/domain/pricing";
+import {
+  coversTwoPeople,
+  EMPTY_DETAILS,
+  EMPTY_SCRABBLE,
+  needsPaintingParticipant,
+  needsScrabbleParticipant,
+  participantProblems,
+  primaryActivity,
+  primaryParticipant,
+  resolveParticipants,
+  type ActivityChoice,
+  type ParticipantDetails,
+  type ParticipantField,
+  type ResolvedParticipants,
+  type ScrabbleParticipant,
+} from "@/lib/domain/registrationParticipants";
 import { useEventCategories } from "@/lib/supabase/useEventCategories";
 import { cn } from "@/lib/utils";
 
@@ -21,36 +46,47 @@ import { cn } from "@/lib/utils";
  * review page. This asks what the organiser actually asks for, in the order they ask it, and
  * submits from the same screen it started on.
  *
- * Everything that varies between events — the categories, the bank details, the rate card,
- * the terms somebody is agreeing to — is read from the event rather than written in here, so
- * running a different tournament is a Settings change and not a code change.
+ * Everything that varies between events — the categories, the activities, the bank details,
+ * the rate card, the terms somebody is agreeing to — is read from the event rather than
+ * written in here, so running a different tournament is a Settings change and not a code
+ * change.
+ *
+ * The order of the questions is the order somebody can answer them. Which activity comes
+ * first, because it decides whose names are asked for; the names come next, under headings
+ * that say which activity each person is doing; and the money comes after both, because the
+ * ticket price depends on the first answer.
  */
 
-export type ActivityChoice = "painting" | "scrabble" | "both";
+export type { ActivityChoice };
 
 export interface QuickRegistration {
+  /**
+   * The name the registration is filed under: the Scrabble player where there is one.
+   * The roster, the pairings, the player number and the certificate all follow it.
+   */
   fullName: string;
   age: string;
   mobile: string;
   category: string;
+  /** The category as it is written on the event, so the desk reads a name and not an id. */
+  categoryLabel: string;
   /** Claimed, not verified — the desk checks it. Earns the member rate where one exists. */
   psaMember: boolean;
-  /** Three or more registering together, where the event offers a rate for it. */
-  groupOfThree: boolean;
-  /** Who they are registering with, so the desk can match the group up. */
-  groupName: string;
+  /** How they said they will pay. */
+  payment: PaymentChoice;
+  /** The same answer as `payment`, in the shape the registration record already stores. */
   payAtVenue: boolean;
+  /** The receipt, when one was required. Uploaded by the caller, not by the form. */
+  proofFile: File | null;
   heardAbout: string;
   photoConsent: boolean;
   termsAccepted: boolean;
-  /** Painting, Scrabble, or the combo — Cafe Leap workshop form only. */
+  /** Painting, Scrabble, or both — only where the event sells more than one thing. */
   activity?: ActivityChoice;
-  /** The chair choice as labelled on the form — Cafe Leap workshop form only. */
-  chairs?: string;
-  /** Free text when chairs is "Other". */
-  chairsOther?: string;
-  /** How many people the quote is for — Cafe Leap workshop form only. */
-  chairCount?: number;
+  /** How the event names that activity, e.g. "Scrabble Tournament". */
+  activityLabel?: string;
+  /** Who is doing what. A combo names two people, because the activities run together. */
+  participants: ResolvedParticipants;
   /**
    * The price as the participant was shown it.
    *
@@ -75,20 +111,6 @@ const HEARD_ABOUT = [
   "Other",
 ];
 
-const ACTIVITIES: { key: ActivityChoice; label: string; perPerson: number; rateLabel: string }[] = [
-  { key: "painting", label: "Painting", perPerson: 1000, rateLabel: "Paint" },
-  { key: "scrabble", label: "Scrabble Tournament", perPerson: 1000, rateLabel: "Scrabble" },
-  { key: "both", label: "BOTH!", perPerson: 1800, rateLabel: "Combo Deal" },
-];
-
-const CHAIR_OPTIONS = [
-  { key: "1", label: "Just for me", count: 1 as number | null },
-  { key: "2", label: "2 chairs", count: 2 as number | null },
-  { key: "3", label: "3 chairs", count: 3 as number | null },
-  { key: "4+", label: "4 or more chairs", count: null },
-  { key: "other", label: "Other", count: null },
-];
-
 export function QuickForm({
   event,
   saving,
@@ -102,162 +124,258 @@ export function QuickForm({
 }) {
   const { categories, loaded } = useEventCategories(event.id);
 
-  const [fullName, setFullName] = React.useState("");
-  const [age, setAge] = React.useState("");
-  const [mobile, setMobile] = React.useState("");
-  const [activity, setActivity] = React.useState<ActivityChoice | "">("");
-  const [chairs, setChairs] = React.useState("");
-  const [chairsOther, setChairsOther] = React.useState("");
-  const [chairCountInput, setChairCountInput] = React.useState("");
-  const [category, setCategory] = React.useState("");
+  const activities = event.activities ?? [];
+  /*
+   * A single activity is not a choice. Configuring one is a way of saying "this event sells
+   * a painting seat" rather than a question worth putting on a form.
+   */
+  const asksActivity = activities.length > 1;
+
+  const [activity, setActivity] = React.useState<ActivityChoice | "">(
+    activities.length === 1 ? activities[0].key : "",
+  );
+  const [scrabble, setScrabble] = React.useState<ScrabbleParticipant>(EMPTY_SCRABBLE);
+  const [painting, setPainting] = React.useState<ParticipantDetails>(EMPTY_DETAILS);
   const [psaMember, setPsaMember] = React.useState<boolean | null>(null);
-  const [groupOfThree, setGroupOfThree] = React.useState<boolean | null>(null);
-  const [groupName, setGroupName] = React.useState("");
-  const [payAtVenue, setPayAtVenue] = React.useState<boolean | null>(null);
+  const [payment, setPayment] = React.useState<PaymentChoice | null>(null);
+  const [proofFile, setProofFile] = React.useState<File | null>(null);
+  const [proofProblem, setProofProblem] = React.useState<string | null>(null);
+  /*
+   * Bumped to clear the file input.
+   *
+   * A file input keeps its own value, and nothing but the element itself may clear it — so
+   * removing an attachment and choosing the same file again fired no change event and the
+   * receipt silently did not come back. Changing the key remounts the input empty, which is
+   * the one way to reset it that does not reach into the DOM during a render.
+   */
+  const [proofNonce, setProofNonce] = React.useState(0);
   const [heardAbout, setHeardAbout] = React.useState("");
   const [photoConsent, setPhotoConsent] = React.useState<boolean | null>(null);
   const [termsAccepted, setTermsAccepted] = React.useState(false);
   const [touched, setTouched] = React.useState(false);
 
   /*
-   * The Repeat Table workshop questions (activity, chairs, photo wording) belong on
-   * Cafe Leap only. Other events keep the Scrabble registration form as it was.
+   * The playful wording on the last question belongs to The Repeat Table's workshop and
+   * nowhere else. Everything structural — which activities exist, what they cost, who is
+   * asked for — now comes from the event, so this is the only thing left keyed to a slug.
    */
   const workshop = event.slug === "alphabattle-cafe-leap";
 
-  const needsScrabble = !workshop || activity === "scrabble" || activity === "both";
+  /* With no activities configured there is one thing to enter, and it is the tournament. */
+  const effectiveActivity: ActivityChoice | "" = activities.length === 0 ? "scrabble" : activity;
+
+  const wantsScrabble = needsScrabbleParticipant(effectiveActivity);
+  const wantsPainting = activities.length > 0 && needsPaintingParticipant(effectiveActivity);
+  const twoPeople = coversTwoPeople(effectiveActivity);
+  const primary = primaryActivity(effectiveActivity);
 
   /* One category means no choice to make — only when Scrabble is involved. */
-  const chosen =
-    needsScrabble
-      ? category || (categories.length === 1 ? categories[0].id : "")
-      : "";
+  const chosenCategory = wantsScrabble
+    ? scrabble.category || (categories.length === 1 ? categories[0].id : "")
+    : "";
 
-  const activityRate = ACTIVITIES.find((a) => a.key === activity) ?? null;
+  const activityRate = activities.find((a) => a.key === effectiveActivity) ?? null;
 
-  const chairsNeedsCount = chairs === "4+" || chairs === "other";
-  const fixedChairCount = CHAIR_OPTIONS.find((c) => c.key === chairs)?.count ?? null;
-  const parsedChairCount = Number(chairCountInput);
-  const chairCount = chairsNeedsCount
-    ? Number.isFinite(parsedChairCount) && parsedChairCount >= (chairs === "4+" ? 4 : 1)
-      ? Math.floor(parsedChairCount)
-      : 0
-    : fixedChairCount ?? 0;
+  /* ---- Pricing --------------------------------------------------------- */
 
-  const rateCard = rateCardFor(event);
-  const memberRate = needsScrabble ? rateCard.find((r) => r.id === "member") ?? null : null;
-  const memberBody = (memberRate?.label ?? "").replace(/ member$/i, "").trim() || "PSA";
-  const groupRate = needsScrabble
-    ? rateCard.find((r) => r.minGroupSize && r.minGroupSize > 1) ?? null
-    : null;
+  /*
+   * Group rates are no longer offered.
+   *
+   * They were earned by ticking "I am registering with three or more", which is a claim the
+   * form cannot check and the desk never had the other two names to settle. The question has
+   * been removed, so a bracket that can only be reached by answering it would appear on
+   * every rate card struck through, for a reason nobody can act on.
+   */
+  const rateCard = rateCardFor(event).filter((r) => !r.minGroupSize);
 
   const [pricedAt] = React.useState(() => new Date().toISOString());
 
   const rateContext: RateContext = {
     isMember: psaMember === true,
-    groupSize: groupOfThree === true && groupRate?.minGroupSize ? groupRate.minGroupSize : 1,
+    groupSize: 1,
     at: pricedAt,
   };
 
   const priced = priceRegistration(rateCard, rateContext);
-  const cheaper = needsScrabble
-    ? cheaperRateHint(priced, rateContext, event.currency ?? "PKR")
-    : null;
 
   /*
-   * Cafe Leap: ticket = activity × chairs.
-   * Everywhere else: the event rate card, as before.
+   * An event that sells activities prices each of them on its own brackets; everywhere else
+   * the event's rate card decides. Registration is per person either way — a second entrant
+   * fills the form again.
    */
-  const perPerson = workshop ? (activityRate?.perPerson ?? 0) : priced.perPerson;
-  const quotedTotal = workshop ? perPerson * Math.max(0, chairCount) : priced.perPerson;
-  const standardAmount = rateCard.find((r) => r.id === "standard")?.amount ?? event.fee;
-  const quotedRateId = workshop ? (activityRate?.key ?? "") : priced.applied.id;
-  const quotedRateLabel = workshop
-    ? activityRate && chairCount > 0
-      ? `${activityRate.rateLabel} × ${chairCount} ${chairCount === 1 ? "chair" : "chairs"}`
-      : activityRate?.rateLabel ?? ""
+  const usingActivityPrice = activities.length > 0;
+
+  /* Every activity priced, so the whole board can be shown side by side, not just the one
+     chosen — somebody deciding between them is comparing two columns. */
+  const activityPrices = new Map<string, ActivityPrice>(
+    activities.map((a) => [
+      a.key,
+      priceActivity(a, { isMember: psaMember === true, at: pricedAt, payment }),
+    ]),
+  );
+  const chosenPrice = activityRate ? activityPrices.get(activityRate.key) ?? null : null;
+
+  /*
+   * The lowest price each activity can actually be had for today.
+   *
+   * The picker is the first question, so it cannot know whether somebody is a member or how
+   * they will pay — and printing the regular price there said "PKR 1,250 per person" above a
+   * panel that was charging 800, which is the form contradicting itself on the one number
+   * people are reading it for. Priced at the most favourable combination, which is what
+   * "from" means, and it moves with the early bird closing on its own.
+   */
+  const activityFloors = new Map<string, number>(
+    activities.map((a) => [
+      a.key,
+      priceActivity(a, { isMember: true, at: pricedAt, payment: "online" }).amount,
+    ]),
+  );
+
+  /*
+   * The membership question, and what it is worth.
+   *
+   * A member price is the reason a rated player fills this in at all, so where one exists it
+   * is named. It used to say "Members pay PKR 800" above a ticket the answer had no effect
+   * on, because the activity price ignored it — the brackets now live on the activity, so
+   * the two cannot disagree.
+   */
+  const memberActivityRate = activityRate?.rates?.find((r) => r.id === "member") ?? null;
+  const memberEventRate = wantsScrabble ? rateCard.find((r) => r.id === "member") ?? null : null;
+  const memberRate = usingActivityPrice ? memberActivityRate : memberEventRate;
+  const memberBody = (memberRate?.label ?? "").replace(/ member$/i, "").trim() || "PSA";
+
+  const cheaper = usingActivityPrice
+    ? null
+    : cheaperRateHint(priced, rateContext, event.currency ?? "PKR");
+
+  const quotedTotal = usingActivityPrice ? (chosenPrice?.amount ?? 0) : priced.perPerson;
+  const standardAmount = usingActivityPrice
+    ? (chosenPrice?.regular ?? 0)
+    : rateCard.find((r) => r.id === "standard")?.amount ?? event.fee;
+  const quotedRateId = usingActivityPrice
+    ? `${activityRate?.key ?? ""}:${chosenPrice?.id ?? ""}`
+    : priced.applied.id;
+  const quotedRateLabel = usingActivityPrice
+    ? [activityRate?.rateLabel, chosenPrice?.label].filter(Boolean).join(" · ")
     : priced.applied.label;
-  const quotedNeedsCheck = workshop ? false : rateNeedsVerification(priced.applied);
+  const quotedNeedsCheck = usingActivityPrice
+    ? Boolean(chosenPrice?.needsCheck)
+    : rateNeedsVerification(priced.applied);
 
   const money = (n: number) => `${event.currency ?? "PKR"} ${n.toLocaleString("en-PK")}`;
 
-  const nameOk = fullName.trim().length >= 2;
-  const mobileOk = mobile.replace(/\D/g, "").length >= 10;
-  const ageNumber = Number(age);
-  const ageOk = age.trim() !== "" && Number.isFinite(ageNumber) && ageNumber >= 3 && ageNumber <= 110;
-  const activityOk = !workshop || activity !== "";
-  const chairsOk = !workshop || chairs !== "";
-  const chairsOtherOk = !workshop || chairs !== "other" || chairsOther.trim().length >= 2;
-  const chairCountOk =
-    !workshop ||
-    (chairCount > 0 && (!chairsNeedsCount || (chairs === "4+" ? chairCount >= 4 : chairCount >= 1)));
-  const categoryOk = !needsScrabble || chosen !== "";
+  /* ---- What is still missing ------------------------------------------- */
+
+  const problems = participantProblems(
+    {
+      activity: (effectiveActivity || "scrabble") as ActivityChoice,
+      scrabble: { ...scrabble, category: chosenCategory },
+      painting,
+    },
+    { categoryRequired: wantsScrabble && categories.length > 0 },
+  );
+  const problemFor = (field: ParticipantField) => problems.find((p) => p.field === field)?.message;
+
+  const activityOk = !asksActivity || activity !== "";
+  const payOk = payment !== null;
+  const proofOk = !proofRequired(payment) || proofFile !== null;
   const psaOk = !memberRate || psaMember !== null;
-  const groupOk = !groupRate || groupOfThree !== null;
-  const groupNameOk =
-    !groupRate || groupOfThree !== true || groupName.trim().length >= 2;
-  const payOk = payAtVenue !== null;
   const heardOk = heardAbout !== "";
   const consentOk = photoConsent !== null;
   const termsOk = !event.terms || termsAccepted;
 
   const ready =
-    nameOk &&
-    ageOk &&
-    mobileOk &&
     activityOk &&
-    chairsOk &&
-    chairsOtherOk &&
-    chairCountOk &&
-    categoryOk &&
+    problems.length === 0 &&
     psaOk &&
-    groupOk &&
-    groupNameOk &&
     payOk &&
+    proofOk &&
     heardOk &&
     consentOk &&
     termsOk;
 
+  /* ---- Submitting ------------------------------------------------------ */
+
   const submit = () => {
     setTouched(true);
     if (!ready || saving) return;
-    if (workshop && !activityRate) return;
+    if (usingActivityPrice && !activityRate) return;
+
+    const resolved = resolveParticipants({
+      activity: (effectiveActivity || "scrabble") as ActivityChoice,
+      scrabble: { ...scrabble, category: chosenCategory },
+      painting,
+    });
+    const lead = primaryParticipant(resolved);
+
     onSubmit({
-      fullName: fullName.trim(),
-      age: age.trim(),
-      mobile: mobile.trim(),
-      category: chosen,
+      fullName: lead.fullName,
+      age: lead.age,
+      mobile: lead.phone,
+      category: chosenCategory,
+      categoryLabel: categories.find((c) => c.id === chosenCategory)?.name ?? "",
       psaMember: psaMember === true,
-      groupOfThree: groupOfThree === true,
-      groupName: groupName.trim(),
-      payAtVenue: payAtVenue === true,
+      payment: payment as PaymentChoice,
+      payAtVenue: payment !== "online",
+      proofFile,
       heardAbout,
       photoConsent: photoConsent === true,
       termsAccepted,
-      ...(workshop
+      ...(activities.length > 0
         ? {
-            activity: activity as ActivityChoice,
-            chairs: CHAIR_OPTIONS.find((c) => c.key === chairs)?.label ?? chairs,
-            chairsOther: chairs === "other" ? chairsOther.trim() : "",
-            chairCount,
+            activity: effectiveActivity as ActivityChoice,
+            activityLabel: activityRate?.label ?? "",
           }
         : {}),
+      participants: resolved,
       quotedAmount: quotedTotal,
-      quotedStandardAmount: workshop ? quotedTotal : standardAmount,
+      quotedStandardAmount: usingActivityPrice ? quotedTotal : standardAmount,
       quotedRateId,
       quotedRateLabel,
       quotedRateNeedsCheck: quotedNeedsCheck,
     });
   };
 
-  const problem = (show: boolean, message: string) =>
-    touched && show ? <p className="mt-1 text-[12.5px] text-critical">{message}</p> : null;
+  /* ---- The receipt ------------------------------------------------------ */
 
-  const field = "mt-1.5 w-full rounded-control border border-line bg-[rgb(var(--c-surface))] px-3.5 py-3 text-[16px] outline-none focus:border-primary";
+  const pickProof = (file: File | null) => {
+    if (!file) {
+      setProofFile(null);
+      setProofProblem(null);
+      return;
+    }
+
+    const allowed = checkProofFile({ name: file.name, type: file.type, size: file.size });
+    if (!allowed.ok) {
+      setProofFile(null);
+      setProofProblem(allowed.message);
+      return;
+    }
+
+    setProofFile(file);
+    setProofProblem(null);
+  };
+
+  const clearProof = () => {
+    setProofFile(null);
+    setProofProblem(null);
+    setProofNonce((n) => n + 1);
+  };
+
+  /* ---- Shared styling --------------------------------------------------- */
+
+  const problem = (message: string | undefined | false, show = true) =>
+    touched && show && message ? (
+      <p className="mt-1 text-[12.5px] text-critical">{message}</p>
+    ) : null;
+
+  const field =
+    "mt-1.5 w-full rounded-control border border-line bg-[rgb(var(--c-surface))] px-3.5 py-3 text-[16px] outline-none focus:border-primary";
   const heading = "block text-[14px] font-semibold text-ink";
+  const hint = "text-[12.5px] leading-relaxed text-muted";
 
   const choices = (
-    options: { key: string; label: string }[],
+    options: { key: string; label: string; note?: string }[],
     selected: string,
     pick: (key: string) => void,
     columns = "sm:grid-cols-2",
@@ -284,18 +402,18 @@ export function QuickForm({
           >
             {selected === o.key ? <Check className="size-3" strokeWidth={3} /> : null}
           </span>
-          <span className="min-w-0">{o.label}</span>
+          <span className="min-w-0">
+            <span className="block">{o.label}</span>
+            {o.note ? (
+              <span className="block text-[12px] font-medium opacity-80">{o.note}</span>
+            ) : null}
+          </span>
         </button>
       ))}
     </div>
   );
 
-  const yesNo = (
-    selected: boolean | null,
-    pick: (v: boolean) => void,
-    yes = "Yes",
-    no = "No",
-  ) =>
+  const yesNo = (selected: boolean | null, pick: (v: boolean) => void, yes = "Yes", no = "No") =>
     choices(
       [
         { key: "yes", label: yes },
@@ -304,6 +422,80 @@ export function QuickForm({
       selected === null ? "" : selected ? "yes" : "no",
       (k) => pick(k === "yes"),
     );
+
+  /*
+   * One person's details. Used for both participants, so the Scrabble player and the
+   * painter are asked the same things in the same order and neither can drift.
+   */
+  const personFields = (
+    idPrefix: string,
+    value: ParticipantDetails,
+    change: (next: Partial<ParticipantDetails>) => void,
+    phoneRequired: boolean,
+    nameProblem: string | undefined,
+    ageProblem: string | undefined,
+    phoneProblem: string | undefined,
+  ) => (
+    <div className="space-y-3">
+      <div>
+        <label htmlFor={`${idPrefix}-name`} className={heading}>
+          Full name
+        </label>
+        <input
+          id={`${idPrefix}-name`}
+          value={value.fullName}
+          onChange={(e) => change({ fullName: e.target.value })}
+          autoComplete={idPrefix === "scrabble" ? "name" : "off"}
+          placeholder="e.g. Ayesha Khan"
+          className={field}
+        />
+        {problem(nameProblem)}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label htmlFor={`${idPrefix}-age`} className={heading}>
+            Age
+          </label>
+          <input
+            id={`${idPrefix}-age`}
+            value={value.age}
+            onChange={(e) => change({ age: e.target.value })}
+            inputMode="numeric"
+            placeholder="e.g. 24"
+            className={cn(field, "num")}
+          />
+          {problem(ageProblem)}
+        </div>
+
+        <div>
+          <label htmlFor={`${idPrefix}-phone`} className={heading}>
+            Cell number{" "}
+            {phoneRequired ? null : (
+              <span className="font-medium text-muted">(only if different)</span>
+            )}
+          </label>
+          <input
+            id={`${idPrefix}-phone`}
+            value={value.phone}
+            onChange={(e) => change({ phone: e.target.value })}
+            inputMode="tel"
+            autoComplete={phoneRequired ? "tel" : "off"}
+            placeholder="03xx xxxxxxx"
+            className={cn(field, "num")}
+          />
+          {problem(phoneProblem)}
+        </div>
+      </div>
+
+      {phoneRequired ? (
+        <p className={hint}>This is where we send the player number.</p>
+      ) : null}
+    </div>
+  );
+
+  const sectionCard = "rounded-control border border-line bg-[rgb(var(--c-surface))] p-3.5 sm:p-4";
+  const sectionTitle = "text-[13px] font-bold uppercase tracking-[0.1em] text-primary";
 
   return (
     <form
@@ -314,226 +506,263 @@ export function QuickForm({
       className="space-y-5"
       noValidate
     >
-      <div>
-        <label htmlFor="q-name" className={heading}>
-          Your name
-        </label>
-        <input
-          id="q-name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          autoComplete="name"
-          placeholder="e.g. Ayesha Khan"
-          className={field}
-        />
-        {problem(!nameOk, "Please give the name you want on the board sheet.")}
-      </div>
-
-      <div>
-        <label htmlFor="q-age" className={heading}>
-          Your age
-        </label>
-        <input
-          id="q-age"
-          value={age}
-          onChange={(e) => setAge(e.target.value)}
-          inputMode="numeric"
-          placeholder="e.g. 24"
-          className={cn(field, "num")}
-        />
-        {problem(!ageOk, "Please give your age.")}
-      </div>
-
-      <div>
-        <label htmlFor="q-mobile" className={heading}>
-          Your cell number
-        </label>
-        <p className="text-[12.5px] text-muted">This is how we send your player number.</p>
-        <input
-          id="q-mobile"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value)}
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="03xx xxxxxxx"
-          className={cn(field, "num")}
-        />
-        {problem(!mobileOk, "Please give a cell number we can reach you on.")}
-      </div>
-
-      {workshop ? (
+      {/* ---- Which activity ------------------------------------------- */}
+      {asksActivity ? (
         <div>
           <span className={heading}>Which activity are you signing up for?</span>
           {choices(
-            ACTIVITIES.map((a) => ({ key: a.key, label: a.label })),
+            activities.map((a) => ({
+              key: a.key,
+              label: a.label,
+              /*
+               * What it can be had for, and what the ticket covers where that is not obvious.
+               * "from" whenever the brackets can take it below the regular price, so the
+               * picker never advertises a number the panel underneath contradicts.
+               */
+              note: [
+                (activityFloors.get(a.key) ?? a.price) < a.price
+                  ? `from ${money(activityFloors.get(a.key) ?? a.price)}`
+                  : `${money(a.price)} per person`,
+                a.note,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+            })),
             activity,
             (k) => setActivity(k as ActivityChoice),
             "sm:grid-cols-1",
           )}
-          <div className="mt-2.5 space-y-1 rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[12.5px] leading-relaxed text-muted">
-            <p>Paint: PKR 1000 per person</p>
-            <p>Scrabble: PKR 1000 per person</p>
-            <p>Combo Deal: PKR 1800 per person</p>
-            <p className="pt-1 text-ink">
-              This ticket price is inclusive of all art materials, tea, &amp; snacks.
-            </p>
-          </div>
-          {problem(!activityOk, "Please choose an activity.")}
+          {problem("Please choose an activity.", !activityOk)}
         </div>
       ) : null}
 
-      {workshop ? (
-        <div>
-          <span className={heading}>How many chairs should we save?</span>
-          {choices(
-            CHAIR_OPTIONS.map((c) => ({ key: c.key, label: c.label })),
-            chairs,
-            (k) => {
-              setChairs(k);
-              if (k !== "other") setChairsOther("");
-              if (k !== "4+" && k !== "other") setChairCountInput("");
-            },
-            "sm:grid-cols-1",
-          )}
-          {problem(!chairsOk, "Please tell us how many chairs to save.")}
-
-          {chairs === "other" ? (
+      {/* ---- Who is taking part ---------------------------------------- */}
+      {effectiveActivity === "" ? (
+        <p className={cn(hint, "rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3")}>
+          Choose an activity above and we will ask who is taking part.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {twoPeople ? (
             <>
-              <input
-                value={chairsOther}
-                onChange={(e) => setChairsOther(e.target.value)}
-                placeholder="Please specify"
-                aria-label="Other chair arrangement"
-                className={field}
-              />
-              {problem(!chairsOtherOk, "Please say what you need.")}
+              <span className={heading}>Participant details</span>
+              {/*
+                Said before the fields rather than as an error after them.
+                The combo is a pair ticket: the tournament and the workshop run at the same
+                hour in the same room, so one person cannot take both halves — and somebody
+                who reaches the second set of name fields not expecting them will otherwise
+                type the same name twice and only find out at the door.
+              */}
+              <p className={cn(hint, "rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3")}>
+                Both activities run at the same time, so this ticket is for{" "}
+                <span className="font-semibold text-ink">two people</span> — one plays Scrabble
+                and the other paints.
+              </p>
+              {problem(problemFor("samePerson"))}
             </>
           ) : null}
 
-          {chairsNeedsCount ? (
-            <>
-              <label htmlFor="q-chair-count" className={cn(heading, "mt-3")}>
-                How many people is that?
-              </label>
-              <input
-                id="q-chair-count"
-                value={chairCountInput}
-                onChange={(e) => setChairCountInput(e.target.value)}
-                inputMode="numeric"
-                placeholder={chairs === "4+" ? "e.g. 5" : "e.g. 2"}
-                className={cn(field, "num")}
-              />
-              {problem(
-                !chairCountOk,
-                chairs === "4+"
-                  ? "Please enter 4 or more."
-                  : "Please enter how many people to quote for.",
-              )}
-            </>
+          {wantsScrabble ? (
+            <div className={sectionCard}>
+              <p className={sectionTitle}>
+                {twoPeople ? "Who is playing Scrabble?" : "Your details"}
+              </p>
+              <div className="mt-3">
+                {personFields(
+                  "scrabble",
+                  scrabble,
+                  (next) => setScrabble((s) => ({ ...s, ...next })),
+                  primary === "scrabble",
+                  problemFor("scrabbleName"),
+                  problemFor("scrabbleAge"),
+                  problemFor("scrabblePhone"),
+                )}
+              </div>
+
+              <div className="mt-4">
+                <span className={heading}>Scrabble category</span>
+                <p className={hint}>
+                  The management reserves the right to change your category depending on your
+                  first game.
+                </p>
+                {!loaded ? (
+                  <div className="mt-1.5 h-12 animate-pulse rounded-control bg-[rgb(var(--c-surface-soft))]" />
+                ) : (
+                  choices(
+                    categories.map((c) => ({ key: c.id, label: c.name })),
+                    chosenCategory,
+                    (id) => setScrabble((s) => ({ ...s, category: id })),
+                    "sm:grid-cols-1",
+                  )
+                )}
+                {problem(problemFor("scrabbleCategory"))}
+              </div>
+            </div>
+          ) : null}
+
+          {wantsPainting ? (
+            <div className={sectionCard}>
+              <p className={sectionTitle}>{twoPeople ? "Who is painting?" : "Your details"}</p>
+              <div className="mt-3">
+                {personFields(
+                  "painting",
+                  painting,
+                  (next) => setPainting((p) => ({ ...p, ...next })),
+                  primary === "painting",
+                  problemFor("paintingName"),
+                  problemFor("paintingAge"),
+                  problemFor("paintingPhone"),
+                )}
+              </div>
+            </div>
           ) : null}
         </div>
-      ) : null}
+      )}
 
-      {needsScrabble ? (
-        <div>
-          <span className={heading}>Your skill category</span>
-          <p className="text-[12.5px] leading-relaxed text-muted">
-            The management reserves the right to change your category depending on your first game.
-          </p>
-          {!loaded ? (
-            <div className="mt-1.5 h-12 animate-pulse rounded-control bg-[rgb(var(--c-surface-soft))]" />
-          ) : (
-            choices(
-              categories.map((c) => ({ key: c.id, label: c.name })),
-              chosen,
-              setCategory,
-              "sm:grid-cols-1",
-            )
-          )}
-          {problem(!categoryOk, "Please choose a category.")}
-        </div>
-      ) : null}
-
+      {/* ---- Membership ------------------------------------------------ */}
       {memberRate ? (
         <div>
           <span className={heading}>Are you a {memberBody} member?</span>
-          <p className="text-[12.5px] leading-relaxed text-muted">
-            Members pay {money(memberRate.amount)}. Bring your membership so the desk can check it.
+          <p className={hint}>
+            Members pay {money(memberRate.amount)}. Bring your membership so the desk can check
+            it.
           </p>
           {yesNo(psaMember, setPsaMember)}
-          {problem(!psaOk, "Please answer yes or no.")}
+          {problem("Please answer yes or no.", !psaOk)}
         </div>
       ) : null}
 
-      {groupRate ? (
-        <div>
-          <span className={heading}>
-            Are you registering with a group of {groupRate.minGroupSize} or more?
-          </span>
-          <p className="text-[12.5px] leading-relaxed text-muted">
-            Groups pay {money(groupRate.amount)} each. Everyone in the group registers
-            separately and the desk settles the group at check-in.
-          </p>
-          {yesNo(groupOfThree, setGroupOfThree)}
-          {problem(!groupOk, "Please answer yes or no.")}
+      {/* ---- How they will pay, which is part of the price ---------------- */}
+      <div>
+        <span className={heading}>How will you pay?</span>
+        {/*
+          Asked before the total, because it is one of the things that decides the total.
+          Paying now is cheaper than settling at the desk, so this cannot sit underneath a
+          price it changes — somebody would read their total, scroll past it, and find the
+          number had moved behind them.
+        */}
+        <p className={hint}>Paying online now costs less than settling at the desk.</p>
+        {choices(
+          [
+            { key: "online", label: "Online payment", note: "Bank transfer or EasyPaisa" },
+            { key: "cash", label: "Cash on site", note: "Arrive 20 minutes early" },
+          ],
+          payment ?? "",
+          (k) => {
+            setPayment(k as PaymentChoice);
+            /* A receipt attached and then switched to cash is a file nobody asked for. */
+            if (k !== "online") clearProof();
+          },
+        )}
+        {problem("Please choose how you will pay.", !payOk)}
+      </div>
 
-          {groupOfThree === true ? (
-            <>
-              <input
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Who are you registering with?"
-                aria-label="Who you are registering with"
-                className={field}
-              />
-              {problem(!groupNameOk, "Name the group so the desk can match you.")}
-            </>
-          ) : null}
-        </div>
-      ) : null}
-
-      {workshop ? (
+      {/* ---- What it costs, once both answers are in ---------------------- */}
+      {usingActivityPrice ? (
         <div className="rounded-control border border-line bg-[rgb(var(--c-surface-soft))] px-3.5 py-3">
-          <p className="text-[14px] font-semibold text-ink">Ticket price</p>
+          <p className="text-center text-[14px] font-semibold text-ink">Ticket price</p>
 
-          <ul className="mt-2 space-y-1.5 text-[13px] text-muted">
-            {ACTIVITIES.map((a) => {
-              const applied = a.key === activity;
+          {/*
+            Both activities side by side, each with its own brackets.
+            The tournament is tiered and the painting seat is not, so one shared list could
+            only show the two as if they were the same kind of thing. Two columns at every
+            width — each is a short list of names and amounts, and stacking them on a phone
+            would put the two prices somebody is comparing a scroll apart.
+          */}
+          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3">
+            {activities.map((a) => {
+              const price = activityPrices.get(a.key);
+              const chosen = a.key === effectiveActivity;
+
               return (
-                <li key={a.key} className={cn(applied ? "text-ink" : "")}>
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className={cn("min-w-0", applied ? "font-semibold" : "")}>
-                      {a.rateLabel}
-                    </span>
-                    <span className={cn("num shrink-0", applied ? "font-semibold text-primary" : "")}>
-                      {money(a.perPerson)}
-                    </span>
-                  </span>
-                </li>
+                <div
+                  key={a.key}
+                  className={cn(
+                    "rounded-control border px-2.5 py-2.5 text-center",
+                    chosen
+                      ? "border-primary bg-primary-050"
+                      : "border-line bg-[rgb(var(--c-surface))]",
+                  )}
+                >
+                  <p
+                    className={cn(
+                      "text-[12px] font-bold uppercase tracking-[0.08em]",
+                      chosen ? "text-primary" : "text-muted",
+                    )}
+                  >
+                    {a.rateLabel}
+                  </p>
+
+                  <ul className="mt-1.5 space-y-1.5">
+                    {(price?.tiers ?? []).map(({ rate, available, reason, applied }) => (
+                      <li key={rate.id}>
+                        <span
+                          className={cn(
+                            "block text-[11.5px] leading-tight",
+                            applied ? "font-semibold text-ink" : "text-muted",
+                          )}
+                        >
+                          {rate.label}
+                        </span>
+                        <span
+                          className={cn(
+                            "num block text-[13px] leading-tight",
+                            applied
+                              ? "font-bold text-primary"
+                              : available
+                                ? "font-semibold text-ink"
+                                : "text-faint",
+                          )}
+                        >
+                          {money(rate.amount)}
+                        </span>
+                        {/*
+                          Why a bracket is out of reach, where the reason is something
+                          somebody can act on. The walk-in price is the one that matters: it
+                          is on the list precisely so registering now looks cheaper than
+                          turning up, and it is never what this form charges.
+                        */}
+                        {!available && reason && chosen ? (
+                          <span className="block text-[10.5px] leading-tight text-faint">
+                            {reason}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {a.includes ? (
+                    <p className="mt-2 border-t border-line pt-1.5 text-[10.5px] leading-snug text-muted">
+                      {a.includes}
+                    </p>
+                  ) : null}
+                </div>
               );
             })}
-          </ul>
+          </div>
 
-          <div className="mt-2.5 border-t border-line pt-2.5">
-            {activityRate && chairCount > 0 ? (
-              <p className="text-[14px] font-semibold text-ink">
-                You pay <span className="num text-primary">{money(quotedTotal)}</span>
-                {" — "}
-                {quotedRateLabel}
-              </p>
+          <div className="mt-2.5 border-t border-line pt-2.5 text-center">
+            {activityRate && chosenPrice ? (
+              <>
+                <p className="text-[14px] font-semibold text-ink">
+                  You pay <span className="num text-primary">{money(quotedTotal)}</span>
+                  {" — "}
+                  {quotedRateLabel}
+                </p>
+                {chosenPrice.needsCheck ? (
+                  <p className={cn("mt-0.5", hint)}>
+                    The desk will check your membership at check-in. If it does not hold, the
+                    regular {money(chosenPrice.regular)} applies.
+                  </p>
+                ) : null}
+              </>
             ) : (
-              <p className="text-[13px] text-muted">
-                Choose an activity and how many chairs to see your total.
-              </p>
+              <p className="text-[13px] text-muted">Choose an activity to see your total.</p>
             )}
           </div>
 
-          <p className="mt-2 border-t border-line pt-2 text-[12.5px] leading-relaxed text-muted">
-            Inclusive of all art materials, tea, &amp; snacks.
-          </p>
-
           {event.feeDetails ? (
-            <div className="mt-2 whitespace-pre-line border-t border-line pt-2 text-[12.5px] leading-relaxed text-muted">
+            <div className={cn("mt-2 whitespace-pre-line border-t border-line pt-2", hint)}>
               {event.feeDetails}
             </div>
           ) : null}
@@ -573,18 +802,16 @@ export function QuickForm({
               {priced.applied.label}
             </p>
             {rateNeedsVerification(priced.applied) ? (
-              <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">
+              <p className={cn("mt-0.5", hint)}>
                 The desk will check this at check-in. If it does not hold, the regular{" "}
                 {money(standardAmount)} applies.
               </p>
             ) : null}
-            {cheaper ? (
-              <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted">{cheaper}</p>
-            ) : null}
+            {cheaper ? <p className={cn("mt-0.5", hint)}>{cheaper}</p> : null}
           </div>
 
           {event.feeDetails ? (
-            <div className="mt-2 whitespace-pre-line border-t border-line pt-2 text-[12.5px] leading-relaxed text-muted">
+            <div className={cn("mt-2 whitespace-pre-line border-t border-line pt-2", hint)}>
               {event.feeDetails}
             </div>
           ) : null}
@@ -592,24 +819,81 @@ export function QuickForm({
       )}
 
       <div>
-        <span className={heading}>Payment method</span>
-        {choices(
-          [
-            { key: "online", label: "Pay online" },
-            { key: "cash", label: "Pay cash — arrive 20 minutes early" },
-          ],
-          payAtVenue === null ? "" : payAtVenue ? "cash" : "online",
-          (k) => setPayAtVenue(k === "cash"),
-        )}
-        {problem(!payOk, "Please choose how you will pay.")}
+        {payment === "online" ? (
+          <div className="mt-2.5 space-y-2.5">
+            {event.paymentInstructions ? (
+              <div className="whitespace-pre-line rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] leading-relaxed text-ink">
+                {event.paymentInstructions}
+              </div>
+            ) : null}
 
-        {payAtVenue === false && event.paymentInstructions ? (
-          <div className="mt-2.5 whitespace-pre-line rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] leading-relaxed text-ink">
-            {event.paymentInstructions}
+            {/*
+              The receipt, asked for at the moment it exists.
+              Somebody who has just transferred the money has the screenshot in their hand;
+              asking for it later means asking for it on WhatsApp, which is how every online
+              payment at the last event was actually settled.
+            */}
+            <div className="rounded-control border border-line p-3.5">
+              <span className={heading}>Upload payment proof</span>
+              <p className={hint}>
+                A screenshot of the transfer, or the bank receipt. JPG, PNG or PDF.
+              </p>
+
+              <input
+                key={proofNonce}
+                id="q-proof"
+                type="file"
+                accept={PROOF_ACCEPT}
+                onChange={(e) => pickProof(e.target.files?.[0] ?? null)}
+                className="sr-only"
+              />
+
+              {proofFile ? (
+                <div className="mt-2.5 flex items-center gap-2.5 rounded-control border border-primary bg-primary-050 px-3 py-2.5">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-control bg-white text-primary">
+                    {proofFile.type === "application/pdf" ? (
+                      <FileText className="size-4.5" />
+                    ) : (
+                      <ImageIcon className="size-4.5" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold text-ink">
+                      {proofFile.name}
+                    </span>
+                    <span className="num block text-[12px] text-muted">
+                      {megabytes(proofFile.size)} MB · attached
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearProof}
+                    aria-label="Remove this file"
+                    className="tap-target grid size-9 shrink-0 place-items-center rounded-control text-muted hover:text-critical"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <label
+                  htmlFor="q-proof"
+                  className="mt-2.5 flex cursor-pointer items-center justify-center gap-2 rounded-control border border-dashed border-line bg-[rgb(var(--c-surface-soft))] px-3.5 py-4 text-[14px] font-semibold text-ink"
+                >
+                  <Paperclip className="size-4 text-primary" />
+                  Choose a file or take a photo
+                </label>
+              )}
+
+              {proofProblem ? (
+                <p className="mt-1.5 text-[12.5px] text-critical">{proofProblem}</p>
+              ) : null}
+              {problem("Please attach your payment proof.", !proofOk && !proofProblem)}
+            </div>
           </div>
         ) : null}
       </div>
 
+      {/* ---- The last few ---------------------------------------------- */}
       <div>
         <span className={heading}>How did you hear about the event?</span>
         {choices(
@@ -618,29 +902,29 @@ export function QuickForm({
           setHeardAbout,
           "sm:grid-cols-1",
         )}
-        {problem(!heardOk, "Please tell us how you heard about it.")}
+        {problem("Please tell us how you heard about it.", !heardOk)}
       </div>
 
       <div>
         {workshop ? (
           <>
             <span className={heading}>LAST ONE, I SWEAR!</span>
-            <p className="text-[12.5px] leading-relaxed text-muted">
+            <p className={hint}>
               I will be taking pictures and videos during the workshop for The Repeat Table&rsquo;s
               social media. Are you okay with being included?
             </p>
             {yesNo(photoConsent, setPhotoConsent, "Easy scenes!", "Let me be camera shy in peace")}
-            {problem(!consentOk, "Please choose one.")}
+            {problem("Please choose one.", !consentOk)}
           </>
         ) : (
           <>
             <span className={heading}>Photos and video</span>
-            <p className="text-[12.5px] leading-relaxed text-muted">
+            <p className={hint}>
               I give consent for photos and videos to be taken during the event and posted on the
               event&rsquo;s social media handles.
             </p>
             {yesNo(photoConsent, setPhotoConsent, "Yes, that is fine", "No, please do not")}
-            {problem(!consentOk, "Please answer yes or no.")}
+            {problem("Please answer yes or no.", !consentOk)}
           </>
         )}
       </div>
@@ -648,7 +932,12 @@ export function QuickForm({
       {event.terms ? (
         <div>
           <span className={heading}>Before you register</span>
-          <div className="mt-1.5 whitespace-pre-line rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[12.5px] leading-relaxed text-muted">
+          <div
+            className={cn(
+              "mt-1.5 whitespace-pre-line rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3",
+              hint,
+            )}
+          >
             {event.terms}
           </div>
           <label className="mt-2 flex cursor-pointer items-start gap-2.5">
@@ -662,7 +951,7 @@ export function QuickForm({
               I understand and agree, and I am happy to be contacted about this event
             </span>
           </label>
-          {problem(!termsAccepted, "Please confirm you have read this.")}
+          {problem("Please confirm you have read this.", !termsAccepted)}
         </div>
       ) : null}
 

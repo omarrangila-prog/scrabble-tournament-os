@@ -17,7 +17,8 @@ import {
   Th,
 } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
-import { answer, verifyPayment, type OrganizerRegistration } from "@/lib/supabase/organizer";
+import { ParticipantLines, PaymentProofButton } from "@/components/organizer/RegistrationDetails";
+import { answer, paymentProof, verifyPayment, type OrganizerRegistration } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
 import { cn, formatTime } from "@/lib/utils";
@@ -234,6 +235,11 @@ export default function RegistrationsPage() {
                             {r.mobile}
                             {area ? ` · ${area}` : ""}
                           </span>
+                          {/*
+                            Who is doing what, where a ticket covers two people. Shows nothing
+                            for an ordinary entry, so the list does not grow a blank line per row.
+                          */}
+                          <ParticipantLines reg={r} className="mt-1" />
                         </Td>
                         <Td className="capitalize">{r.playingLevel.replace(/-/g, " ")}</Td>
                         <Td>
@@ -261,6 +267,17 @@ export default function RegistrationsPage() {
                           <span className="num mt-0.5 block text-[11.5px] text-muted">
                             {money(r.amountDue)}
                           </span>
+                          <PaymentProofButton
+                            reg={r}
+                            className="mt-1.5"
+                            onProblem={(description) =>
+                              app.toast({
+                                title: "Receipt not opened",
+                                description,
+                                tone: "warning",
+                              })
+                            }
+                          />
                         </Td>
                         <Td>
                           {r.checkedInAt ? (
@@ -308,8 +325,12 @@ function downloadCsv(rows: OrganizerRegistration[]) {
     "Email",
     "Area",
     "Level",
+    "Activity",
+    "Scrabble participant",
+    "Painting participant",
     "Status",
     "Payment",
+    "Payment proof",
     "Amount",
     "Check-in code",
     "Checked in",
@@ -324,8 +345,14 @@ function downloadCsv(rows: OrganizerRegistration[]) {
       r.email,
       answer(r, "area") ?? "",
       r.playingLevel,
+      answer(r, "activity") ?? "",
+      answer(r, "scrabbleName") ?? "",
+      answer(r, "paintingName") ?? "",
       r.registrationStatus,
       r.paymentStatus,
+      /* The file name, not a link: a signed URL expires and a dead link in a spreadsheet
+         is worse than a name somebody can search for on the payments screen. */
+      paymentProof(r)?.fileName ?? "",
       String(r.amountDue),
       r.checkInCode ?? "",
       r.checkedInAt ?? "",

@@ -80,6 +80,39 @@ export function importField(reg: OrganizerRegistration, key: string): string | u
   return typeof value === "string" && value !== "" ? value : undefined;
 }
 
+/**
+ * The uploaded payment proof, where one exists.
+ *
+ * Stored as a block rather than a flat field because the desk needs the path to open it and
+ * the file name to recognise it, and a registration from before uploads existed has neither.
+ * Returns null rather than a half-filled object: a "View receipt" button wired to nothing is
+ * worse than no button, because somebody presses it and concludes the receipt is missing.
+ */
+export interface StoredPaymentProof {
+  path: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  uploadedAt: string;
+}
+
+export function paymentProof(reg: OrganizerRegistration): StoredPaymentProof | null {
+  const block = reg.data.paymentProof;
+  if (!block || typeof block !== "object") return null;
+
+  const b = block as Record<string, unknown>;
+  const path = typeof b.path === "string" ? b.path.trim() : "";
+  if (!path) return null;
+
+  return {
+    path,
+    fileName: typeof b.fileName === "string" && b.fileName ? b.fileName : "Receipt",
+    contentType: typeof b.contentType === "string" ? b.contentType : "",
+    size: typeof b.size === "number" ? b.size : 0,
+    uploadedAt: typeof b.uploadedAt === "string" ? b.uploadedAt : "",
+  };
+}
+
 /** Reads a string field out of the form answers. */
 export function answer(reg: OrganizerRegistration, key: string): string | undefined {
   const answers = reg.data.answers;
@@ -101,10 +134,20 @@ export function answer(reg: OrganizerRegistration, key: string): string | undefi
  */
 const USERNAME_DOMAIN = "blufys.pk";
 
+/**
+ * Bare usernames that should reach an existing account rather than inventing a
+ * new address. Supabase rejected creating `hani@blufys.pk`, so the director
+ * types "hani" and lands on the account that already holds the keys.
+ */
+const USERNAME_ALIASES: Record<string, string> = {
+  hani: `admin@${USERNAME_DOMAIN}`,
+};
+
 /** Completes a bare username to the address its account uses. */
 export function asEmail(value: string): string {
   const trimmed = value.trim().toLowerCase();
   if (trimmed === "" || trimmed.includes("@")) return trimmed;
+  if (USERNAME_ALIASES[trimmed]) return USERNAME_ALIASES[trimmed];
   return `${trimmed}@${USERNAME_DOMAIN}`;
 }
 
@@ -311,6 +354,14 @@ export async function addLatePlayer(
   eventId: string,
   recordId: string,
   by?: string,
+  /**
+   * Whether to put them into the round that is running rather than the next one.
+   *
+   * Rolling entry: a round is a time window, and somebody arriving five minutes into it can
+   * still play it if there is an opponent and a table. The default stays "next round" so
+   * every existing caller keeps its behaviour; the desk asks, and passes the answer.
+   */
+  joinCurrent = false,
 ): Promise<{ ok: boolean; fromRound?: number; message: string }> {
   const db = supabase();
   if (!db) return { ok: false, message: "The database is not reachable right now." };
@@ -319,6 +370,7 @@ export async function addLatePlayer(
     p_event_id: eventId,
     p_registration_id: recordId,
     p_by: by ?? null,
+    p_join_current: joinCurrent,
   });
 
   if (error) {
@@ -349,7 +401,7 @@ export async function staffUndoCheckIn(recordId: string): Promise<boolean> {
 }
 
 export type WalkInOutcome =
-  | { ok: true; id: string; checkInCode: string }
+  | { ok: true; id: string; checkInCode: string; playerNumber: string }
   | { ok: false; message: string };
 
 /**
@@ -367,6 +419,13 @@ export async function addWalkIn(input: {
   playingLevel: string;
   amount: number;
   by: string;
+  /** Asked where the event needs it; stored with the answers either way. */
+  age?: string;
+  /** PSA or another rating, when they know it. Seeds them if the event uses ratings. */
+  rating?: string;
+  /** What the desk was actually handed, rather than an assumption about it. */
+  paymentStatus?: "verified" | "cash-at-venue" | "complimentary" | "not-submitted" | "review-required";
+  note?: string;
 }): Promise<WalkInOutcome> {
   const db = supabase();
   if (!db) return { ok: false, message: "The database is not reachable right now." };
@@ -378,6 +437,10 @@ export async function addWalkIn(input: {
     p_playing_level: input.playingLevel,
     p_amount: input.amount,
     p_by: input.by,
+    p_age: input.age ?? null,
+    p_rating: input.rating ?? null,
+    p_payment_status: input.paymentStatus ?? "cash-at-venue",
+    p_note: input.note ?? null,
   });
 
   if (error) {
@@ -402,6 +465,8 @@ export async function addWalkIn(input: {
     ok: true,
     id: String(row.out_id),
     checkInCode: String(row.out_check_in_code ?? ""),
+    /* The number on their badge, allocated from the same sequence as everybody else's. */
+    playerNumber: String(row.out_player_number ?? ""),
   };
 }
 
@@ -462,7 +527,8 @@ export async function verifyPayment(recordId: string, by: string): Promise<boole
  */
 export async function setDivision(
   recordId: string,
-  division: "beginner" | "recreational" | "advanced",
+  /* Any category id the event runs — the database checks it against the event's own list. */
+  division: string,
   by: string,
 ): Promise<{ ok: boolean; message?: string }> {
   const db = supabase();
@@ -481,4 +547,147 @@ export async function setDivision(
     return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
   }
   return { ok: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rolling entry                                                               */
+/* -------------------------------------------------------------------------- */
+
+/** Somebody eligible for the round, checked in, and on no board. */
+export interface WaitingPlayer {
+  id: string;
+  fullName: string;
+  playerNumber: string;
+  division: string;
+  checkedInAt: string;
+}
+
+/**
+ * Who in this round has nobody to play.
+ *
+ * Derived by the database from the roster, the check-ins and the boards, so this list and the
+ * board list can never disagree about whether somebody is paired.
+ */
+export async function waitingPlayers(eventId: string, round: number): Promise<WaitingPlayer[]> {
+  const db = supabase();
+  if (!db || !eventId || round < 1) return [];
+
+  const { data, error } = await db.rpc("staff_waiting_players", {
+    p_event_id: eventId,
+    p_round: round,
+  });
+  if (error || !Array.isArray(data)) return [];
+
+  return (data as Record<string, unknown>[]).map((r) => ({
+    id: String(r.out_player_id),
+    fullName: String(r.out_full_name ?? ""),
+    playerNumber: String(r.out_player_number ?? ""),
+    division: String(r.out_division ?? ""),
+    checkedInAt: String(r.out_checked_in_at ?? ""),
+  }));
+}
+
+/**
+ * Adds one match to a round that is already running.
+ *
+ * The one door left open once a round has started. The database checks that both players
+ * are eligible, that neither is already on a board, that they share a category, and that a
+ * table is free in that category's block — and refuses with a sentence naming which of those
+ * failed. Existing boards are never touched.
+ */
+export async function appendMatch(
+  eventId: string,
+  round: number,
+  playerA: string,
+  playerB: string,
+  by?: string,
+): Promise<{ ok: boolean; board?: number; message: string }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_append_match", {
+    p_event_id: eventId,
+    p_round: round,
+    p_player_a: playerA,
+    p_player_b: playerB,
+    p_by: by ?? null,
+  });
+
+  if (error) return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  const board = row?.out_board == null ? undefined : Number(row.out_board);
+
+  return {
+    ok: board !== undefined,
+    board,
+    message: String(row?.out_message ?? "Nothing happened."),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Live board edits                                                            */
+/* -------------------------------------------------------------------------- */
+
+type Edit = { ok: boolean; message: string };
+
+async function edit(fn: string, args: Record<string, unknown>): Promise<Edit> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc(fn, args);
+  if (error) return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  return { ok: Boolean(row?.out_ok), message: String(row?.out_message ?? "Nothing happened.") };
+}
+
+/**
+ * Two players change places between boards in one round.
+ *
+ * Same category only, and refused once either board has a score. Touches exactly those two
+ * boards; every other board stays where it was, because rolling entry never re-draws a
+ * round around a change.
+ */
+export function swapPlayers(eventId: string, round: number, x: string, y: string, by: string): Promise<Edit> {
+  return edit("staff_swap_players", { p_event_id: eventId, p_round: round, p_player_x: x, p_player_y: y, p_by: by });
+}
+
+/** A board moves to another table. Refused if the table is taken. */
+export function moveTable(gameId: string, board: number, by: string): Promise<Edit> {
+  return edit("staff_move_table", { p_game_id: gameId, p_board: board, p_by: by });
+}
+
+/** First and second swap. Refused once the board has a score. */
+export function flipFirst(gameId: string, by: string): Promise<Edit> {
+  return edit("staff_flip_first", { p_game_id: gameId, p_by: by });
+}
+
+/**
+ * Takes a player out of the tournament.
+ *
+ * From the next round by default: the board they are on now stays as it is, and they are
+ * simply not drawn again. `immediately` also voids the current board, which is a director's
+ * call and is asked for explicitly.
+ */
+export async function withdrawPlayer(
+  eventId: string,
+  playerId: string,
+  immediately: boolean,
+  by: string,
+): Promise<{ ok: boolean; afterRound?: number; message: string }> {
+  const db = supabase();
+  if (!db) return { ok: false, message: "The database is not reachable right now." };
+
+  const { data, error } = await db.rpc("staff_withdraw_player", {
+    p_event_id: eventId,
+    p_player_id: playerId,
+    p_immediately: immediately,
+    p_by: by,
+  });
+  if (error) return { ok: false, message: error.message.replace(/^.*?:\s*/, "") };
+
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  const after = row?.out_after_round == null ? undefined : Number(row.out_after_round);
+  return { ok: after !== undefined, afterRound: after, message: String(row?.out_message ?? "Nothing happened.") };
 }

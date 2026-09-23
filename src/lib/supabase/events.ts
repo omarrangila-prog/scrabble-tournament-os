@@ -1,5 +1,8 @@
 "use client";
 
+import type { ActivityOption } from "@/lib/domain/registrationParticipants";
+import type { Rate } from "@/lib/domain/pricing";
+
 import { supabase } from "./client";
 
 /**
@@ -27,8 +30,24 @@ export interface EventDetails {
   paymentInstructions?: string;
   /** Shown on the registration form above the "I understand and agree" box. */
   terms?: string;
-  /** The advertised rates and what the fee covers, shown on the registration page. */
+  /** What the fee covers, shown on the registration page beneath the rate card. */
   feeDetails?: string;
+  /**
+   * The reduced rates this event offers, and what earns them.
+   *
+   * Charged from, not merely printed. `feeDetails` used to carry the brackets as a
+   * sentence, which meant the form showed "PSA members — Rs 800" and then billed
+   * everybody the regular fee, because nothing read the sentence.
+   */
+  rates?: Rate[];
+  /**
+   * The activities this event sells, where it sells more than one.
+   *
+   * Absent for an ordinary tournament, which has exactly one thing to buy and prices it
+   * from `rates`. Present for a workshop that runs painting alongside the boards, where the
+   * ticket — and who is on it — depends on which was chosen.
+   */
+  activities?: ActivityOption[];
   /** A map link for the venue, so the address on the form is tappable. */
   mapsUrl?: string;
   /** `lat,lng` for the venue, so the map on the form pins the door and not the road. */

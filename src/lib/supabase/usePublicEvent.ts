@@ -19,39 +19,75 @@ export interface PublicEventState {
 /**
  * The event behind a public link.
  *
- * Looks in the built-in definitions first. The 23 August event is defined there in full —
- * its price rules, prize list and wording — and that definition is what the form charges
- * from, so it stays authoritative and this hook changes nothing about how that event
- * behaves.
+ * Built-in definitions still supply the full copy (prices, prizes, wording) for AlphaBattle —
+ * that is what the form charges from. But the **phase** must come from the database: a seed
+ * frozen at `registration-open` used to leave the public form and `/live` inviting new
+ * entrants while the wall correctly showed result entry for a round already being played.
  *
- * Anything else is read from the database. That is what makes an event created through
- * the organizer's form reachable: before this, it had a row, a slug and no public page.
+ * Created events (no seed) are read entirely from the database.
  */
 export function usePublicEvent(slug: string): PublicEventState {
   const store = useEventStore();
   const seeded = selectEventBySlug(store, slug);
 
-  const [fetched, setFetched] = React.useState<PublicEvent | null>(null);
+  const [live, setLive] = React.useState<PublicEvent | null>(null);
   const [resolved, setResolved] = React.useState(false);
 
   React.useEffect(() => {
-    // A built-in definition needs no lookup, and must not be overwritten by one.
-    if (seeded) return;
-
-    let live = true;
+    let active = true;
 
     (async () => {
       const stored = slug ? await readPublicEvent(slug) : null;
-      if (!live) return;
-      setFetched(stored ? publicEventFromStored(stored) : null);
+      if (!active) return;
+      setLive(stored ? publicEventFromStored(stored) : null);
       setResolved(true);
     })();
 
     return () => {
-      live = false;
+      active = false;
     };
-  }, [slug, seeded]);
+  }, [slug]);
 
-  if (seeded) return { event: seeded, resolved: true, fromDatabase: false };
-  return { event: fetched, resolved, fromDatabase: true };
+  if (!resolved) {
+    /*
+     * Prefer nothing over a seed stuck on an old phase: showing "Register now" for one
+     * frame while the wall says "submit your result" is worse than a brief empty load.
+     */
+    return { event: null, resolved: false, fromDatabase: false };
+  }
+
+  if (seeded) {
+    if (live) {
+      return {
+        event: {
+          ...seeded,
+          /* Live day state — open/closed/playing — always from Postgres. */
+          state: live.state,
+          /* Fee and capacity the organizer may have changed in Settings. */
+          fee: live.fee || seeded.fee,
+          currency: live.currency || seeded.currency,
+          capacity: live.capacity || seeded.capacity,
+          rates: live.rates?.length ? live.rates : seeded.rates,
+          /* What the event sells, where the organiser has configured more than one thing. */
+          activities: live.activities?.length ? live.activities : seeded.activities,
+          rounds: live.rounds || seeded.rounds,
+          roundMinutes: live.roundMinutes || seeded.roundMinutes,
+          venueName: live.venueName || seeded.venueName,
+          address: live.address || seeded.address,
+          city: live.city || seeded.city,
+          mapsUrl: live.mapsUrl || seeded.mapsUrl,
+          mapCoords: live.mapCoords || seeded.mapCoords,
+          paymentInstructions: live.paymentInstructions || seeded.paymentInstructions,
+          terms: live.terms || seeded.terms,
+          feeDetails: live.feeDetails || seeded.feeDetails,
+        },
+        resolved: true,
+        fromDatabase: true,
+      };
+    }
+    /* Seed exists but the row is gone — keep the definition rather than 404. */
+    return { event: seeded, resolved: true, fromDatabase: false };
+  }
+
+  return { event: live, resolved: true, fromDatabase: true };
 }

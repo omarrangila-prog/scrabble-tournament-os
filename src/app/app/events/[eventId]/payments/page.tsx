@@ -28,14 +28,23 @@ import { useEventStore } from "@/lib/store/useEventStore";
 import { useStore } from "@/lib/store/useStore";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import {
+  ParticipantLines,
+  PaymentProofButton,
+  ProofOpenButton,
+} from "@/components/organizer/RegistrationDetails";
+import {
   answer,
   decidePayment,
   field,
   importField,
   numberField,
+  paymentProof,
+  type OrganizerRegistration,
   type PaymentDecision,
+  type StoredPaymentProof,
 } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useEventDetails } from "@/lib/supabase/useEventDetails";
 import {
   BUCKET_LABEL,
   bucketFor,
@@ -95,10 +104,33 @@ export default function PaymentsPage() {
    */
   const [bucket, setBucket] = React.useState<PaymentBucket | "all">("all");
 
-  const event = activeEvent(store.events, {
+  /*
+   * The event, from the database when the browser store has never heard of it.
+   *
+   * `activeEvent` reads the seeded store, which holds the two events written into the
+   * source. Every event created since — including the one currently taking registrations —
+   * exists only in Postgres, so this screen returned null and rendered a blank page under a
+   * "Payments" link in the sidebar. Only three things are needed of it here: the id, the
+   * currency and the receiving account.
+   */
+  const stored = useEventDetails(params.eventId);
+
+  const seeded = activeEvent(store.events, {
     organizationId: store.activeOrganizationId,
     eventId: params.eventId,
   });
+
+  const event =
+    seeded ??
+    (stored.event
+      ? {
+          id: stored.event.id,
+          currency: stored.event.details.currency ?? "PKR",
+          /* Nothing is invented: an event with no account recorded has no expected receiver,
+             and the review engine treats that as "cannot check" rather than "matches". */
+          bankDetails: "",
+        }
+      : null);
 
   /*
    * Registrations come from the database. This screen read browser storage, so it
@@ -111,7 +143,27 @@ export default function PaymentsPage() {
   const roster = useRoster(params.eventId);
   const registrations = roster.registrations;
 
-  if (!event) return null;
+  /*
+   * Still looking is not the same as not found. Returning null while the database answers
+   * flashed a blank page, and returning it afterwards said nothing about why.
+   */
+  if (!event) {
+    return (
+      <div>
+        <PageHeader title="Payments" subtitle="A receipt is a claim." />
+        <Card>
+          <EmptyState
+            title={stored.loaded ? "No such event" : "Opening the payments screen"}
+            description={
+              stored.loaded
+                ? "This link names an event that is not in the database."
+                : "Reading the event from the database."
+            }
+          />
+        </Card>
+      </div>
+    );
+  }
 
   /*
    * Map registrations into the shape the review engine expects. Only fields
@@ -386,7 +438,23 @@ export default function PaymentsPage() {
                     <span className="block truncate text-[11.5px] text-muted">
                       {[pricing, method].filter(Boolean).join(" · ") || "No pricing recorded"}
                     </span>
+                    {/* Who the ticket is for, where it covers two people. */}
+                    <ParticipantLines reg={r} className="mt-1" />
                   </span>
+
+                  {/*
+                    The receipt, opened from the row that owes the money.
+                    This screen has always been the place a receipt is judged and has never
+                    had one to show: `fileName` was the only thing stored, so every decision
+                    below was taken on a name and a number with no image behind them.
+                  */}
+                  <PaymentProofButton
+                    reg={r}
+                    className="shrink-0"
+                    onProblem={(description) =>
+                      app.toast({ title: "Receipt not opened", description, tone: "warning" })
+                    }
+                  />
 
                   {/*
                     An amount nobody has established says so. Rendering it as PKR 0 would
@@ -555,7 +623,20 @@ export default function PaymentsPage() {
 
       </RosterGate>
 
-      <ReviewModal entry={reviewing} onClose={() => setReviewing(null)} onDecide={decide} />
+      <ReviewModal
+        entry={reviewing}
+        /* The stored file, so the decision is taken with the image open rather than beside it. */
+        proof={
+          reviewing
+            ? paymentProof(
+                registrations.find((r) => r.id === reviewing.submission.registrationId) ??
+                  ({ data: {} } as OrganizerRegistration),
+              )
+            : null
+        }
+        onClose={() => setReviewing(null)}
+        onDecide={decide}
+      />
     </div>
   );
 }
@@ -586,10 +667,13 @@ function FlagLine({ flag }: { flag: Flag }) {
 
 function ReviewModal({
   entry,
+  proof,
   onClose,
   onDecide,
 }: {
   entry: QueueEntry | null;
+  /** The receipt itself, where one was uploaded. Null for an entry from before uploads. */
+  proof: StoredPaymentProof | null;
   onClose: () => void;
   onDecide: (
     entry: QueueEntry,
@@ -668,6 +752,21 @@ function ReviewModal({
               </div>
             ))}
           </dl>
+          {proof ? (
+            <ProofOpenButton
+              path={proof.path}
+              fileName={proof.fileName}
+              contentType={proof.contentType}
+              label="Open the receipt"
+              className="mt-3"
+            />
+          ) : (
+            <p className="mt-3 text-[11.5px] leading-relaxed text-warning">
+              No file was uploaded with this registration — it was made before the form asked for
+              one, or entered by hand. Check the transfer another way before verifying.
+            </p>
+          )}
+
           <p className="mt-2.5 text-[11px] leading-relaxed text-faint">
             These values were read from the image to save typing. They do not prove the transfer
             took place.

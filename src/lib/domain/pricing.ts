@@ -11,6 +11,8 @@
  * between events — the poster event and the August one already differ.
  */
 
+import type { ActivityOption, ActivityRate } from "./registrationParticipants";
+
 export type RateId = "standard" | "member" | "family" | "early-bird";
 
 export interface Rate {
@@ -346,4 +348,135 @@ export function rateCardFor(event: { fee: number; currency?: string; rates?: Rat
  */
 export function rateNeedsVerification(rate: Rate): boolean {
   return rate.id === "member" || rate.id === "family";
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pricing one activity                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What somebody pays for the activity they chose.
+ *
+ * Separate from `priceRegistration` above, which prices an event from one rate card. An event
+ * that sells several things prices each of them differently: the tournament is tiered — a
+ * member price, an early bird, a higher price at the door — and the painting seat is one
+ * number. A single card for the whole event could not say that, which is how the form ended
+ * up asking "Are you a PSA member?" above a ticket the answer had no effect on.
+ *
+ * The rule is the same as everywhere else here: **the cheapest bracket they qualify for, and
+ * they are told which one it is.** Never a stack.
+ */
+
+
+export interface ActivityPriceContext {
+  /** Whether the participant claims membership. Checked at the desk, not here. */
+  isMember: boolean;
+  /** When the registration is being made. ISO. */
+  at: string;
+  /**
+   * How they said they will pay, once they have said.
+   *
+   * Paying now is cheaper than settling at the desk, so the method is part of the price and
+   * not merely a note attached to it. Null while the question is unanswered, which prices
+   * them at the regular rate rather than at a discount they have not earned.
+   */
+  payment?: "online" | "cash" | "complimentary" | null;
+}
+
+export interface ActivityTier {
+  rate: ActivityRate;
+  /** Whether this form can charge it. */
+  available: boolean;
+  /** Why not, for the line under a bracket somebody cannot have. */
+  reason?: string;
+  /** True for the one actually being charged. */
+  applied: boolean;
+}
+
+export interface ActivityPrice {
+  /** What they pay, per person. */
+  amount: number;
+  /** The bracket charged, for the record and the line they read. */
+  label: string;
+  id: string;
+  /** Every bracket, in the order the organiser listed them. */
+  tiers: ActivityTier[];
+  /** The regular price, for comparison. */
+  regular: number;
+  /** Whether the desk has to see something before this price is honoured. */
+  needsCheck: boolean;
+}
+
+/**
+ * Whether this form may charge a bracket, and why not when it may not.
+ *
+ * `walk-in` is the interesting one: it is a real price, it belongs on the price list, and it
+ * must never be charged here. It exists to tell somebody that registering now is cheaper than
+ * turning up — a list that omits it loses the whole point, and a form that applies it would
+ * charge a walk-in rate to somebody who did not walk in.
+ */
+export function activityRateAvailability(
+  rate: ActivityRate,
+  context: ActivityPriceContext,
+): { available: boolean; reason?: string } {
+  if (rate.id === "walk-in")
+    return { available: false, reason: "Paid at the door, without registering." };
+
+  if (rate.id === "member" && !context.isMember)
+    return { available: false, reason: "For association members." };
+
+  /*
+   * The online price is earned by paying now.
+   *
+   * Somebody settling at the desk has not paid anything yet, and the gap between the two is
+   * the whole reason the organiser offers it — so it cannot be given to a registration that
+   * has only promised cash on the day.
+   */
+  if (rate.id === "online" && context.payment !== "online")
+    return { available: false, reason: "When you pay online now." };
+
+  if (rate.id === "early-bird") {
+    /*
+     * An early-bird amount with no end date is not a rate — it is a permanent discount with
+     * the wrong name. The same refusal `rateAvailability` makes, for the same reason.
+     */
+    if (!rate.availableUntil)
+      return { available: false, reason: "Not open yet." };
+
+    const closes = new Date(rate.availableUntil).getTime();
+    const now = new Date(context.at).getTime();
+    if (!Number.isNaN(closes) && !Number.isNaN(now) && now > closes)
+      return { available: false, reason: "This rate has closed." };
+  }
+
+  return { available: true };
+}
+
+export function priceActivity(
+  option: ActivityOption,
+  context: ActivityPriceContext,
+): ActivityPrice {
+  const card: ActivityRate[] =
+    option.rates && option.rates.length > 0
+      ? option.rates
+      : [{ id: "regular", label: "Regular", amount: option.price }];
+
+  const judged = card.map((rate) => ({ rate, ...activityRateAvailability(rate, context) }));
+
+  const chargeable = judged.filter((t) => t.available);
+  /* Cheapest wins. Never cumulative — see priceRegistration for why. */
+  const cheapest = [...chargeable].sort((a, b) => a.rate.amount - b.rate.amount)[0];
+
+  const applied =
+    cheapest?.rate ?? card.find((r) => r.id === "regular") ?? { id: "regular" as const, label: "Regular", amount: option.price };
+
+  return {
+    amount: applied.amount,
+    label: applied.label,
+    id: applied.id,
+    tiers: judged.map((t) => ({ ...t, applied: t.rate === applied })),
+    regular: card.find((r) => r.id === "regular")?.amount ?? option.price,
+    /* A membership is a claim the desk settles; a date is not. */
+    needsCheck: applied.id === "member",
+  };
 }

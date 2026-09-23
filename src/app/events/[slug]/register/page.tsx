@@ -27,6 +27,8 @@ import {
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
 import { saveRegistration } from "@/lib/supabase/registrations";
+import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
+import { participantLines } from "@/lib/domain/registrationParticipants";
 import { emailConfirmation } from "@/lib/email/client";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { formatDate } from "@/lib/utils";
@@ -94,6 +96,16 @@ export default function RegisterPage() {
   const [playerNumber, setPlayerNumber] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
+  /*
+   * A second tap, refused before React has re-rendered.
+   *
+   * `saving` is state, so two taps in the same tick both read it as false and both start a
+   * registration — one person, two player numbers, the fee counted twice. A ref is written
+   * and read synchronously, so the second tap sees the first.
+   */
+  const submitting = React.useRef(false);
+
+
   /* While the lookup is still running, do not tell somebody their link is dead. */
   if (!event && !resolved.resolved) {
     return (
@@ -127,8 +139,37 @@ export default function RegisterPage() {
    * code field is one input away rather than a rewrite.
    */
 
-  const submitQuick = (quick: QuickRegistration) =>
-    submit({
+  const submitQuick = async (quick: QuickRegistration) => {
+    if (submitting.current) return;
+    submitting.current = true;
+
+    setSaving(true);
+    setSaveError(null);
+
+    /*
+     * The receipt goes up first, and the registration is not created if it fails.
+     *
+     * The alternative — save the registration, then try the upload — produces a record that
+     * says "paid online" with nothing behind it, which is exactly the state this feature
+     * exists to end. Somebody whose upload fails still has their details on screen and can
+     * press Register again.
+     */
+    let proof: GameOnRegistration["paymentProof"] | undefined;
+
+    if (quick.proofFile) {
+      const uploaded = await uploadPaymentProof({ eventId: event.id, file: quick.proofFile });
+      if (!uploaded.ok) {
+        submitting.current = false;
+        setSaving(false);
+        setSaveError(uploaded.message);
+        return;
+      }
+      proof = uploaded.proof;
+    }
+
+    const { scrabble, painting } = quick.participants;
+
+    await submit({
       track: "speed_scrabble",
       fullName: quick.fullName,
       /* The form does not ask for one — the organiser reaches people on their cell. */
@@ -140,6 +181,8 @@ export default function RegisterPage() {
       area: "",
       requestedLevel: (quick.category || "recreational") as GameOnRegistration["requestedLevel"],
       payAtVenue: quick.payAtVenue,
+      receiptFileName: proof?.fileName,
+      paymentProof: proof,
       /*
        * The answers that belong to this organiser's form rather than to every tournament.
        * Kept whole so the desk sees exactly what was ticked, including the consent and the
@@ -147,19 +190,33 @@ export default function RegisterPage() {
        */
       quickAnswers: {
         age: quick.age,
-        ...(quick.activity
+        ...(quick.activity ? { activity: quick.activityLabel || quick.activity } : {}),
+        /*
+         * Who is doing what, stored as two plain names.
+         *
+         * A combo ticket can cover two people — one plays, one paints — and the desk has to
+         * be able to tell which of the two in front of them is on the board sheet. Written
+         * out even when they are the same person, because "the same as the other one" is a
+         * thing a screen then has to resolve, and a later correction to one name would
+         * silently change the other.
+         */
+        ...(scrabble
           ? {
-              activity:
-                quick.activity === "painting"
-                  ? "Painting"
-                  : quick.activity === "scrabble"
-                    ? "Scrabble Tournament"
-                    : "BOTH!",
+              scrabbleName: scrabble.fullName,
+              scrabbleAge: scrabble.age,
+              ...(scrabble.phone ? { scrabblePhone: scrabble.phone } : {}),
+              ...(quick.categoryLabel || scrabble.category
+                ? { scrabbleCategory: quick.categoryLabel || scrabble.category }
+                : {}),
             }
           : {}),
-        ...(quick.chairs ? { chairs: quick.chairs } : {}),
-        ...(quick.chairsOther ? { chairsOther: quick.chairsOther } : {}),
-        ...(quick.chairCount ? { chairCount: String(quick.chairCount) } : {}),
+        ...(painting
+          ? {
+              paintingName: painting.fullName,
+              paintingAge: painting.age,
+              ...(painting.phone ? { paintingPhone: painting.phone } : {}),
+            }
+          : {}),
         /*
          * The claim, and the rate it earned, stored side by side.
          *
@@ -168,22 +225,15 @@ export default function RegisterPage() {
          * person at the table no way to tell a member from a mistake.
          */
         psaMember: quick.psaMember ? "Yes" : "No",
-        ...(quick.groupOfThree ? { groupRegistration: "Yes" } : {}),
-        ...(quick.groupName ? { groupName: quick.groupName } : {}),
         rateApplied: quick.quotedRateLabel,
         rateId: quick.quotedRateId,
         ...(quick.quotedRateNeedsCheck ? { rateNeedsCheck: "Yes" } : {}),
+        paymentChoice: quick.payment === "online" ? "Online" : "Cash on site",
+        ...(proof ? { paymentProofFile: proof.fileName } : {}),
         heardAbout: quick.heardAbout,
         mediaConsent: quick.photoConsent ? "Yes" : "No",
         termsAcceptedAt: quick.termsAccepted ? new Date().toISOString() : "",
       },
-      /*
-       * Stated, not left undefined. `quoteFee` reads a member claim as
-       * `membership !== "not-claimed" && membership !== "proof-rejected"`, and `undefined`
-       * satisfies both — so leaving this out silently applied the member discount to every
-       * registration this form produced. Nobody using the short form claims membership,
-       * because it does not ask.
-       */
       /*
        * The membership claim, stated.
        *
@@ -208,6 +258,9 @@ export default function RegisterPage() {
        */
       communicationConsent: quick.termsAccepted,
     } as GameOnRegistration);
+
+    submitting.current = false;
+  };
 
   const submit = async (reg: GameOnRegistration) => {
     /*
@@ -254,8 +307,15 @@ export default function RegisterPage() {
       /*
        * How they said they would pay. Somebody paying at the door is recorded as such, so
        * the desk knows to collect and the money is not counted as received.
+       *
+       * An online payment used to fall through to "cash" here: it read the event's
+       * `paymentMethods`, which a database event does not carry, so every online transfer
+       * was filed as cash at the venue and the payments screen labelled it that way beside
+       * an uploaded receipt. Bank transfer is what the instructions on the form describe.
        */
-      paymentMethod: reg.payAtVenue ? "cash" : event.paymentMethods[0] ?? "cash",
+      paymentMethod: reg.payAtVenue
+        ? "cash"
+        : event.paymentMethods[0] ?? "bank-transfer",
       receiptFileName: reg.receiptFileName,
       // The bundle total when they added another event, so the payment queue
       // shows what they were actually quoted.
@@ -310,6 +370,11 @@ export default function RegisterPage() {
       checkInCode: local.checkInCode ?? "",
       data: {
         ...local,
+        /*
+         * Where the receipt actually is. `receiptFileName` on the record beside it is what
+         * the participant called the file; this is what lets the desk open it.
+         */
+        ...(reg.paymentProof ? { paymentProof: reg.paymentProof } : {}),
         // Sent as the claim actually made. The database decides whether a
         // receipt-backed claim becomes verified; the browser may not.
         /*
@@ -372,7 +437,7 @@ export default function RegisterPage() {
           /* Kept so the desk can see at a glance who paid for whom. */
           registeredWith: reg.fullName,
         },
-        paymentMethod: reg.payAtVenue ? "cash" : event.paymentMethods[0] ?? "cash",
+        paymentMethod: reg.payAtVenue ? "cash" : event.paymentMethods[0] ?? "bank-transfer",
         receiptFileName: reg.receiptFileName,
         /* Per person, at the rate the parent was quoted — see `amountDue` on the first. */
         amountDue: reg.quotedAmountDue ?? quote.payable,
@@ -738,8 +803,24 @@ function GameOnConfirmation({
               ["Date", formatDate(event.startDate)],
               ["Time", event.timeDisplay ?? event.startTime],
               ["Venue", `${event.venueName}, ${event.city}`],
+              /*
+                Who is registered for what, read straight back to them.
+                A combo ticket can cover two people, and the moment to catch a name typed
+                into the wrong box is now — not at the door on the day.
+              */
+              ...participantLines({
+                scrabbleName: registration.quickAnswers?.scrabbleName,
+                scrabbleCategory: registration.quickAnswers?.scrabbleCategory,
+                paintingName: registration.quickAnswers?.paintingName,
+              }).map((line): [string, string] => {
+                const cut = line.indexOf(": ");
+                return [line.slice(0, cut), line.slice(cut + 2)];
+              }),
               ["Joining", TRACK_LABEL[registration.track]],
               [pay.amountLabel, money(payable)],
+              ...(registration.paymentProof
+                ? ([["Payment proof", registration.paymentProof.fileName]] as [string, string][])
+                : []),
             ].map(([label, value]) => (
               <div key={label} className="flex items-baseline justify-between gap-4">
                 <span className="shrink-0 text-[12.5px] text-muted">{label}</span>

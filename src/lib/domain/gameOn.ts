@@ -223,6 +223,22 @@ export interface GameOnRegistration {
   receiptFileName?: string;
 
   /**
+   * The uploaded payment screenshot itself, once it is safely in the bucket.
+   *
+   * `receiptFileName` above is what the participant called the file. This is where it
+   * actually is — the only handle that lets the desk open the image rather than read a
+   * filename and ask for it again on WhatsApp. Set after the upload succeeds and never
+   * before, so a registration carrying one is a registration whose receipt exists.
+   */
+  paymentProof?: {
+    path: string;
+    fileName: string;
+    contentType: string;
+    size: number;
+    uploadedAt: string;
+  };
+
+  /**
    * True when somebody is paying cash at the door instead of transferring now.
    *
    * It removes the screenshot requirement, because there is no transfer to screenshot. That
