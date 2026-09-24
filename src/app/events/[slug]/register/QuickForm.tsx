@@ -21,6 +21,7 @@ import {
   type RateContext,
 } from "@/lib/domain/pricing";
 import {
+  ageInYear,
   coversTwoPeople,
   EMPTY_DETAILS,
   EMPTY_SCRABBLE,
@@ -65,6 +66,9 @@ export interface QuickRegistration {
    * The roster, the pairings, the player number and the certificate all follow it.
    */
   fullName: string;
+  /** Four digits, asked for directly. */
+  yearOfBirth: string;
+  /** Worked out from the year, for everything that already reads an age. */
   age: string;
   mobile: string;
   category: string;
@@ -190,6 +194,18 @@ export function QuickForm({
 
   const [pricedAt] = React.useState(() => new Date().toISOString());
 
+  /*
+   * The calendar year the event runs in.
+   *
+   * Age groups are drawn against the year of the tournament, not against today — a form
+   * filled in on 31 December must put somebody in the same group as one filled in the
+   * morning after. Falls back to this year for an event with no date recorded.
+   */
+  const eventYear = React.useMemo(() => {
+    const parsed = new Date(event.startDate);
+    return Number.isNaN(parsed.getTime()) ? new Date(pricedAt).getFullYear() : parsed.getFullYear();
+  }, [event.startDate, pricedAt]);
+
   const rateContext: RateContext = {
     isMember: psaMember === true,
     groupSize: 1,
@@ -272,7 +288,7 @@ export function QuickForm({
       scrabble: { ...scrabble, category: chosenCategory },
       painting,
     },
-    { categoryRequired: wantsScrabble && categories.length > 0 },
+    { categoryRequired: wantsScrabble && categories.length > 0, year: eventYear },
   );
   const problemFor = (field: ParticipantField) => problems.find((p) => p.field === field)?.message;
 
@@ -310,7 +326,13 @@ export function QuickForm({
 
     onSubmit({
       fullName: lead.fullName,
-      age: lead.age,
+      yearOfBirth: lead.yearOfBirth,
+      /*
+       * Derived here, not asked for. The form asks the reliable question and works the age
+       * out, so the two can never disagree — and everything downstream that already reads an
+       * age keeps working without having to learn about years.
+       */
+      age: String(ageInYear(lead.yearOfBirth, eventYear) ?? ""),
       mobile: lead.phone,
       category: chosenCategory,
       categoryLabel: categories.find((c) => c.id === chosenCategory)?.name ?? "",
@@ -433,7 +455,7 @@ export function QuickForm({
     change: (next: Partial<ParticipantDetails>) => void,
     phoneRequired: boolean,
     nameProblem: string | undefined,
-    ageProblem: string | undefined,
+    bornProblem: string | undefined,
     phoneProblem: string | undefined,
   ) => (
     <div className="space-y-3">
@@ -454,18 +476,32 @@ export function QuickForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label htmlFor={`${idPrefix}-age`} className={heading}>
-            Age
+          <label htmlFor={`${idPrefix}-born`} className={heading}>
+            Year of birth
           </label>
           <input
-            id={`${idPrefix}-age`}
-            value={value.age}
-            onChange={(e) => change({ age: e.target.value })}
+            id={`${idPrefix}-born`}
+            value={value.yearOfBirth}
+            /* Digits only, four of them — a stray letter or a fifth digit never lands. */
+            onChange={(e) => change({ yearOfBirth: e.target.value.replace(/\D/g, "").slice(0, 4) })}
             inputMode="numeric"
-            placeholder="e.g. 24"
+            autoComplete="off"
+            maxLength={4}
+            placeholder="e.g. 1998"
             className={cn(field, "num")}
           />
-          {problem(ageProblem)}
+          {/*
+            The age it works out to, shown back.
+            A year is easy to mistype by a decade and hard to check by eye; the age is the
+            thing somebody actually knows, so reading it back is what catches 1988 typed for
+            1998 before it puts them in the wrong group.
+          */}
+          {ageInYear(value.yearOfBirth, eventYear) !== null ? (
+            <p className={cn(hint, "mt-1")}>
+              {ageInYear(value.yearOfBirth, eventYear)} years old in {eventYear}.
+            </p>
+          ) : null}
+          {problem(bornProblem)}
         </div>
 
         <div>
@@ -574,7 +610,7 @@ export function QuickForm({
                   (next) => setScrabble((s) => ({ ...s, ...next })),
                   primary === "scrabble",
                   problemFor("scrabbleName"),
-                  problemFor("scrabbleAge"),
+                  problemFor("scrabbleYearOfBirth"),
                   problemFor("scrabblePhone"),
                 )}
               </div>
@@ -610,7 +646,7 @@ export function QuickForm({
                   (next) => setPainting((p) => ({ ...p, ...next })),
                   primary === "painting",
                   problemFor("paintingName"),
-                  problemFor("paintingAge"),
+                  problemFor("paintingYearOfBirth"),
                   problemFor("paintingPhone"),
                 )}
               </div>

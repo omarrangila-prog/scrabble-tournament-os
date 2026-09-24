@@ -28,7 +28,7 @@ import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
 import { saveRegistration } from "@/lib/supabase/registrations";
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
-import { participantLines } from "@/lib/domain/registrationParticipants";
+import { ageInYear, participantLines } from "@/lib/domain/registrationParticipants";
 import { emailConfirmation } from "@/lib/email/client";
 import { qrToDataUri } from "@/lib/qr/qrcode";
 import { formatDate } from "@/lib/utils";
@@ -169,6 +169,12 @@ export default function RegisterPage() {
 
     const { scrabble, painting } = quick.participants;
 
+    /* Age groups are drawn against the year the event runs in, not against today. */
+    const parsedStart = new Date(event.startDate);
+    const eventYear = Number.isNaN(parsedStart.getTime())
+      ? new Date().getFullYear()
+      : parsedStart.getFullYear();
+
     await submit({
       track: "speed_scrabble",
       fullName: quick.fullName,
@@ -189,6 +195,8 @@ export default function RegisterPage() {
        * agreement, which are the two nobody should have to take on trust afterwards.
        */
       quickAnswers: {
+        /* Both: the answer as given, and the age it works out to for this event's year. */
+        yearOfBirth: quick.yearOfBirth,
         age: quick.age,
         ...(quick.activity ? { activity: quick.activityLabel || quick.activity } : {}),
         /*
@@ -203,7 +211,8 @@ export default function RegisterPage() {
         ...(scrabble
           ? {
               scrabbleName: scrabble.fullName,
-              scrabbleAge: scrabble.age,
+              scrabbleBorn: scrabble.yearOfBirth,
+              scrabbleAge: String(ageInYear(scrabble.yearOfBirth, eventYear) ?? ""),
               ...(scrabble.phone ? { scrabblePhone: scrabble.phone } : {}),
               ...(quick.categoryLabel || scrabble.category
                 ? { scrabbleCategory: quick.categoryLabel || scrabble.category }
@@ -213,7 +222,8 @@ export default function RegisterPage() {
         ...(painting
           ? {
               paintingName: painting.fullName,
-              paintingAge: painting.age,
+              paintingBorn: painting.yearOfBirth,
+              paintingAge: String(ageInYear(painting.yearOfBirth, eventYear) ?? ""),
               ...(painting.phone ? { paintingPhone: painting.phone } : {}),
             }
           : {}),

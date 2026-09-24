@@ -168,7 +168,15 @@ export function activityOptionsFrom(payload: unknown): ActivityOption[] {
 /** The details every participant gives. */
 export interface ParticipantDetails {
   fullName: string;
-  age: string;
+  /**
+   * The year they were born, as four digits.
+   *
+   * Asked instead of an age, which is the same fact told less reliably: an age is only true
+   * for part of a year, it has to be re-asked every season, and somebody entering both can
+   * contradict themselves. A year is fixed, and the age categories this tournament runs are
+   * worked out from the calendar year anyway — which is the convention in age-group play.
+   */
+  yearOfBirth: string;
   /** Optional: only asked for so the desk can reach this person separately. */
   phone: string;
 }
@@ -190,7 +198,7 @@ export interface ResolvedParticipants {
   painting: ParticipantDetails | null;
 }
 
-export const EMPTY_DETAILS: ParticipantDetails = { fullName: "", age: "", phone: "" };
+export const EMPTY_DETAILS: ParticipantDetails = { fullName: "", yearOfBirth: "", phone: "" };
 export const EMPTY_SCRABBLE: ScrabbleParticipant = { ...EMPTY_DETAILS, category: "" };
 
 /* -------------------------------------------------------------------------- */
@@ -221,7 +229,7 @@ export function coversTwoPeople(activity: ActivityChoice | ""): boolean {
 
 const trimmed = (d: ParticipantDetails): ParticipantDetails => ({
   fullName: d.fullName.trim(),
-  age: d.age.trim(),
+  yearOfBirth: d.yearOfBirth.trim(),
   phone: d.phone.trim(),
 });
 
@@ -260,11 +268,11 @@ export function primaryParticipant(resolved: ResolvedParticipants): ParticipantD
 
 export type ParticipantField =
   | "scrabbleName"
-  | "scrabbleAge"
+  | "scrabbleYearOfBirth"
   | "scrabblePhone"
   | "scrabbleCategory"
   | "paintingName"
-  | "paintingAge"
+  | "paintingYearOfBirth"
   | "paintingPhone"
   /** Both names are the same person, which the combo ticket cannot cover. */
   | "samePerson";
@@ -276,10 +284,34 @@ export interface ParticipantProblem {
 
 const nameOk = (value: string) => value.trim().length >= 2;
 
-/** 3 to 110. Outside that it is a typo, and a typo in an age puts somebody in the wrong draw. */
-export function ageOk(value: string): boolean {
-  const n = Number(value.trim());
-  return value.trim() !== "" && Number.isFinite(n) && n >= 3 && n <= 110;
+/** The youngest and oldest a participant is taken to be, in years. */
+export const YOUNGEST = 3;
+export const OLDEST = 110;
+
+/**
+ * Their age in a given calendar year.
+ *
+ * The year, not the birthday — somebody born in December is counted the same as somebody
+ * born in January. That is how age groups are drawn in age-group play, and asking only for a
+ * year is what makes it the honest answer rather than one that is wrong for half of them.
+ */
+export function ageInYear(yearOfBirth: string, year: number): number | null {
+  const born = Number(yearOfBirth.trim());
+  if (!/^\d{4}$/.test(yearOfBirth.trim()) || !Number.isFinite(born)) return null;
+
+  const age = year - born;
+  return age >= YOUNGEST && age <= OLDEST ? age : null;
+}
+
+/**
+ * Whether a year of birth could belong to somebody playing this year.
+ *
+ * Four digits and an age between three and a hundred and ten. A two-digit year is refused
+ * rather than guessed at: "98" is 1998 to the person typing it and 98 AD to arithmetic, and
+ * a wrong year puts somebody in the wrong age group.
+ */
+export function yearOfBirthOk(value: string, year: number): boolean {
+  return ageInYear(value, year) !== null;
 }
 
 /** Ten digits or more, however they were typed — spaces, dashes and a country code all pass. */
@@ -309,16 +341,21 @@ export function primaryActivity(activity: ActivityChoice | ""): "scrabble" | "pa
  */
 export function participantProblems(
   input: ParticipantInput,
-  options: { categoryRequired: boolean } = { categoryRequired: true },
+  options: { categoryRequired: boolean; year?: number } = { categoryRequired: true },
 ): ParticipantProblem[] {
+  /* The year the event runs in, which is what an age group is drawn against. */
+  const year = options.year ?? new Date().getFullYear();
   const problems: ParticipantProblem[] = [];
   const primary = primaryActivity(input.activity);
 
   if (needsScrabbleParticipant(input.activity)) {
     if (!nameOk(input.scrabble.fullName))
       problems.push({ field: "scrabbleName", message: "Please give the name for the board sheet." });
-    if (!ageOk(input.scrabble.age))
-      problems.push({ field: "scrabbleAge", message: "Please give an age." });
+    if (!yearOfBirthOk(input.scrabble.yearOfBirth, year))
+      problems.push({
+        field: "scrabbleYearOfBirth",
+        message: "Please give the year you were born, all four digits.",
+      });
 
     /* Required of the person the registration is named after, optional of the other. */
     const phone = input.scrabble.phone.trim();
@@ -335,8 +372,11 @@ export function participantProblems(
   if (needsPaintingParticipant(input.activity)) {
     if (!nameOk(input.painting.fullName))
       problems.push({ field: "paintingName", message: "Please give the painter's name." });
-    if (!ageOk(input.painting.age))
-      problems.push({ field: "paintingAge", message: "Please give an age." });
+    if (!yearOfBirthOk(input.painting.yearOfBirth, year))
+      problems.push({
+        field: "paintingYearOfBirth",
+        message: "Please give the year they were born, all four digits.",
+      });
 
     const phone = input.painting.phone.trim();
     if (primary === "painting" ? !phoneOk(phone) : phone !== "" && !phoneOk(phone))
