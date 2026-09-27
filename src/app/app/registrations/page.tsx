@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
-import { Check, Copy, Download, RefreshCw, UserCheck } from "lucide-react";
+import { Check, Copy, RefreshCw, UserCheck } from "lucide-react";
 import {
   Badge,
   Button,
@@ -18,7 +18,18 @@ import {
 } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import { ParticipantLines, PaymentProofButton } from "@/components/organizer/RegistrationDetails";
-import { answer, paymentProof, verifyPayment, type OrganizerRegistration } from "@/lib/supabase/organizer";
+import { CheckInReportButton } from "@/components/organizer/CheckInReportButton";
+import { useEventDetails } from "@/lib/supabase/useEventDetails";
+import type { CheckInSource } from "@/lib/reports/checkInReport";
+import {
+  answer,
+  field,
+  importField,
+  numberField,
+  paymentProof,
+  verifyPayment,
+  type OrganizerRegistration,
+} from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
 import { cn, formatTime } from "@/lib/utils";
@@ -48,6 +59,8 @@ export default function RegistrationsPage() {
   const currentEvent = useCurrentEvent();
   const roster = useRoster(currentEvent.eventId);
   const rows = roster.registrations;
+  /* The event's own name and date, so the report is headed with them rather than a guess. */
+  const stored = useEventDetails(currentEvent.eventId);
 
   const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<Filter>("all");
@@ -124,14 +137,20 @@ export default function RegistrationsPage() {
             <Button variant="secondary" icon={<RefreshCw className="size-4" />} onClick={roster.reload}>
               Refresh
             </Button>
-            <Button
-              variant="secondary"
-              icon={<Download className="size-4" />}
-              onClick={() => downloadCsv(visible)}
+            {/*
+              The report covers what the old CSV button did and adds the arrivals, so the two
+              are one control rather than two exports of the same list that disagree.
+              It reports what is on screen — a filtered view exports the filtered list.
+            */}
+            <CheckInReportButton
+              source={visible.map(toReportSource)}
+              eventName={stored.event?.name ?? "Tournament"}
+              eventDate={stored.event?.details.startDate ?? ""}
               disabled={visible.length === 0}
-            >
-              CSV
-            </Button>
+              onProblem={(description) =>
+                app.toast({ title: "Report not built", description, tone: "critical" })
+              }
+            />
           </>
         }
       />
@@ -317,58 +336,31 @@ export default function RegistrationsPage() {
 
 /* -------------------------------------------------------------------------- */
 
-/** Exports what is on screen, so a filtered view downloads what it shows. */
-function downloadCsv(rows: OrganizerRegistration[]) {
-  const header = [
-    "Name",
-    "Mobile",
-    "Email",
-    "Area",
-    "Level",
-    "Activity",
-    "Scrabble participant",
-    "Painting participant",
-    "Status",
-    "Payment",
-    "Payment proof",
-    "Amount",
-    "Check-in code",
-    "Checked in",
-  ];
-
-  const escape = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-
-  const body = rows.map((r) =>
-    [
-      r.fullName,
-      r.mobile,
-      r.email,
-      answer(r, "area") ?? "",
-      r.playingLevel,
-      answer(r, "activity") ?? "",
-      answer(r, "scrabbleName") ?? "",
-      answer(r, "paintingName") ?? "",
-      r.registrationStatus,
-      r.paymentStatus,
-      /* The file name, not a link: a signed URL expires and a dead link in a spreadsheet
-         is worse than a name somebody can search for on the payments screen. */
-      paymentProof(r)?.fileName ?? "",
-      String(r.amountDue),
-      r.checkInCode ?? "",
-      r.checkedInAt ?? "",
-    ]
-      .map(escape)
-      .join(","),
-  );
-
-  const blob = new Blob([[header.map(escape).join(","), ...body].join("\n")], {
-    type: "text/csv;charset=utf-8",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "alphabattle-23-august-registrations.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+/**
+ * A roster row in the shape the report reads.
+ *
+ * The mapping lives here because only this screen knows where a player number hides — an
+ * imported registration carries the organiser's own, a website one is given theirs by the
+ * database — and the report should not have to learn about either.
+ */
+function toReportSource(r: OrganizerRegistration): CheckInSource {
+  return {
+    playerNumber: importField(r, "playerNumber") ?? field(r, "playerNumber") ?? null,
+    fullName: r.fullName,
+    mobile: r.mobile,
+    division: field(r, "confirmedDivision") ?? field(r, "preferredDivision") ?? r.playingLevel,
+    paymentStatus: r.paymentStatus,
+    amountDue: numberField(r, "amountDue"),
+    currency: r.currency,
+    checkedInAt: r.checkedInAt,
+    checkInMethod: r.checkInMethod,
+    checkInCode: r.checkInCode,
+    receiptFileName: paymentProof(r)?.fileName ?? field(r, "receiptFileName") ?? null,
+    email: r.email,
+    area: answer(r, "area") ?? r.area ?? "",
+    activity: answer(r, "activity") ?? "",
+    scrabbleName: answer(r, "scrabbleName") ?? "",
+    paintingName: answer(r, "paintingName") ?? "",
+    registrationStatus: r.registrationStatus,
+  };
 }

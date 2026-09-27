@@ -7,6 +7,9 @@ import { Badge, Button, Card, EmptyState, Input, PageHeader } from "@/components
 import { RoleGate } from "@/components/organizer/RoleGate";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import { ParticipantLines, PaymentProofButton } from "@/components/organizer/RegistrationDetails";
+import { CheckInReportButton } from "@/components/organizer/CheckInReportButton";
+import { useEventDetails } from "@/lib/supabase/useEventDetails";
+import type { CheckInSource } from "@/lib/reports/checkInReport";
 import { ProvisionalDraw } from "@/components/organizer/ProvisionalDraw";
 import { WalkInForm } from "@/components/organizer/WalkInForm";
 import { useActiveLock } from "@/lib/supabase/useActiveLock";
@@ -24,8 +27,10 @@ import {
   field,
   importField,
   numberField,
+  paymentProof,
   setDivision,
   staffCheckIn,
+  type OrganizerRegistration,
 } from "@/lib/supabase/organizer";
 import { money } from "@/lib/engine/finance";
 import { cn } from "@/lib/utils";
@@ -49,6 +54,8 @@ export default function DeskPage() {
   const app = useStore();
   const currentEvent = useCurrentEvent();
   const roster = useRoster(currentEvent.eventId);
+  /* The event's own name and date, so the report is headed with them rather than a guess. */
+  const stored = useEventDetails(currentEvent.eventId);
   const { categories } = useEventCategories(currentEvent.eventId);
   const activeLock = useActiveLock(currentEvent.eventId);
   const games = useGames(currentEvent.eventId);
@@ -295,6 +302,23 @@ export default function DeskPage() {
       <PageHeader
         title="Desk"
         subtitle="Find somebody, take their cash, check them in. Built for a phone."
+        /*
+          The report, where check-in actually happens.
+          Somebody working the door wants it at the end of the day without leaving the screen
+          they have been on all afternoon — and wants the printable one before the day starts,
+          for when the wifi goes.
+        */
+        actions={
+          <CheckInReportButton
+            source={roster.registrations.map(toReportSource)}
+            eventName={stored.event?.name ?? "Tournament"}
+            eventDate={stored.event?.details.startDate ?? ""}
+            disabled={roster.registrations.length === 0}
+            onProblem={(description) =>
+              app.toast({ title: "Report not built", description, tone: "critical" })
+            }
+          />
+        }
       />
 
       <RoleGate need="desk">
@@ -740,4 +764,33 @@ export default function DeskPage() {
       </RoleGate>
     </div>
   );
+}
+
+/**
+ * A roster row in the shape the check-in report reads.
+ *
+ * The same mapping the registrations screen makes, because the two must produce the same
+ * document — a desk that exports a different report from the director's is a room where two
+ * people disagree about who turned up.
+ */
+function toReportSource(r: OrganizerRegistration): CheckInSource {
+  return {
+    playerNumber: importField(r, "playerNumber") ?? field(r, "playerNumber") ?? null,
+    fullName: r.fullName,
+    mobile: r.mobile,
+    division: field(r, "confirmedDivision") ?? field(r, "preferredDivision") ?? r.playingLevel,
+    paymentStatus: r.paymentStatus,
+    amountDue: numberField(r, "amountDue"),
+    currency: r.currency,
+    checkedInAt: r.checkedInAt,
+    checkInMethod: r.checkInMethod,
+    checkInCode: r.checkInCode,
+    receiptFileName: paymentProof(r)?.fileName ?? field(r, "receiptFileName") ?? null,
+    email: r.email,
+    area: answer(r, "area") ?? r.area ?? "",
+    activity: answer(r, "activity") ?? "",
+    scrabbleName: answer(r, "scrabbleName") ?? "",
+    paintingName: answer(r, "paintingName") ?? "",
+    registrationStatus: r.registrationStatus,
+  };
 }
