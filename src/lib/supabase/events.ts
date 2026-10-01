@@ -1,7 +1,7 @@
 "use client";
 
 import type { ActivityOption } from "@/lib/domain/registrationParticipants";
-import type { Rate } from "@/lib/domain/pricing";
+import type { PromoCode, Rate } from "@/lib/domain/pricing";
 
 import { supabase } from "./client";
 
@@ -48,6 +48,8 @@ export interface EventDetails {
    * ticket — and who is on it — depends on which was chosen.
    */
   activities?: ActivityOption[];
+  /** Codes the organiser hands out, each taking a percentage off whatever is being charged. */
+  promoCodes?: PromoCode[];
   /** A map link for the venue, so the address on the form is tappable. */
   mapsUrl?: string;
   /** `lat,lng` for the venue, so the map on the form pins the door and not the road. */

@@ -14,10 +14,12 @@ import {
 import {
   cheaperRateHint,
   priceActivity,
+  resolvePromo,
   priceRegistration,
   rateCardFor,
   rateNeedsVerification,
   type ActivityPrice,
+  type PromoCode,
   type RateContext,
 } from "@/lib/domain/pricing";
 import {
@@ -104,6 +106,9 @@ export interface QuickRegistration {
   quotedRateLabel: string;
   /** True when the rate rests on a claim the desk still has to see proof of. */
   quotedRateNeedsCheck: boolean;
+  /** The promo code that was accepted, as the organiser wrote it. Empty when none was used. */
+  promoCode: string;
+  promoPercentOff: number;
 }
 
 /** How somebody found the event. Recorded so an organiser can see what actually worked. */
@@ -144,6 +149,16 @@ export function QuickForm({
   const [payment, setPayment] = React.useState<PaymentChoice | null>(null);
   const [proofFile, setProofFile] = React.useState<File | null>(null);
   const [proofProblem, setProofProblem] = React.useState<string | null>(null);
+  const [promoTyped, setPromoTyped] = React.useState("");
+  /*
+   * Whether they have finished typing the code.
+   *
+   * "That code is not recognised" flashed up at every keystroke of a code being typed
+   * correctly — K, KS, KSA — which reads as the form arguing with somebody who is doing
+   * nothing wrong. The refusal waits until they leave the field or press Register; the
+   * acceptance appears the moment it matches, because that one is good news.
+   */
+  const [promoSettled, setPromoSettled] = React.useState(false);
   /*
    * Bumped to clear the file input.
    *
@@ -221,12 +236,22 @@ export function QuickForm({
    */
   const usingActivityPrice = activities.length > 0;
 
+  /*
+   * The code, resolved before anything is priced with it.
+   *
+   * Declared here rather than beside the total it changes: every price below reads it, and a
+   * `const` referenced above its own declaration is a dead page, not a type error — which is
+   * exactly what happened, and what the browser check caught.
+   */
+  const promoState = resolvePromo(event.promoCodes ?? [], promoTyped, pricedAt);
+  const promo: PromoCode | null = promoState.status === "accepted" ? promoState.promo : null;
+
   /* Every activity priced, so the whole board can be shown side by side, not just the one
      chosen — somebody deciding between them is comparing two columns. */
   const activityPrices = new Map<string, ActivityPrice>(
     activities.map((a) => [
       a.key,
-      priceActivity(a, { isMember: psaMember === true, at: pricedAt, payment }),
+      priceActivity(a, { isMember: psaMember === true, at: pricedAt, payment, promo }),
     ]),
   );
   const chosenPrice = activityRate ? activityPrices.get(activityRate.key) ?? null : null;
@@ -243,7 +268,7 @@ export function QuickForm({
   const activityFloors = new Map<string, number>(
     activities.map((a) => [
       a.key,
-      priceActivity(a, { isMember: true, at: pricedAt, payment: "online" }).amount,
+      priceActivity(a, { isMember: true, at: pricedAt, payment: "online", promo }).amount,
     ]),
   );
 
@@ -272,7 +297,9 @@ export function QuickForm({
     ? `${activityRate?.key ?? ""}:${chosenPrice?.id ?? ""}`
     : priced.applied.id;
   const quotedRateLabel = usingActivityPrice
-    ? [activityRate?.rateLabel, chosenPrice?.label].filter(Boolean).join(" · ")
+    ? [activityRate?.rateLabel, chosenPrice?.label, promo ? `${promo.code} −${promo.percentOff}%` : ""]
+        .filter(Boolean)
+        .join(" · ")
     : priced.applied.label;
   const quotedNeedsCheck = usingActivityPrice
     ? Boolean(chosenPrice?.needsCheck)
@@ -355,6 +382,8 @@ export function QuickForm({
       quotedRateId,
       quotedRateLabel,
       quotedRateNeedsCheck: quotedNeedsCheck,
+      promoCode: promo?.code ?? "",
+      promoPercentOff: promo?.percentOff ?? 0,
     });
   };
 
@@ -777,6 +806,56 @@ export function QuickForm({
             })}
           </div>
 
+          {/*
+            The code, inside the price panel.
+            It belongs where the number it changes is, not in a row of its own further down:
+            somebody typing a code is watching for the total to move, and a field placed
+            anywhere else makes them hunt for the proof that it worked.
+          */}
+          {(event.promoCodes ?? []).length > 0 ? (
+            <div className="mt-2.5 border-t border-line pt-2.5">
+              <label htmlFor="q-promo" className="block text-center text-[12.5px] font-semibold text-ink">
+                Promo code
+              </label>
+              <input
+                id="q-promo"
+                value={promoTyped}
+                onChange={(e) => {
+                  /* Upper-cased as they type, so a code never fails for being lower case. */
+                  setPromoTyped(e.target.value.toUpperCase().replace(/\s+/g, ""));
+                  setPromoSettled(false);
+                }}
+                onBlur={() => setPromoSettled(true)}
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                placeholder="If you have one"
+                className={cn(
+                  field,
+                  "mx-auto max-w-[16rem] text-center tracking-[0.12em]",
+                  promoState.status === "accepted" ? "border-success" : "",
+                )}
+              />
+
+              {promoState.status === "accepted" ? (
+                <p className="mt-1.5 text-center text-[12.5px] font-semibold text-success">
+                  {promoState.promo.label} applied.
+                </p>
+              ) : null}
+
+              {/*
+                Held back until they have stopped typing or pressed Register — see
+                `promoSettled`. A half-typed code is not a wrong code.
+              */}
+              {(promoSettled || touched) &&
+              (promoState.status === "unknown" || promoState.status === "expired") ? (
+                <p className="mt-1.5 text-center text-[12.5px] text-critical">
+                  {promoState.message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="mt-2.5 border-t border-line pt-2.5 text-center">
             {activityRate && chosenPrice ? (
               <>
@@ -785,6 +864,19 @@ export function QuickForm({
                   {" — "}
                   {quotedRateLabel}
                 </p>
+                {/*
+                  What the code took off, said in money.
+                  A percentage is a claim; the rupees are the thing somebody checks against
+                  what they are about to transfer.
+                */}
+                {chosenPrice.promo ? (
+                  <p className="mt-0.5 text-[12.5px] font-semibold text-success">
+                    {chosenPrice.promo.code} saved you{" "}
+                    <span className="num">{money(chosenPrice.beforePromo - chosenPrice.amount)}</span>
+                    {" — was "}
+                    <span className="num line-through">{money(chosenPrice.beforePromo)}</span>
+                  </p>
+                ) : null}
                 {chosenPrice.needsCheck ? (
                   <p className={cn("mt-0.5", hint)}>
                     The desk will check your membership at check-in. If it does not hold, the

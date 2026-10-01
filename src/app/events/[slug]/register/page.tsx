@@ -237,6 +237,16 @@ export default function RegisterPage() {
         psaMember: quick.psaMember ? "Yes" : "No",
         rateApplied: quick.quotedRateLabel,
         rateId: quick.quotedRateId,
+        /*
+         * The code that was honoured, stored beside the amount it produced.
+         *
+         * Without it a PKR 560 entry sits on the desk's list with nothing explaining why it
+         * is not 800, and the volunteer taking the money has no way to tell a promotion from
+         * a mistake — the same reason the membership claim is stored next to its rate.
+         */
+        ...(quick.promoCode
+          ? { promoCode: quick.promoCode, promoPercentOff: String(quick.promoPercentOff) }
+          : {}),
         ...(quick.quotedRateNeedsCheck ? { rateNeedsCheck: "Yes" } : {}),
         paymentChoice: quick.payment === "online" ? "Online" : "Cash on site",
         ...(proof ? { paymentProofFile: proof.fileName } : {}),

@@ -70,6 +70,7 @@ export function usePublicEvent(slug: string): PublicEventState {
           rates: live.rates?.length ? live.rates : seeded.rates,
           /* What the event sells, where the organiser has configured more than one thing. */
           activities: live.activities?.length ? live.activities : seeded.activities,
+          promoCodes: live.promoCodes?.length ? live.promoCodes : seeded.promoCodes,
           rounds: live.rounds || seeded.rounds,
           roundMinutes: live.roundMinutes || seeded.roundMinutes,
           venueName: live.venueName || seeded.venueName,

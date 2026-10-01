@@ -9,7 +9,7 @@
 
 import { PaymentMethod, PlayerCategory } from "./identity";
 import { ParticipationTrack } from "../firebase/schema";
-import { PriceRules, Rate } from "./pricing";
+import { PriceRules, PromoCode, Rate } from "./pricing";
 import type { ActivityOption } from "./registrationParticipants";
 
 /* -------------------------------------------------------------------------- */
@@ -345,6 +345,14 @@ export interface PublicEvent {
    * the ticket from the chosen one, and asks who is doing what.
    */
   activities?: ActivityOption[];
+
+  /**
+   * Promo codes this event honours.
+   *
+   * Each takes a percentage off whatever the participant would otherwise pay. Absent for an
+   * event that runs no promotion, which is most of them.
+   */
+  promoCodes?: PromoCode[];
 
   /**
    * Percentage off for a verified Alliance Française member.

@@ -17,6 +17,7 @@ import type { StoredEvent } from "@/lib/supabase/events";
 import { eventTimeLine } from "./eventTime";
 import { EVENT_STATE_LABEL, PublicEvent, EventState } from "./events";
 import type { PlayerCategory } from "./identity";
+import { promoCodesFrom } from "./pricing";
 import { activityOptionsFrom } from "./registrationParticipants";
 
 /*
@@ -89,6 +90,7 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
      * anybody running the event.
      */
     activities: activityOptionsFrom(d.activities),
+    promoCodes: promoCodesFrom(d.promoCodes),
     mapsUrl: d.mapsUrl,
     mapCoords: d.mapCoords,
 

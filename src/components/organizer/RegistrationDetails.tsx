@@ -50,11 +50,13 @@ export function ParticipantLines({
    * naming both activities — is the thing worth showing.
    */
   const paymentChoice = showPayment ? answer(reg, "paymentChoice") : undefined;
+  /* A reduced amount with nothing explaining it is the thing a desk cannot check. */
+  const promo = answer(reg, "promoCode");
 
   const worthShowing =
     lines.length > 1 || (lines.length === 1 && lines[0].startsWith("Scrabble + Painting"));
 
-  if (!worthShowing && !paymentChoice) return null;
+  if (!worthShowing && !paymentChoice && !promo) return null;
 
   const activity = answer(reg, "activity");
 
@@ -74,6 +76,12 @@ export function ParticipantLines({
         : null}
       {paymentChoice ? (
         <p className="text-[12.5px] leading-snug text-muted">Payment: {paymentChoice}</p>
+      ) : null}
+      {promo ? (
+        <p className="text-[12.5px] leading-snug text-muted">
+          Promo code: <span className="font-semibold text-ink">{promo}</span>
+          {answer(reg, "promoPercentOff") ? ` (−${answer(reg, "promoPercentOff")}%)` : ""}
+        </p>
       ) : null}
     </div>
   );

@@ -381,6 +381,8 @@ export interface ActivityPriceContext {
    * them at the regular rate rather than at a discount they have not earned.
    */
   payment?: "online" | "cash" | "complimentary" | null;
+  /** An accepted promo code, once one has been typed and recognised. */
+  promo?: PromoCode | null;
 }
 
 export interface ActivityTier {
@@ -394,8 +396,12 @@ export interface ActivityTier {
 }
 
 export interface ActivityPrice {
-  /** What they pay, per person. */
+  /** What they pay, per person, after any promo code. */
   amount: number;
+  /** The bracket price before the code came off, for the line showing what it saved. */
+  beforePromo: number;
+  /** The code applied, if any. */
+  promo: PromoCode | null;
   /** The bracket charged, for the record and the line they read. */
   label: string;
   id: string;
@@ -470,8 +476,19 @@ export function priceActivity(
   const applied =
     cheapest?.rate ?? card.find((r) => r.id === "regular") ?? { id: "regular" as const, label: "Regular", amount: option.price };
 
+  /*
+   * The code comes off last, against the bracket they had already earned.
+   *
+   * Taking it off the regular price instead would make a 30% code worth less than an early
+   * bird and so never worth typing — a promotion that quietly does nothing is worse than no
+   * promotion, because somebody went looking for it.
+   */
+  const promo = context.promo ?? null;
+
   return {
-    amount: applied.amount,
+    amount: applyPromo(applied.amount, promo),
+    beforePromo: applied.amount,
+    promo,
     label: applied.label,
     id: applied.id,
     tiers: judged.map((t) => ({ ...t, applied: t.rate === applied })),
@@ -479,4 +496,97 @@ export function priceActivity(
     /* A membership is a claim the desk settles; a date is not. */
     needsCheck: applied.id === "member",
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Promo codes                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A code the organiser hands out, taking a percentage off.
+ *
+ * Deliberately a percentage rather than a price, unlike `PriceCoupon` above. A code given to
+ * a partner club has to mean the same thing whichever ticket it is used on, and a fixed price
+ * would mean one code that undercuts the painting seat and overcharges the tournament the
+ * moment either moves.
+ *
+ * This is the one discount that *does* combine with a bracket, and it is deliberate: a code
+ * is a lever the organiser pulls on purpose, and 30% off a price nobody can reach is not a
+ * promotion. It applies to whatever they would otherwise have paid — which during an early
+ * bird is the early bird, and after it the member or regular price.
+ */
+export interface PromoCode {
+  /** Compared without case or surrounding space. Stored as the organiser wrote it. */
+  code: string;
+  /** What the participant is told they got, e.g. "KSA18 — 30% off". */
+  label: string;
+  /** 1 to 100. */
+  percentOff: number;
+  /** Inclusive end date. A code with none never expires. */
+  availableUntil?: string;
+}
+
+export function promoCodesFrom(payload: unknown): PromoCode[] {
+  if (!Array.isArray(payload)) return [];
+
+  return payload
+    .map((raw): PromoCode | null => {
+      if (typeof raw !== "object" || raw === null) return null;
+      const r = raw as Record<string, unknown>;
+
+      const code = String(r.code ?? "").trim();
+      const percentOff = Number(r.percentOff);
+      /*
+       * Nought per cent is not a promotion and anything over a hundred would pay somebody to
+       * enter. Both are refused rather than clamped, because either is a typo in a figure
+       * that decides money and silently correcting it hides the mistake.
+       */
+      if (!code || !Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 100) return null;
+
+      const until = String(r.availableUntil ?? "").trim();
+
+      return {
+        code,
+        label: String(r.label ?? "").trim() || `${code} — ${Math.round(percentOff)}% off`,
+        percentOff,
+        ...(until ? { availableUntil: until } : {}),
+      };
+    })
+    .filter((p): p is PromoCode => p !== null);
+}
+
+export type PromoState =
+  | { status: "none" }
+  | { status: "accepted"; promo: PromoCode }
+  | { status: "unknown"; message: string }
+  | { status: "expired"; message: string };
+
+/**
+ * What the typed code means.
+ *
+ * A code that is merely expired is told apart from one that was never real, because somebody
+ * hunting for a typo in a code that simply closed is wasting their time — and the difference
+ * is the whole of what the message has to convey.
+ */
+export function resolvePromo(codes: PromoCode[], typed: string, at: string): PromoState {
+  const wanted = (typed ?? "").trim().toUpperCase();
+  if (!wanted) return { status: "none" };
+
+  const match = codes.find((c) => c.code.trim().toUpperCase() === wanted);
+  if (!match) return { status: "unknown", message: "That code is not recognised." };
+
+  if (match.availableUntil) {
+    const closes = new Date(match.availableUntil).getTime();
+    const now = new Date(at).getTime();
+    if (!Number.isNaN(closes) && !Number.isNaN(now) && now > closes)
+      return { status: "expired", message: `${match.code} has closed.` };
+  }
+
+  return { status: "accepted", promo: match };
+}
+
+/** The promo taken off an amount, to the nearest whole unit. Never below zero. */
+export function applyPromo(amount: number, promo: PromoCode | null): number {
+  if (!promo) return amount;
+  return Math.max(0, Math.round(amount * (1 - promo.percentOff / 100)));
 }
