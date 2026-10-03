@@ -10,6 +10,7 @@ import {
 import type { Player } from "@/lib/domain/types";
 
 import {
+  answer,
   currentOrganizer,
   hasStaffAccess,
   listRegistrations,
@@ -153,7 +154,21 @@ export function useRoster(eventId: string): RosterState {
   React.useEffect(() => subscribeToRegistrations(eventId, reload), [eventId, reload]);
 
   const players = React.useMemo(
-    () => rosterFromRegistrations(registrations),
+    () =>
+      rosterFromRegistrations(
+        registrations.map((r) => ({
+          ...r,
+          /*
+           * Which of these entries is actually in the tournament.
+           *
+           * Read from the activity the form recorded, by key rather than by its label: the
+           * label is organiser copy that can be reworded in Settings, and the draw must not
+           * depend on the spelling of a button. Anything without one is a player, because
+           * every registration made before painting was sold was.
+           */
+          playsScrabble: answer(r, "activityKey") !== "painting",
+        })),
+      ),
     [registrations],
   );
 

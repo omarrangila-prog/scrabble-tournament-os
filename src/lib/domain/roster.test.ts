@@ -147,6 +147,40 @@ describe("hueFor", () => {
   });
 });
 
+describe("who is in the draw", () => {
+  it("leaves a painting-only entry out of the roster the engine is handed", () => {
+    /*
+     * They are checked in and they owe money, so the desk still sees them — but this list
+     * is what gets paired, and a painting seat is not an entrant.
+     */
+    const roster = rosterFromRegistrations([
+      source({ id: "player" }),
+      source({ id: "painter", playsScrabble: false }),
+    ]);
+    expect(roster.map((p) => p.id)).toEqual(["player"]);
+  });
+
+  it("treats an entry that says nothing as a player", () => {
+    /* Every registration taken before painting was sold has no activity recorded. */
+    const [only] = rosterFromRegistrations([source({ id: "old" })]);
+    expect(only.id).toBe("old");
+  });
+
+  it("keeps somebody doing both in the draw", () => {
+    const roster = rosterFromRegistrations([source({ id: "both", playsScrabble: true })]);
+    expect(roster).toHaveLength(1);
+  });
+
+  it("does not let a painter take a seed from the players", () => {
+    const roster = rosterFromRegistrations([
+      source({ id: "painter", playsScrabble: false, playingLevel: "beginner" }),
+      source({ id: "a", playingLevel: "beginner" }),
+      source({ id: "b", playingLevel: "beginner" }),
+    ]);
+    expect(roster.map((p) => p.seed)).toEqual([1, 2]);
+  });
+});
+
 describe("rosterFromRegistrations", () => {
   it("leaves rejected registrations off the roster", () => {
     const roster = rosterFromRegistrations([

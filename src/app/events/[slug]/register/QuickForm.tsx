@@ -243,7 +243,19 @@ export function QuickForm({
    * `const` referenced above its own declaration is a dead page, not a type error — which is
    * exactly what happened, and what the browser check caught.
    */
-  const promoState = resolvePromo(event.promoCodes ?? [], promoTyped, pricedAt);
+  /*
+   * Promo codes belong to the tournament, not to the painting seat.
+   *
+   * They are handed out through Scrabble clubs to fill the boards, and a painting ticket
+   * that quietly took 30% off was giving away a workshop place on the strength of a code
+   * meant for players. The box is not shown at all unless Scrabble is being entered, and the
+   * code is not applied either — hiding the field alone would still honour one pasted in
+   * before the activity was changed.
+   */
+  const promoOffered = wantsScrabble && (event.promoCodes ?? []).length > 0;
+  const promoState = promoOffered
+    ? resolvePromo(event.promoCodes ?? [], promoTyped, pricedAt)
+    : ({ status: "none" } as const);
   const promo: PromoCode | null = promoState.status === "accepted" ? promoState.promo : null;
 
   /* Every activity priced, so the whole board can be shown side by side, not just the one
@@ -251,7 +263,13 @@ export function QuickForm({
   const activityPrices = new Map<string, ActivityPrice>(
     activities.map((a) => [
       a.key,
-      priceActivity(a, { isMember: psaMember === true, at: pricedAt, payment, promo }),
+      priceActivity(a, {
+        isMember: psaMember === true,
+        at: pricedAt,
+        payment,
+        /* The painting column is never discounted by a tournament code. */
+        promo: a.key === "painting" ? null : promo,
+      }),
     ]),
   );
   const chosenPrice = activityRate ? activityPrices.get(activityRate.key) ?? null : null;
@@ -268,7 +286,12 @@ export function QuickForm({
   const activityFloors = new Map<string, number>(
     activities.map((a) => [
       a.key,
-      priceActivity(a, { isMember: true, at: pricedAt, payment: "online", promo }).amount,
+      priceActivity(a, {
+        isMember: true,
+        at: pricedAt,
+        payment: "online",
+        promo: a.key === "painting" ? null : promo,
+      }).amount,
     ]),
   );
 
@@ -812,7 +835,7 @@ export function QuickForm({
             somebody typing a code is watching for the total to move, and a field placed
             anywhere else makes them hunt for the proof that it worked.
           */}
-          {(event.promoCodes ?? []).length > 0 ? (
+          {promoOffered ? (
             <div className="mt-2.5 border-t border-line pt-2.5">
               <label htmlFor="q-promo" className="block text-center text-[12.5px] font-semibold text-ink">
                 Promo code

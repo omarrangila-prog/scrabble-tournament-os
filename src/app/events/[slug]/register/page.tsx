@@ -185,7 +185,16 @@ export default function RegisterPage() {
       dateOfBirth: "",
       city: "",
       area: "",
-      requestedLevel: (quick.category || "recreational") as GameOnRegistration["requestedLevel"],
+      /*
+       * The category they chose, and nothing invented when they chose none.
+       *
+       * This defaulted to "recreational", so a painting-only registration was filed as a
+       * Recreational / Intermediate Scrabble player — a division nobody picked, printed on
+       * the desk screen, and good enough to seat them at a board on the day. A painter has
+       * no division because there is no draw they belong to.
+       */
+      requestedLevel: (quick.category ||
+        (quick.activity === "painting" ? "" : "recreational")) as GameOnRegistration["requestedLevel"],
       payAtVenue: quick.payAtVenue,
       receiptFileName: proof?.fileName,
       paymentProof: proof,
@@ -198,7 +207,17 @@ export default function RegisterPage() {
         /* Both: the answer as given, and the age it works out to for this event's year. */
         yearOfBirth: quick.yearOfBirth,
         age: quick.age,
-        ...(quick.activity ? { activity: quick.activityLabel || quick.activity } : {}),
+        ...(quick.activity
+          ? {
+              activity: quick.activityLabel || quick.activity,
+              /*
+               * The key as well as the label. Everything that decides whether somebody is in
+               * the draw reads this one, because the label is organiser copy that can be
+               * reworded in Settings and a tournament must not turn on a button's spelling.
+               */
+              activityKey: quick.activity,
+            }
+          : {}),
         /*
          * Who is doing what, stored as two plain names.
          *
@@ -310,6 +329,11 @@ export default function RegisterPage() {
       participationTrack: reg.track,
       experience: reg.playedCompetitiveScrabble ? "Played competitively" : "New to competition",
       selfRating: reg.typicalScore,
+      /*
+       * Empty stays empty. `?? "beginner"` only guards against the field being absent; a
+       * painter states no division and must keep stating none, or the fallback puts them
+       * back in a draw by another route.
+       */
       preferredDivision: (reg.requestedLevel ?? "beginner") as PlayerCategory,
       previousEvents: reg.previousTournaments,
       answers: {

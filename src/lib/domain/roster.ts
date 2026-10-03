@@ -32,6 +32,15 @@ export interface RosterSource {
   paymentStatus: string;
   checkedInAt: string | null;
   submittedAt: string;
+  /**
+   * Whether this entry is in the Scrabble tournament at all.
+   *
+   * An event can sell a painting seat beside the boards, and somebody who bought one is a
+   * guest of the event and not an entrant in the draw. Undefined means yes, because every
+   * registration made before painting existed was a player — absence must not quietly
+   * remove somebody from the tournament.
+   */
+  playsScrabble?: boolean;
 }
 
 /**
@@ -148,6 +157,15 @@ function entryNumber(index: number): string {
 export function rosterFromRegistrations(sources: RosterSource[]): Player[] {
   const entrants = sources
     .filter((s) => s.registrationStatus !== "rejected")
+    /*
+     * Painters are not in the draw.
+     *
+     * They are checked in, they owe money and they appear on the desk and in the check-in
+     * report — but this list is what the pairing engine is handed, and a painting seat is
+     * not an entrant. Without this a painter was given an invented division and could be
+     * seated at a board against somebody who came to play.
+     */
+    .filter((s) => s.playsScrabble !== false)
     .slice()
     .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
 
