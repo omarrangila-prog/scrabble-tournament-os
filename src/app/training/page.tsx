@@ -156,7 +156,16 @@ export default function TrainingPage() {
     );
   }
 
-  if (done) return <TrainingConfirmation signup={done} fee={fee} currency={currency} />;
+  if (done)
+    return (
+      <TrainingConfirmation
+        signup={done}
+        fee={fee}
+        currency={currency}
+        venueName={details?.venueName ?? ""}
+        mapsUrl={details?.mapsUrl ?? ""}
+      />
+    );
 
   return (
     <main className="relative min-h-dvh px-4 py-8 sm:py-12" style={{ background: CREAM }}>
@@ -211,21 +220,62 @@ export default function TrainingPage() {
               {
                 icon: <Wallet className="size-3.5" />,
                 text: `${currency} ${fee.toLocaleString("en-PK")} per person`,
+                href: undefined as string | undefined,
               },
               ...(details?.venueName
-                ? [{ icon: <MapPin className="size-3.5" />, text: details.venueName }]
+                ? [
+                    {
+                      icon: <MapPin className="size-3.5" />,
+                      text: details.venueName,
+                      /*
+                       * Opens in Maps where the event has a link. Nearly every signup is
+                       * filled in on a phone, where a venue name that does nothing when
+                       * tapped is a screenshot and a paste away from being directions.
+                       */
+                      href: details.mapsUrl,
+                    },
+                  ]
                 : []),
-            ].map((item) => (
-              <span
-                key={item.text}
-                className="flex items-center gap-1.5 text-[13px] font-semibold"
-                style={{ color: BROWN }}
-              >
-                <span style={{ color: GOLD }}>{item.icon}</span>
-                {item.text}
-              </span>
-            ))}
+            ].map((item) => {
+              const body = (
+                <>
+                  <span style={{ color: GOLD }}>{item.icon}</span>
+                  {item.text}
+                </>
+              );
+
+              return item.href ? (
+                <a
+                  key={item.text}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-[13px] font-semibold underline decoration-dotted underline-offset-4"
+                  style={{ color: BROWN }}
+                >
+                  {body}
+                </a>
+              ) : (
+                <span
+                  key={item.text}
+                  className="flex items-center gap-1.5 text-[13px] font-semibold"
+                  style={{ color: BROWN }}
+                >
+                  {body}
+                </span>
+              );
+            })}
           </div>
+          {/*
+            The street address, under the venue name.
+            Somebody coming to a building they have never been to needs more than "The Cafe
+            Leap" — and the tournament crowd already knows it, while these trainees may not.
+          */}
+          {details?.venueAddress ? (
+            <p className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
+              {details.venueAddress}
+            </p>
+          ) : null}
         </motion.header>
 
         <motion.div
@@ -263,10 +313,14 @@ function TrainingConfirmation({
   signup,
   fee,
   currency,
+  venueName,
+  mapsUrl,
 }: {
   signup: TrainingSubmission;
   fee: number;
   currency: string;
+  venueName: string;
+  mapsUrl: string;
 }) {
   const money = `${currency} ${fee.toLocaleString("en-PK")}`;
 
@@ -298,6 +352,30 @@ function TrainingConfirmation({
           {signup.guardianName ? <Line label="Parent" value={signup.guardianName} /> : null}
           {signup.preferredSlot ? <Line label="Sessions" value={signup.preferredSlot} /> : null}
           <Line label="PSA member" value={signup.psaMember ? "Yes" : "No"} />
+          {venueName ? (
+            <Line
+              label="Where"
+              value={
+                /*
+                 * The confirmation is the screen somebody screenshots and comes back to on
+                 * the day, so it has to answer "where am I going" without them hunting for
+                 * the original link.
+                 */
+                mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline decoration-dotted underline-offset-4"
+                  >
+                    {venueName}
+                  </a>
+                ) : (
+                  venueName
+                )
+              }
+            />
+          ) : null}
           <Line label="We will call" value={contactFor(signup)} />
           <Line
             label={signup.payment === "online" ? "Paid online" : "To pay at the first session"}
@@ -316,7 +394,7 @@ function TrainingConfirmation({
   );
 }
 
-function Line({ label, value }: { label: string; value: string }) {
+function Line({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-line pb-2 last:border-0 last:pb-0">
       <span className="text-[13px] font-semibold uppercase tracking-wide text-muted">
