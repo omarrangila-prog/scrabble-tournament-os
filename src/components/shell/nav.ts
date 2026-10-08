@@ -7,6 +7,7 @@ import {
   CircleHelp,
   ClipboardList,
   Gauge,
+  GraduationCap,
   IdCard,
   Radio,
   ShieldCheck,
@@ -61,6 +62,12 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/desk", label: "Desk", icon: Search },
   { href: "/app/results", label: "Results & Pairings", icon: ClipboardList },
   { href: "/app/registrations", label: "Registrations", icon: IdCard },
+  /*
+   * Coaching, which is not a tournament. Its own screen because a trainee has no division
+   * and is never paired: sharing the Registrations page would have put them one forgotten
+   * filter away from a board.
+   */
+  { href: "/app/training", label: "Training", icon: GraduationCap },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
   { href: "/app/send-codes", label: "Send codes", icon: Send },
@@ -103,6 +110,7 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
   { href: "/app/score-entry", label: "Score Entry" },
   { href: "/app/standings", label: "Live Standings" },
   { href: "/app/certificates", label: "Certificates" },
+  { href: "/app/training", label: "Training" },
 ];
 
 /* -------------------------------------------------------------------------- */

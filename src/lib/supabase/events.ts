@@ -50,6 +50,14 @@ export interface EventDetails {
   activities?: ActivityOption[];
   /** Codes the organiser hands out, each taking a percentage off whatever is being charged. */
   promoCodes?: PromoCode[];
+  /**
+   * The session times a trainee may choose between.
+   *
+   * Training only. A tournament runs at one stated time and has nothing to choose; coaching
+   * repeats weekly, and which session somebody can actually attend is the one thing the coach
+   * has to know before the first one.
+   */
+  slots?: string[];
   /** A map link for the venue, so the address on the form is tappable. */
   mapsUrl?: string;
   /** `lat,lng` for the venue, so the map on the form pins the door and not the road. */
