@@ -42,8 +42,8 @@ const child = (over: Partial<TrainingSignup> = {}): TrainingSignup =>
   });
 
 describe("the price", () => {
-  it("is 800 rupees a person", () => {
-    expect(TRAINING_FEE).toBe(800);
+  it("is 1,000 rupees a person", () => {
+    expect(TRAINING_FEE).toBe(1000);
   });
 });
 
@@ -175,7 +175,7 @@ describe("PSA membership", () => {
      * Stated as a test because the tournament form's PSA question *does* change the price,
      * and somebody reading both would reasonably assume this one does too.
      */
-    expect(TRAINING_FEE).toBe(800);
+    expect(TRAINING_FEE).toBe(1000);
   });
 });
 

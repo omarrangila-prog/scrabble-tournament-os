@@ -15,8 +15,15 @@
 
 import { ageInYear, phoneOk, yearOfBirthOk } from "./registrationParticipants";
 
-/** PKR 800 a person, which is the one price coaching is sold at. */
-export const TRAINING_FEE = 800;
+/**
+ * PKR 1,000 a person, which is the one price coaching is sold at.
+ *
+ * A fallback, not the source. What a trainee is actually charged is the event row's own
+ * `fee`, so a price change is an edit to one row; this is only what the form shows if that
+ * row cannot be read at all. The two are kept in step deliberately — a stale constant here
+ * would quote one price and bill another.
+ */
+export const TRAINING_FEE = 1000;
 
 /**
  * The age at which the form stops asking for a parent.
