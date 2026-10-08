@@ -24,6 +24,7 @@ const adult = (over: Partial<TrainingSignup> = {}): TrainingSignup => ({
   age: "31",
   phone: "03001234567",
   preferredSlot: "Saturday morning",
+  psaMember: false,
   termsAccepted: true,
   ...over,
 });
@@ -150,6 +151,31 @@ describe("the slot", () => {
       slotRequired: false,
     });
     expect(problemFor(problems, "preferredSlot")).toBeUndefined();
+  });
+});
+
+describe("PSA membership", () => {
+  it("must be answered one way or the other", () => {
+    /* The precondition: unanswered is null, not false. */
+    expect(EMPTY_SIGNUP.psaMember).toBeNull();
+    const problems = trainingProblems(adult({ psaMember: null }), OPTIONS);
+    expect(problemFor(problems, "psaMember")).toBeDefined();
+  });
+
+  it("accepts no as an answer", () => {
+    expect(signupReady(adult({ psaMember: false }), OPTIONS)).toBe(true);
+  });
+
+  it("accepts yes as an answer", () => {
+    expect(signupReady(adult({ psaMember: true }), OPTIONS)).toBe(true);
+  });
+
+  it("changes nothing about the fee, because training is a flat price", () => {
+    /*
+     * Stated as a test because the tournament form's PSA question *does* change the price,
+     * and somebody reading both would reasonably assume this one does too.
+     */
+    expect(TRAINING_FEE).toBe(800);
   });
 });
 

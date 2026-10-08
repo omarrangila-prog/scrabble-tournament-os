@@ -50,6 +50,15 @@ export interface TrainingSignup {
   preferredSlot: string;
   /** Scrabble experience, in their own words. Free text, never a rating. */
   experience: string;
+  /**
+   * Whether they are already a PSA member. Claimed, never verified here.
+   *
+   * Unlike the tournament form, this earns no discount: training is a flat fee, and the
+   * question is asked because the coach wants to know who is already in the association —
+   * a member has played rated games and usually starts in a different group. `null` is
+   * "not answered yet", which is why it is not a plain boolean.
+   */
+  psaMember: boolean | null;
   payment: TrainingPayment;
   /** The receipt, when paying online. Uploaded by the caller. */
   proofFile: File | null;
@@ -65,6 +74,7 @@ export const EMPTY_SIGNUP: TrainingSignup = {
   guardianPhone: "",
   preferredSlot: "",
   experience: "",
+  psaMember: null,
   payment: "cash",
   proofFile: null,
   termsAccepted: false,
@@ -91,6 +101,7 @@ export type TrainingField =
   | "guardianName"
   | "guardianPhone"
   | "preferredSlot"
+  | "psaMember"
   | "terms"
   | "proof";
 
@@ -142,6 +153,9 @@ export function trainingProblems(
 
   if (options.slotRequired && signup.preferredSlot.trim() === "")
     problems.push({ field: "preferredSlot", message: "Please choose when you can attend." });
+
+  if (signup.psaMember === null)
+    problems.push({ field: "psaMember", message: "Please answer yes or no." });
 
   if (signup.payment === "online" && signup.proofFile === null)
     problems.push({ field: "proof", message: "Please attach your payment proof." });

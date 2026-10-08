@@ -32,7 +32,7 @@ import {
 } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { useStore } from "@/lib/store/useStore";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatDate, formatTime } from "@/lib/utils";
 
 type Filter = "all" | "unpaid" | "arrived" | "waiting";
 
@@ -131,7 +131,18 @@ export default function RegistrationsPage() {
             {rows.length} {rows.length === 1 ? "entry" : "entries"}
           </Badge>
         }
-        subtitle="Everyone who has registered for 23 August, read live from the database."
+        /*
+         * The event's own date, not a string.
+         *
+         * This read "23 August" long after the tournament had moved to 18 October — a
+         * hardcoded date goes stale silently, and the one screen showing who is coming was
+         * naming the wrong day. It now follows whichever event is current.
+         */
+        subtitle={
+          stored.event?.details.startDate
+            ? `Everyone who has registered for ${formatDate(stored.event.details.startDate)}, read live from the database.`
+            : "Everyone who has registered, read live from the database."
+        }
         actions={
           <>
             <Button variant="secondary" icon={<RefreshCw className="size-4" />} onClick={roster.reload}>

@@ -106,6 +106,7 @@ export default function TrainingPage() {
           contactPhone: contactFor(signup),
           preferredSlot: signup.preferredSlot,
           experience: signup.experience,
+          psaMember: signup.psaMember === true,
           payment: signup.payment,
           /*
            * The claim they made, never a verdict. The desk decides whether a payment is
@@ -296,6 +297,7 @@ function TrainingConfirmation({
           {signup.age ? <Line label="Age" value={`${signup.age} years`} /> : null}
           {signup.guardianName ? <Line label="Parent" value={signup.guardianName} /> : null}
           {signup.preferredSlot ? <Line label="Sessions" value={signup.preferredSlot} /> : null}
+          <Line label="PSA member" value={signup.psaMember ? "Yes" : "No"} />
           <Line label="We will call" value={contactFor(signup)} />
           <Line
             label={signup.payment === "online" ? "Paid online" : "To pay at the first session"}

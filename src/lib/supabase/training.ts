@@ -37,6 +37,8 @@ export interface StoredTrainingSignup {
   guardianPhone: string;
   preferredSlot: string;
   experience: string;
+  /** Claimed, never verified. Informational for the coach — it earns no discount. */
+  psaMember: boolean;
   payment: string;
   paymentStatus: string;
   amountDue: number;
@@ -102,6 +104,7 @@ export async function listTrainingSignups(): Promise<StoredTrainingSignup[]> {
       guardianPhone: String(d.guardianPhone ?? ""),
       preferredSlot: String(d.preferredSlot ?? ""),
       experience: String(d.experience ?? ""),
+      psaMember: d.psaMember === true,
       payment: String(d.payment ?? ""),
       paymentStatus: String(d.paymentStatus ?? ""),
       amountDue: Number(d.amountDue ?? 0),

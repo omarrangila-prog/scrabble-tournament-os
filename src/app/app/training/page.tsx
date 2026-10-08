@@ -75,7 +75,14 @@ export default function TrainingPage() {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.fullName, r.guardianName, r.phone, r.guardianPhone, r.preferredSlot]
+      [
+        r.fullName,
+        r.guardianName,
+        r.phone,
+        r.guardianPhone,
+        r.preferredSlot,
+        r.psaMember ? "psa member" : "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(q),
@@ -83,6 +90,7 @@ export default function TrainingPage() {
   }, [rows, query]);
 
   const children = rows.filter((r) => Number(r.age) < 18 && r.age !== "").length;
+  const members = rows.filter((r) => r.psaMember).length;
   const owed = rows
     .filter((r) => r.paymentStatus === "cash-at-venue")
     .reduce((sum, r) => sum + (r.amountDue || TRAINING_FEE), 0);
@@ -114,9 +122,10 @@ export default function TrainingPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
         <Stat label="Signed up" value={String(rows.length)} />
         <Stat label="Under 18" value={String(children)} />
+        <Stat label="PSA members" value={String(members)} />
         <Stat label="Still to collect" value={`PKR ${owed.toLocaleString("en-PK")}`} />
       </div>
 
@@ -170,7 +179,10 @@ export default function TrainingPage() {
                   return (
                     <tr key={r.id} className="border-t border-line align-top">
                       <Td>
-                        <span className="block font-semibold text-ink">{r.fullName}</span>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-semibold text-ink">{r.fullName}</span>
+                          {r.psaMember ? <Badge tone="gold">PSA</Badge> : null}
+                        </span>
                         {r.experience ? (
                           <span className="mt-0.5 block text-[12px] leading-snug text-muted">
                             {r.experience}

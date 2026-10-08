@@ -36,7 +36,7 @@ import { useStore } from "@/lib/store/useStore";
 import { addWalkIn } from "@/lib/supabase/organizer";
 import { useRoster } from "@/lib/supabase/useRoster";
 import { field, importField, numberField } from "@/lib/supabase/organizer";
-import { downloadFile, formatTime, toCsv } from "@/lib/utils";
+import { downloadFile, formatDate, formatTime, toCsv } from "@/lib/utils";
 
 
 export default function PlayersPage() {
@@ -61,6 +61,9 @@ function PlayersView() {
   const store = useStore();
   const { divisions } = store;
   const currentEvent = useCurrentEvent();
+  /* Read off the events already loaded above, so the heading costs no extra request. */
+  const eventDate = currentEvent.events.find((e) => e.id === currentEvent.eventId)?.details
+    .startDate;
 
   const roster = useRoster(currentEvent.eventId);
   const { players, counts } = roster;
@@ -154,7 +157,16 @@ function PlayersView() {
             {counts.total} registered
           </Badge>
         }
-        subtitle="Everyone registered for 23 August, read live from the database."
+        /*
+         * The current event's own date. This said "23 August" months after the tournament
+         * moved to 18 October: a hardcoded date goes stale in silence, and nobody reads a
+         * subtitle closely enough to catch it.
+         */
+        subtitle={
+          eventDate
+            ? `Everyone registered for ${formatDate(eventDate)}, read live from the database.`
+            : "Everyone registered, read live from the database."
+        }
         actions={
           <>
             <Button

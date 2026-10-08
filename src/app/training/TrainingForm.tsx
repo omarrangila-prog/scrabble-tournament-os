@@ -179,6 +179,16 @@ export function TrainingForm({
     </div>
   );
 
+  const yesNo = (selected: boolean | null, pick: (v: boolean) => void) =>
+    choices(
+      [
+        { key: "yes", label: "Yes" },
+        { key: "no", label: "No" },
+      ],
+      selected === null ? "" : selected ? "yes" : "no",
+      (k) => pick(k === "yes"),
+    );
+
   return (
     <form onSubmit={submit} className="space-y-5" noValidate>
       {/* ---- Who is coming --------------------------------------------- */}
@@ -327,6 +337,21 @@ export function TrainingForm({
           placeholder="e.g. Plays at home with family, never in a tournament"
           className={cn(field, "resize-y")}
         />
+      </div>
+
+      {/* ---- Membership ------------------------------------------------ */}
+      <div>
+        <span className={heading}>Are you a member of PSA?</span>
+        <p className={hint}>
+          {/*
+            Said plainly, because the tournament form's version of this question earns a
+            cheaper ticket and somebody who has filled that one in will expect the same here.
+          */}
+          Pakistan Scrabble Association. It does not change the fee — it helps the coach place
+          you in the right group.
+        </p>
+        {yesNo(signup.psaMember, (v) => change({ psaMember: v }))}
+        {problem(problemFor(problems, "psaMember"))}
       </div>
 
       {/* ---- Money ----------------------------------------------------- */}
