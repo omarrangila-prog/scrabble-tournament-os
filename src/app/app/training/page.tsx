@@ -91,6 +91,9 @@ export default function TrainingPage() {
 
   const children = rows.filter((r) => Number(r.age) < 18 && r.age !== "").length;
   const members = rows.filter((r) => r.psaMember).length;
+  const collected = rows
+    .filter((r) => r.paymentStatus === "verified")
+    .reduce((sum, r) => sum + (r.amountDue || TRAINING_FEE), 0);
   const owed = rows
     .filter((r) => r.paymentStatus === "cash-at-venue")
     .reduce((sum, r) => sum + (r.amountDue || TRAINING_FEE), 0);
@@ -122,10 +125,11 @@ export default function TrainingPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label="Signed up" value={String(rows.length)} />
         <Stat label="Under 18" value={String(children)} />
         <Stat label="PSA members" value={String(members)} />
+        <Stat label="Collected" value={`PKR ${collected.toLocaleString("en-PK")}`} tone="success" />
         <Stat label="Still to collect" value={`PKR ${owed.toLocaleString("en-PK")}`} />
       </div>
 
@@ -219,10 +223,25 @@ export default function TrainingPage() {
                       <Td>{r.preferredSlot || <span className="text-muted">—</span>}</Td>
                       <Td>
                         <div className="flex flex-col items-start gap-1.5">
-                          <Badge tone={r.paymentStatus === "receipt-uploaded" ? "info" : "warning"}>
-                            {r.paymentStatus === "receipt-uploaded"
-                              ? "Receipt uploaded"
-                              : "Cash at session"}
+                          {/*
+                            "Paid" means the database marked it so when the receipt was
+                            uploaded — nobody has checked it against the account. The receipt
+                            button below is how somebody still can.
+                          */}
+                          <Badge
+                            tone={
+                              r.paymentStatus === "verified"
+                                ? "success"
+                                : r.paymentStatus === "receipt-uploaded"
+                                  ? "info"
+                                  : "warning"
+                            }
+                          >
+                            {r.paymentStatus === "verified"
+                              ? "Paid"
+                              : r.paymentStatus === "receipt-uploaded"
+                                ? "Receipt uploaded"
+                                : "Cash at session"}
                           </Badge>
                           <span className="num text-[12.5px] text-muted">
                             {r.currency} {(r.amountDue || TRAINING_FEE).toLocaleString("en-PK")}

@@ -384,8 +384,12 @@ function TrainingConfirmation({
         </div>
 
         <p className="mt-5 text-[13.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
+          {/*
+            An uploaded receipt marks the payment as paid in the database, so there is
+            nothing left to "confirm shortly". Saying so would invite a second transfer.
+          */}
           {signup.payment === "online"
-            ? "We have your receipt and will confirm it shortly."
+            ? "We have your receipt and your payment is recorded."
             : "Please bring the fee to your first session."}{" "}
           The coach will be in touch on the number above with the exact timings.
         </p>

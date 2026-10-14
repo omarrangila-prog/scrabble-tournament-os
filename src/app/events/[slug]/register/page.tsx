@@ -26,7 +26,7 @@ import {
 } from "@/lib/domain/gameOn";
 import { isInterested, TRACK_LABEL } from "@/lib/firebase/schema";
 import { PlayerCategory } from "@/lib/domain/identity";
-import { saveRegistration } from "@/lib/supabase/registrations";
+import { findByPersonalToken, saveRegistration } from "@/lib/supabase/registrations";
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
 import { ageInYear, participantLines } from "@/lib/domain/registrationParticipants";
 import { emailConfirmation } from "@/lib/email/client";
@@ -104,6 +104,17 @@ export default function RegisterPage() {
    * and read synchronously, so the second tap sees the first.
    */
   const submitting = React.useRef(false);
+
+  /*
+   * The payment status the database actually recorded, read back after the save.
+   *
+   * A stored receipt now marks its own payment as paid, in the database, after the insert —
+   * so the status the browser sent ("receipt-uploaded") is not the status that was kept. The
+   * confirmation used to read the browser's own copy and would have said "being checked"
+   * about a payment already counted. Null until the readback arrives, and the page falls
+   * back to the local copy meanwhile rather than showing nothing.
+   */
+  const [recordedPayment, setRecordedPayment] = React.useState<GuestPaymentStatus | null>(null);
 
 
   /* While the lookup is still running, do not tell somebody their link is dead. */
@@ -535,6 +546,17 @@ export default function RegisterPage() {
      * one number, rather than a six-digit code here and a three-digit one later.
      */
     playerNumberForToken(event.id, token).then(setPlayerNumber);
+    void findByPersonalToken(event.id, token).then((found) => {
+      /* Narrowed, not cast: only a status the confirmation has wording for is believed. */
+      const known: GuestPaymentStatus[] = [
+        "verified",
+        "receipt-uploaded",
+        "cash-at-venue",
+        "not-submitted",
+      ];
+      const status = known.find((k) => k === found?.paymentStatus);
+      if (status) setRecordedPayment(status);
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     /*
@@ -585,6 +607,7 @@ export default function RegisterPage() {
          * required now, so every submission arrives with one.
          */
         paymentStatus={
+          recordedPayment ??
           store.registrations.find((r) => r.token === submitted.token)?.paymentStatus ??
           "not-submitted"
         }
