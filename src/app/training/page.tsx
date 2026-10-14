@@ -2,13 +2,15 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, GraduationCap, MapPin, Wallet } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, GraduationCap, MapPin, Wallet } from "lucide-react";
 
 import { Card, EmptyState } from "@/components/ui";
+import { eventTimeLine } from "@/lib/domain/eventTime";
 import { TRAINING_FEE, contactFor } from "@/lib/domain/training";
 import { readPublicEvent, type StoredEvent } from "@/lib/supabase/events";
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
 import { saveTrainingSignup, TRAINING_EVENT_ID, TRAINING_SLUG } from "@/lib/supabase/training";
+import { formatDate } from "@/lib/utils";
 
 import { TrainingForm, type TrainingSubmission } from "./TrainingForm";
 
@@ -67,6 +69,10 @@ export default function TrainingPage() {
   const details = event?.details;
   const fee = details?.fee ?? TRAINING_FEE;
   const currency = details?.currency ?? "PKR";
+  /* "Sat, 17 Oct 2026 · 2:00 PM to 3:00 PM", from the event row so a change is an edit. */
+  const dateLabel = details?.startDate ? formatDate(details.startDate) : "";
+  const timeLabel = eventTimeLine(details?.startTime, details?.endTime);
+  const whenLabel = [dateLabel, timeLabel].filter(Boolean).join(" · ");
 
   const submit = async (signup: TrainingSubmission) => {
     if (submitting.current) return;
@@ -80,7 +86,7 @@ export default function TrainingPage() {
        * paid-online with no proof attached is exactly the state the desk cannot resolve.
        */
       let proof = null;
-      if (signup.payment === "online" && signup.proofFile) {
+      if (signup.proofFile) {
         const upload = await uploadPaymentProof({
           eventId: TRAINING_EVENT_ID,
           file: signup.proofFile,
@@ -104,7 +110,6 @@ export default function TrainingPage() {
           guardianPhone: signup.guardianPhone,
           /* One answer for who to ring, worked out once. */
           contactPhone: contactFor(signup),
-          preferredSlot: signup.preferredSlot,
           experience: signup.experience,
           psaMember: signup.psaMember === true,
           payment: signup.payment,
@@ -112,7 +117,7 @@ export default function TrainingPage() {
            * The claim they made, never a verdict. The desk decides whether a payment is
            * received; the insert policy refuses anything stronger than these two values.
            */
-          paymentStatus: signup.payment === "online" ? "receipt-uploaded" : "cash-at-venue",
+          paymentStatus: "receipt-uploaded",
           amountDue: fee,
           currency,
           ...(proof ? { paymentProof: proof } : {}),
@@ -162,6 +167,7 @@ export default function TrainingPage() {
         signup={done}
         fee={fee}
         currency={currency}
+        whenLabel={whenLabel}
         venueName={details?.venueName ?? ""}
         mapsUrl={details?.mapsUrl ?? ""}
       />
@@ -217,6 +223,12 @@ export default function TrainingPage() {
           {/* The two facts somebody checks before deciding to fill this in. */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
             {[
+              ...(dateLabel
+                ? [{ icon: <CalendarDays className="size-3.5" />, text: dateLabel, href: undefined as string | undefined }]
+                : []),
+              ...(timeLabel
+                ? [{ icon: <Clock className="size-3.5" />, text: timeLabel, href: undefined as string | undefined }]
+                : []),
               {
                 icon: <Wallet className="size-3.5" />,
                 text: `${currency} ${fee.toLocaleString("en-PK")} per person`,
@@ -287,7 +299,6 @@ export default function TrainingPage() {
           <TrainingForm
             fee={fee}
             currency={currency}
-            slots={details?.slots ?? []}
             paymentInstructions={details?.paymentInstructions ?? ""}
             terms={details?.terms ?? ""}
             saving={saving}
@@ -313,12 +324,14 @@ function TrainingConfirmation({
   signup,
   fee,
   currency,
+  whenLabel,
   venueName,
   mapsUrl,
 }: {
   signup: TrainingSubmission;
   fee: number;
   currency: string;
+  whenLabel: string;
   venueName: string;
   mapsUrl: string;
 }) {
@@ -350,7 +363,7 @@ function TrainingConfirmation({
           <Line label="Trainee" value={signup.fullName} />
           {signup.age ? <Line label="Age" value={`${signup.age} years`} /> : null}
           {signup.guardianName ? <Line label="Parent" value={signup.guardianName} /> : null}
-          {signup.preferredSlot ? <Line label="Sessions" value={signup.preferredSlot} /> : null}
+          {whenLabel ? <Line label="When" value={whenLabel} /> : null}
           <Line label="PSA member" value={signup.psaMember ? "Yes" : "No"} />
           {venueName ? (
             <Line
@@ -377,10 +390,7 @@ function TrainingConfirmation({
             />
           ) : null}
           <Line label="We will call" value={contactFor(signup)} />
-          <Line
-            label={signup.payment === "online" ? "Paid online" : "To pay at the first session"}
-            value={money}
-          />
+          <Line label="Paid online" value={money} />
         </div>
 
         <p className="mt-5 text-[13.5px] leading-relaxed" style={{ color: `${BROWN}AA` }}>
@@ -388,10 +398,8 @@ function TrainingConfirmation({
             An uploaded receipt marks the payment as paid in the database, so there is
             nothing left to "confirm shortly". Saying so would invite a second transfer.
           */}
-          {signup.payment === "online"
-            ? "We have your receipt and your payment is recorded."
-            : "Please bring the fee to your first session."}{" "}
-          The coach will be in touch on the number above with the exact timings.
+          We have your receipt and your payment is recorded. Please arrive ten minutes early. The
+          coach will be in touch on the number above if anything changes.
         </p>
       </div>
     </main>

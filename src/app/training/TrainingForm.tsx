@@ -16,7 +16,6 @@ import {
   signupReady,
   TRAINING_FEE,
   trainingProblems,
-  type TrainingPayment,
   type TrainingSignup,
 } from "@/lib/domain/training";
 import { cn } from "@/lib/utils";
@@ -45,7 +44,6 @@ export interface TrainingSubmission extends TrainingSignup {
 export function TrainingForm({
   fee,
   currency,
-  slots,
   paymentInstructions,
   terms,
   saving,
@@ -54,7 +52,6 @@ export function TrainingForm({
 }: {
   fee: number;
   currency: string;
-  slots: string[];
   paymentInstructions: string;
   terms: string;
   saving: boolean;
@@ -78,10 +75,9 @@ export function TrainingForm({
 
   const minor = isMinor(signup.yearOfBirth, year);
   const age = ageInYear(signup.yearOfBirth, year);
-  const slotRequired = slots.length > 0;
 
-  const problems = trainingProblems(signup, { year, slotRequired });
-  const ready = signupReady(signup, { year, slotRequired });
+  const problems = trainingProblems(signup, { year });
+  const ready = signupReady(signup, { year });
 
   const change = (next: Partial<TrainingSignup>) => setSignup((s) => ({ ...s, ...next }));
 
@@ -267,7 +263,7 @@ export function TrainingForm({
           <span className={heading}>Parent or guardian</span>
           <p className={hint}>
             {signup.fullName.trim() || "The trainee"} is under 18, so we need an adult we can
-            reach about the sessions.
+            reach about the training.
           </p>
 
           <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
@@ -302,20 +298,6 @@ export function TrainingForm({
               {problem(problemFor(problems, "guardianPhone"))}
             </div>
           </div>
-        </div>
-      ) : null}
-
-      {/* ---- When ------------------------------------------------------ */}
-      {slotRequired ? (
-        <div>
-          <span className={heading}>Which sessions can you attend?</span>
-          {choices(
-            slots.map((s) => ({ key: s, label: s })),
-            signup.preferredSlot,
-            (key) => change({ preferredSlot: key }),
-            "sm:grid-cols-1",
-          )}
-          {problem(problemFor(problems, "preferredSlot"))}
         </div>
       ) : null}
 
@@ -363,20 +345,16 @@ export function TrainingForm({
         <p className={hint}>per person</p>
       </div>
 
-      <div>
-        <span className={heading}>How will you pay?</span>
-        {choices(
-          [
-            { key: "cash", label: "Cash at the first session" },
-            { key: "online", label: "Pay online now", note: "Bank transfer or EasyPaisa" },
-          ],
-          signup.payment,
-          (key) => change({ payment: key as TrainingPayment }),
-        )}
-      </div>
-
-      {signup.payment === "online" ? (
-        <div className="space-y-2.5">
+      {/*
+        Online only, so there is no choice to make and none is offered. The details and the
+        receipt upload are therefore always shown, rather than appearing after a tap.
+      */}
+      <div className="space-y-2.5">
+        <span className={heading}>Pay online</span>
+        <p className={hint}>
+          Transfer the fee, then upload the screenshot below. Your place is held as soon as the
+          receipt is uploaded.
+        </p>
           {paymentInstructions ? (
             <div className="whitespace-pre-line rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] leading-relaxed text-ink">
               {paymentInstructions}
@@ -445,7 +423,6 @@ export function TrainingForm({
             {proofProblem ? null : problem(problemFor(problems, "proof"))}
           </div>
         </div>
-      ) : null}
 
       {/* ---- Terms ----------------------------------------------------- */}
       {terms ? (
@@ -467,7 +444,7 @@ export function TrainingForm({
               className="mt-0.5 size-5 shrink-0 accent-primary"
             />
             <span className="text-[14px] font-semibold text-ink">
-              I understand and agree, and I am happy to be contacted about the sessions
+              I understand and agree, and I am happy to be contacted about the training
             </span>
           </label>
           {problem(problemFor(problems, "terms"))}

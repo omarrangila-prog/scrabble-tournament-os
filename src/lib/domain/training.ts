@@ -13,6 +13,7 @@
  * invitation to start filling one in.
  */
 
+import { proofRequired } from "./paymentProof";
 import { ageInYear, phoneOk, yearOfBirthOk } from "./registrationParticipants";
 
 /**
@@ -34,8 +35,12 @@ export const TRAINING_FEE = 1000;
  */
 export const ADULT_AGE = 18;
 
-/** How a trainee says they will pay. Mirrors the tournament's choices, minus the walk-in. */
-export type TrainingPayment = "online" | "cash";
+/**
+ * How a trainee pays. Online only: the session is a single hour on a fixed date, there is no
+ * desk to take cash at, and an uploaded receipt is what marks a payment as received — so a
+ * cash option would be a signup that nothing ever settles.
+ */
+export type TrainingPayment = "online";
 
 /**
  * One signup.
@@ -53,8 +58,6 @@ export interface TrainingSignup {
   phone: string;
   guardianName: string;
   guardianPhone: string;
-  /** Which sessions they want, from the event's own list. */
-  preferredSlot: string;
   /** Scrabble experience, in their own words. Free text, never a rating. */
   experience: string;
   /**
@@ -79,10 +82,9 @@ export const EMPTY_SIGNUP: TrainingSignup = {
   phone: "",
   guardianName: "",
   guardianPhone: "",
-  preferredSlot: "",
   experience: "",
   psaMember: null,
-  payment: "cash",
+  payment: "online",
   proofFile: null,
   termsAccepted: false,
 };
@@ -107,7 +109,6 @@ export type TrainingField =
   | "phone"
   | "guardianName"
   | "guardianPhone"
-  | "preferredSlot"
   | "psaMember"
   | "terms"
   | "proof";
@@ -130,7 +131,7 @@ export interface TrainingProblem {
  */
 export function trainingProblems(
   signup: TrainingSignup,
-  options: { year: number; slotRequired: boolean },
+  options: { year: number },
 ): TrainingProblem[] {
   const problems: TrainingProblem[] = [];
   const minor = isMinor(signup.yearOfBirth, options.year);
@@ -158,13 +159,10 @@ export function trainingProblems(
     problems.push({ field: "phone", message: "Please give a mobile number." });
   }
 
-  if (options.slotRequired && signup.preferredSlot.trim() === "")
-    problems.push({ field: "preferredSlot", message: "Please choose when you can attend." });
-
   if (signup.psaMember === null)
     problems.push({ field: "psaMember", message: "Please answer yes or no." });
 
-  if (signup.payment === "online" && signup.proofFile === null)
+  if (proofRequired(signup.payment) && signup.proofFile === null)
     problems.push({ field: "proof", message: "Please attach your payment proof." });
 
   if (!signup.termsAccepted)
@@ -176,7 +174,7 @@ export function trainingProblems(
 /** Whether this signup may be submitted at all. */
 export function signupReady(
   signup: TrainingSignup,
-  options: { year: number; slotRequired: boolean },
+  options: { year: number },
 ): boolean {
   return trainingProblems(signup, options).length === 0;
 }

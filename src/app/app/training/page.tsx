@@ -80,7 +80,6 @@ export default function TrainingPage() {
         r.guardianName,
         r.phone,
         r.guardianPhone,
-        r.preferredSlot,
         r.psaMember ? "psa member" : "",
       ]
         .join(" ")
@@ -93,9 +92,6 @@ export default function TrainingPage() {
   const members = rows.filter((r) => r.psaMember).length;
   const collected = rows
     .filter((r) => r.paymentStatus === "verified")
-    .reduce((sum, r) => sum + (r.amountDue || TRAINING_FEE), 0);
-  const owed = rows
-    .filter((r) => r.paymentStatus === "cash-at-venue")
     .reduce((sum, r) => sum + (r.amountDue || TRAINING_FEE), 0);
 
   const formLink =
@@ -125,12 +121,11 @@ export default function TrainingPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Signed up" value={String(rows.length)} />
         <Stat label="Under 18" value={String(children)} />
         <Stat label="PSA members" value={String(members)} />
         <Stat label="Collected" value={`PKR ${collected.toLocaleString("en-PK")}`} tone="success" />
-        <Stat label="Still to collect" value={`PKR ${owed.toLocaleString("en-PK")}`} />
       </div>
 
       {problem ? (
@@ -165,14 +160,13 @@ export default function TrainingPage() {
           />
         ) : (
           <TableWrap>
-            <table className="w-full min-w-[720px] border-collapse text-left">
+            <table className="w-full min-w-[640px] border-collapse text-left">
               <thead>
                 <tr>
                   <Th>Trainee</Th>
                   <Th>Age</Th>
                   <Th>Parent / guardian</Th>
                   <Th>Contact</Th>
-                  <Th>Sessions</Th>
                   <Th>Payment</Th>
                   <Th>Signed up</Th>
                 </tr>
@@ -220,7 +214,6 @@ export default function TrainingPage() {
                           </span>
                         ) : null}
                       </Td>
-                      <Td>{r.preferredSlot || <span className="text-muted">—</span>}</Td>
                       <Td>
                         <div className="flex flex-col items-start gap-1.5">
                           {/*
@@ -241,7 +234,7 @@ export default function TrainingPage() {
                               ? "Paid"
                               : r.paymentStatus === "receipt-uploaded"
                                 ? "Receipt uploaded"
-                                : "Cash at session"}
+                                : "Awaiting payment"}
                           </Badge>
                           <span className="num text-[12.5px] text-muted">
                             {r.currency} {(r.amountDue || TRAINING_FEE).toLocaleString("en-PK")}

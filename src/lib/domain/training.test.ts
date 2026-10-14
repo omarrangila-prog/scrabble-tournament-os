@@ -14,7 +14,10 @@ import {
 } from "./training";
 
 const YEAR = 2026;
-const OPTIONS = { year: YEAR, slotRequired: true };
+const OPTIONS = { year: YEAR };
+
+/** A receipt, because every signup pays online and an uploaded one is what completes it. */
+const RECEIPT = new File(["x"], "receipt.png", { type: "image/png" });
 
 /** A complete adult signup, so each test can break exactly one thing. */
 const adult = (over: Partial<TrainingSignup> = {}): TrainingSignup => ({
@@ -23,7 +26,7 @@ const adult = (over: Partial<TrainingSignup> = {}): TrainingSignup => ({
   yearOfBirth: "1995",
   age: "31",
   phone: "03001234567",
-  preferredSlot: "Saturday morning",
+  proofFile: RECEIPT,
   psaMember: false,
   termsAccepted: true,
   ...over,
@@ -66,7 +69,7 @@ describe("isMinor", () => {
 });
 
 describe("an adult signup", () => {
-  it("is ready when name, year, phone and slot are given", () => {
+  it("is ready when name, year, phone and a receipt are given", () => {
     expect(signupReady(adult(), OPTIONS)).toBe(true);
   });
 
@@ -121,36 +124,20 @@ describe("the year of birth", () => {
   });
 });
 
-describe("paying online", () => {
+describe("paying", () => {
+  it("is online only — there is no cash option to choose", () => {
+    expect(EMPTY_SIGNUP.payment).toBe("online");
+  });
+
   it("requires a receipt", () => {
-    const problems = trainingProblems(adult({ payment: "online" }), OPTIONS);
-    expect(problemFor(problems, "proof")).toBeDefined();
+    /* The precondition: this signup genuinely has none. */
+    const bare = adult({ proofFile: null });
+    expect(bare.proofFile).toBeNull();
+    expect(problemFor(trainingProblems(bare, OPTIONS), "proof")).toBeDefined();
   });
 
-  it("accepts one once attached", () => {
-    const file = new File(["x"], "receipt.png", { type: "image/png" });
-    expect(signupReady(adult({ payment: "online", proofFile: file }), OPTIONS)).toBe(true);
-  });
-
-  it("asks a cash payer for nothing", () => {
-    /* The precondition: this signup has no receipt at all. */
-    expect(adult().proofFile).toBeNull();
-    expect(problemFor(trainingProblems(adult(), OPTIONS), "proof")).toBeUndefined();
-  });
-});
-
-describe("the slot", () => {
-  it("is required when the event offers a choice", () => {
-    const problems = trainingProblems(adult({ preferredSlot: "" }), OPTIONS);
-    expect(problemFor(problems, "preferredSlot")).toBeDefined();
-  });
-
-  it("is not required when there is nothing to choose from", () => {
-    const problems = trainingProblems(adult({ preferredSlot: "" }), {
-      year: YEAR,
-      slotRequired: false,
-    });
-    expect(problemFor(problems, "preferredSlot")).toBeUndefined();
+  it("is ready once one is attached", () => {
+    expect(signupReady(adult(), OPTIONS)).toBe(true);
   });
 });
 
