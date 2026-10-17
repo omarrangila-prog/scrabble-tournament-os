@@ -31,6 +31,12 @@ const TAB_ROUTE: Record<WorkspaceTab, string> = {
   live: "/app/live-event",
   awards: "/app/certificates",
   analytics: "/app/analytics",
+  /*
+   * No phase action points at the links tab, so this is never navigated to from guidance. It is
+   * here because the record is exhaustive over `WorkspaceTab`, which is what makes a tab with no
+   * route a compile error rather than a dead button. The events list is where it is reached from.
+   */
+  links: "/app/events",
 };
 
 export function PhaseGuidance({

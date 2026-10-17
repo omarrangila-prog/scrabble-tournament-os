@@ -51,6 +51,18 @@ export interface EventDetails {
   /** Codes the organiser hands out, each taking a percentage off whatever is being charged. */
   promoCodes?: PromoCode[];
   /**
+   * Which category the public live results page opens on: a category id, or `all`.
+   *
+   * A venue running one dominant field may want a phone to open straight on it; absent means
+   * everybody, which is what a stranger scanning a QR code is most likely to want.
+   */
+  liveDefaultCategory?: string;
+  /**
+   * What the public registration list and CSV may show. Chosen by a director and enforced in the
+   * database, which cuts every answer to this list before it leaves — see migration 0089.
+   */
+  publicRegistrations?: { enabled?: boolean; columns?: string[] };
+  /**
    * The session times a trainee may choose between.
    *
    * Training only. A tournament runs at one stated time and has nothing to choose; coaching

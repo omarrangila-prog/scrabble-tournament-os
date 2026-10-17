@@ -38,6 +38,7 @@ describe("workspace tabs", () => {
       "live",
       "awards",
       "analytics",
+      "links",
     ]);
   });
 

@@ -20,7 +20,7 @@ import { EventState } from "./events";
  * guidance and alerts keep pointing at them — the type is what makes a dangling
  * target a compile error instead of a click that goes nowhere.
  */
-export type WorkspaceTab = "payments" | "live" | "awards" | "analytics";
+export type WorkspaceTab = "payments" | "live" | "awards" | "analytics" | "links";
 
 /**
  * The workspace tabs.
@@ -44,6 +44,8 @@ export const WORKSPACE_TABS: { id: WorkspaceTab; label: string }[] = [
   { id: "live", label: "Live Event" },
   { id: "awards", label: "Awards & Certificates" },
   { id: "analytics", label: "Analytics" },
+  /* The addresses to hand out — results, registrations, the television — and what they show. */
+  { id: "links", label: "Public Links" },
 ];
 
 export function isWorkspaceTab(value: string): value is WorkspaceTab {

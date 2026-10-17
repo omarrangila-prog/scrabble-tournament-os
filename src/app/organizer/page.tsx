@@ -117,7 +117,7 @@ export default function OrganizerSignInPage() {
             Sign in
           </h1>
           <p className="mt-1.5 text-[13.5px]" style={{ color: `${BROWN}A6` }}>
-            Blufy&rsquo;s AlphaBattle · 23 August
+            Blufy&rsquo;s AlphaBattle
           </p>
 
           {/*

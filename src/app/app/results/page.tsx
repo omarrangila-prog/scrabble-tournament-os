@@ -1,18 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 
 import { Button, Card, EmptyState, Input, PageHeader } from "@/components/ui";
 import { RoleGate } from "@/components/organizer/RoleGate";
 import { RosterGate } from "@/components/organizer/RosterGate";
 import { PlayerActionSheet, type PlayerAction, type SheetPlayer } from "@/components/organizer/PlayerActionSheet";
 import { RoundControlBar } from "@/components/organizer/RoundControlBar";
+import { ImportSyncDialog, type ImportRosterEntry } from "@/components/organizer/ImportSyncDialog";
 import { useEventCategories } from "@/lib/supabase/useEventCategories";
 import { WaitingRoom } from "@/components/organizer/WaitingRoom";
 import type { Waiting } from "@/lib/domain/rollingEntry";
 import {
   appendMatch,
+  field,
   flipFirst,
   moveTable,
   setDivision,
@@ -29,6 +31,8 @@ import { recordResult } from "@/lib/supabase/games";
 import { useEventFormat } from "@/lib/supabase/useEventFormat";
 import { useGames } from "@/lib/supabase/useGames";
 import { useRoster } from "@/lib/supabase/useRoster";
+import { useExternalSources } from "@/lib/supabase/useExternalSources";
+import { useStaffRole } from "@/lib/supabase/useStaffRole";
 import { useRoundTimerControls } from "@/lib/supabase/useRoundTimer";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +73,36 @@ export default function ResultsPage() {
   const { event: storedEvent } = useEventDetails(currentEvent.eventId);
   const eventName = storedEvent?.name ?? "";
   const eventSlug = storedEvent?.slug ?? "";
+
+  /*
+   * Importing from another system. Opened from the header rather than from a round, because its
+   * most useful moment is before a round exists: pairings made elsewhere arrive here and become
+   * round 1.
+   */
+  const staff = useStaffRole();
+  const sources = useExternalSources(currentEvent.eventId, staff.canResults);
+  const [importOpen, setImportOpen] = React.useState(false);
+
+  /*
+   * Everybody who could be on a board, as the importer needs them: the name, the badge number
+   * printed on the registration, the category the venue has them in, and whether the desk has
+   * checked them in. The registration's own check-in time is what "here" means.
+   */
+  const importRoster: ImportRosterEntry[] = React.useMemo(() => {
+    const byId = new Map(roster.registrations.map((r) => [r.id, r]));
+    return roster.players.map((p) => {
+      const reg = byId.get(p.id);
+      const number = reg ? (field(reg, "playerNumber") ?? "") : "";
+      return {
+        id: p.id,
+        name: p.fullName,
+        number,
+        division: p.division,
+        checkedIn: !!reg?.checkedInAt,
+        label: number ? `${p.fullName} (#${number})` : p.fullName,
+      };
+    });
+  }, [roster.players, roster.registrations]);
 
   /*
    * Who is checked in, eligible for this round, and on no board — asked of the database, so
@@ -268,6 +302,38 @@ export default function ResultsPage() {
       <PageHeader
         title="Results & Pairings"
         subtitle="The draw, the clock and every score, in one place."
+        actions={
+          staff.canResults ? (
+            <Button variant="secondary" onClick={() => setImportOpen(true)}>
+              <Download className="size-4" />
+              Import / Sync
+              {sources.changed > 0 ? (
+                <span
+                  className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-warning text-[11px] font-extrabold text-white"
+                  title="A source has changed since it was last applied"
+                >
+                  {sources.changed}
+                </span>
+              ) : null}
+            </Button>
+          ) : null
+        }
+      />
+
+      <ImportSyncDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        eventId={currentEvent.eventId}
+        roster={importRoster}
+        games={games.games}
+        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        who={who}
+        canOverride={staff.canResults}
+        sources={sources}
+        onApplied={() => {
+          games.reload();
+          roster.reload();
+        }}
       />
 
       <RoleGate need="results">

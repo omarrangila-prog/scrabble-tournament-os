@@ -314,8 +314,45 @@ account, on any phone.
 | `/report/<event id>` | The printable report for a sponsor — open it from **Analytics → Printable report** |
 | `/live/display` | **The wall.** Follows the event by itself — put this on the television |
 | `/live` | The rotating screen: standings, pairings, announcements |
+| `/events/<slug>/live` | **Public live results** — standings, pairings, results, rounds. No sign-in |
+| `/public/events/<slug>/registrations` and `.csv` | The public registration table and its CSV |
+| `/live/pairings?event=<slug>` | Large pairings for the venue television |
 | `/events/alphabattle-23-august/submit-score` | Where a player sends their result |
 | `/live/alphabattle-23-august` | What a participant sees on their phone |
+
+---
+
+## Public links, and bringing pairings in from another system
+
+### Handing out the links
+
+**Events → this event → Public Links.** Four buttons copy the address, so nobody types a slug:
+
+| Button | What people get |
+| --- | --- |
+| Copy live results link | Standings, pairings and results on a phone, with a category and round selector. No sign-in. Updates by itself. |
+| Copy public registration table | The registration list as a searchable, sortable table. |
+| Copy CSV link | The same list as a CSV, **regenerated from the database every time it is opened** — the link never changes and never goes stale. Opens in Excel and Google Sheets (`=IMPORTDATA(...)`). |
+| Copy TV link / Open TV pairings | Large current pairings, pinned to this event, for the venue screen. |
+
+**What the public list shows is a director's choice**, on the same page. By default: registration number, name, age, category, check-in status, payment status, registered-at. Phone and email can be turned on for a deliberate export; the page warns, asks for a tick, and they should be turned off again afterwards. Payment proofs, notes, check-in codes and internal ids can never be made public. Anything on that list is readable by **anybody who has the link**, and by anybody they pass it to — names and ages included. The list can be switched off with one tick.
+
+### Importing a round from another system
+
+**Results & Pairings → Import / Sync.** Fetch → read → match players → *preview* → apply. Nothing is applied until you press **APPLY**.
+
+1. Choose **Paste URL**, **Upload CSV**, or **Paste table**. A pasted Google Sheets link is turned into its CSV export automatically. The page must be public.
+2. Read the preview: how many pairings, players, results and pending boards; how each player was matched; every warning.
+3. **Player mapping.** Only an identical name (ignoring capitals, accents and punctuation) matches by itself. A different word order, a missing surname, a one-letter slip, or two registrations with the same name is a *likely* match — **you** pick who it is. Once you confirm one it is remembered for the next round. You can also correct an automatic match (**Edit mapping**) or choose **Leave this player out**, which drops only their board.
+4. **The desk stays the authority.** Players the desk has not checked in block the import until an authorised person ticks the override. The category on a board is the venue's, whatever the source says; a difference is reported, not adopted.
+5. **If the source changes an official score** you will see *RESULT CHANGED AT SOURCE* with the old and new scores. It is applied only if you tick **APPLY CORRECTION**, and it is recorded in the audit log.
+6. Importing round 2 never touches round 1. A published round is never re-paired by an import; a source that lists only some boards (a results page with only finished games) is fine.
+
+An import applies a whole round or none of it. It can do nothing a person at the results table could not: the previous round must be fully verified, no player can be on two boards, and so on.
+
+**Sources tab.** Save a round's address, choose Manual / 30 s / 1 min / 5 min, and see last sync, next sync and success or error. Automatic checks only *tell you the source has changed* — they never apply anything — and they run **only while this page is open**; nothing watches a source when it is closed. A source that starts refusing requests is asked less and less often.
+
+**The importer has been tested against generated data, not against your other system's real output.** If a real export is not read correctly, send a sample of the page or file: only the reader needs to change.
 
 ---
 
