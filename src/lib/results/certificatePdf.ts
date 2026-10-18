@@ -351,6 +351,13 @@ function drawRecord(doc: jsPDF, entry: CertificateDoc, paper: Loaded | null) {
     M,
     H - 16,
   );
+
+  /* The maker's credit, centred at the foot of the page. */
+  doc.setFontSize(pt(1.35));
+  const credit = "Made by Odoovations  \u00B7  odoovations.com";
+  doc.textWithLink(credit, (W - doc.getTextWidth(credit)) / 2, H - 8, {
+    url: "https://odoovations.com/",
+  });
 }
 
 /* ---- drawing helpers ------------------------------------------------- */
