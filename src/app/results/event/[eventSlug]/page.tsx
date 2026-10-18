@@ -4,7 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-import { officialOrDerivedStandings, type PublicStanding } from "@/lib/supabase/submitResult";
+import {
+  officialOrDerivedStandings,
+  type PublicStanding,
+} from "@/lib/supabase/submitResult";
 import { readPublicEvent } from "@/lib/supabase/events";
 
 /**
@@ -65,7 +68,9 @@ export default function LiveResultsPage() {
       setEventName(event.name);
       setEventId(event.id);
       setVenue(
-        [event.details.venueName, event.details.city].filter(Boolean).join(", "),
+        [event.details.venueName, event.details.city]
+          .filter(Boolean)
+          .join(", "),
       );
       setStartDate(event.details.startDate ?? "");
 
@@ -104,11 +109,18 @@ export default function LiveResultsPage() {
   const gamesPlayed = Math.round(rows.reduce((n, r) => n + r.played, 0) / 2);
 
   return (
-    <main className="min-h-dvh px-5 py-10 sm:px-8 sm:py-16" style={{ background: PAPER, color: INK }}>
+    <main
+      className="min-h-dvh px-5 py-10 sm:px-8 sm:py-16"
+      style={{ background: PAPER, color: INK }}
+    >
       <div className="mx-auto max-w-4xl">
         <header className="border-b pb-8" style={{ borderColor: RULE }}>
-          <p className="text-xs font-bold uppercase tracking-[0.24em]" style={{ color: BRASS }}>
-            {[formatDay(startDate), venue].filter(Boolean).join(" · ") || "Results"}
+          <p
+            className="text-xs font-bold uppercase tracking-[0.24em]"
+            style={{ color: BRASS }}
+          >
+            {[formatDay(startDate), venue].filter(Boolean).join(" · ") ||
+              "Results"}
           </p>
           <h1 className="font-display mt-3 text-4xl font-black tracking-tight sm:text-5xl">
             {eventName || "Results"}
@@ -119,16 +131,23 @@ export default function LiveResultsPage() {
               Reading the results…
             </p>
           ) : totalPlayers === 0 ? (
-            <p className="mt-3 max-w-2xl text-base leading-relaxed" style={{ color: MUTED }}>
-              No games have been recorded yet. Standings appear here as soon as the first round is
-              finished, and update as the day goes on.
+            <p
+              className="mt-3 max-w-2xl text-base leading-relaxed"
+              style={{ color: MUTED }}
+            >
+              No games have been recorded yet. Standings appear here as soon as
+              the first round is finished, and update as the day goes on.
             </p>
           ) : (
-            <p className="mt-3 max-w-2xl text-base leading-relaxed" style={{ color: MUTED }}>
+            <p
+              className="mt-3 max-w-2xl text-base leading-relaxed"
+              style={{ color: MUTED }}
+            >
               {source ? "Final standings. " : ""}
-              {totalPlayers} players, {gamesPlayed} game{gamesPlayed === 1 ? "" : "s"} played. Each
-              category is ranked on wins, then on spread — the points scored less the points
-              conceded across every game. Open your name for your certificate.
+              {totalPlayers} players, {gamesPlayed} game
+              {gamesPlayed === 1 ? "" : "s"} played. Each category is ranked on
+              wins, then on spread — the points scored less the points conceded
+              across every game. Open your name for your certificate.
             </p>
           )}
         </header>
@@ -137,12 +156,18 @@ export default function LiveResultsPage() {
           <section key={division} className="mt-12">
             <h2 className="font-display text-2xl font-black tracking-tight">
               {DIVISION_LABEL[division] ?? division}
-              <span className="ml-2 text-base font-semibold" style={{ color: FAINT }}>
+              <span
+                className="ml-2 text-base font-semibold"
+                style={{ color: FAINT }}
+              >
                 {players.length} player{players.length === 1 ? "" : "s"}
               </span>
             </h2>
 
-            <ul className="mt-4 overflow-hidden rounded-xl border bg-white" style={{ borderColor: "rgba(199,154,91,0.4)" }}>
+            <ul
+              className="mt-4 overflow-hidden rounded-xl border bg-white"
+              style={{ borderColor: "rgba(199,154,91,0.4)" }}
+            >
               {players.map((player, i) => {
                 const place = i + 1;
                 /*
@@ -154,7 +179,10 @@ export default function LiveResultsPage() {
                 return (
                   <li
                     key={player.name + place}
-                    style={{ borderTop: i === 0 ? "none" : "1px solid rgba(199,154,91,0.22)" }}
+                    style={{
+                      borderTop:
+                        i === 0 ? "none" : "1px solid rgba(199,154,91,0.22)",
+                    }}
                   >
                     {/*
                       The whole row is the link. A player looking for their certificate is
@@ -164,35 +192,52 @@ export default function LiveResultsPage() {
                       href={`/results/event/${slug}/${slugFor(player.name)}`}
                       className="flex items-center gap-3 px-3 py-3 transition hover:bg-[#FBF3E4] sm:gap-4 sm:px-4"
                     >
-                    <span
-                      className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-extrabold tabular-nums"
-                      style={
-                        podium
-                          ? { background: GILT, color: "#FFFDF7" }
-                          : { background: "#F3EADA", color: "#7A6558" }
-                      }
-                    >
-                      {place}
-                    </span>
+                      <span
+                        className="grid size-9 shrink-0 place-items-center rounded-lg text-sm font-extrabold tabular-nums"
+                        style={
+                          podium
+                            ? { background: GILT, color: "#FFFDF7" }
+                            : { background: "#F3EADA", color: "#7A6558" }
+                        }
+                      >
+                        {place}
+                      </span>
 
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{player.name}</span>
-                      {podium ? (
-                        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: BRASS }}>
-                          {place === 1 ? "1st place" : place === 2 ? "2nd place" : "3rd place"}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">
+                          {player.name}
                         </span>
-                      ) : null}
-                    </span>
+                        {podium ? (
+                          <span
+                            className="text-xs font-bold uppercase tracking-wider"
+                            style={{ color: BRASS }}
+                          >
+                            {place === 1
+                              ? "1st place"
+                              : place === 2
+                                ? "2nd place"
+                                : "3rd place"}
+                          </span>
+                        ) : null}
+                      </span>
 
-                    <span className="shrink-0 text-right text-sm tabular-nums" style={{ color: "#7A6558" }}>
-                      <span className="block font-bold" style={{ color: INK }}>
-                        {player.wins}–{player.losses}
-                        {player.draws > 0 ? `–${player.draws}` : ""}
+                      <span
+                        className="shrink-0 text-right text-sm tabular-nums"
+                        style={{ color: "#7A6558" }}
+                      >
+                        <span
+                          className="block font-bold"
+                          style={{ color: INK }}
+                        >
+                          {player.wins}–{player.losses}
+                          {player.draws > 0 ? `–${player.draws}` : ""}
+                        </span>
+                        <span className="block text-xs">
+                          {player.spread > 0
+                            ? `+${player.spread}`
+                            : player.spread}
+                        </span>
                       </span>
-                      <span className="block text-xs">
-                        {player.spread > 0 ? `+${player.spread}` : player.spread}
-                      </span>
-                    </span>
                     </Link>
                   </li>
                 );
@@ -202,22 +247,46 @@ export default function LiveResultsPage() {
         ))}
 
         {loaded && totalPlayers > 0 ? (
-          <p className="mt-12 border-t pt-6 text-sm leading-relaxed" style={{ borderColor: RULE, color: MUTED }}>
-            Wins–losses{rows.some((r) => r.draws > 0) ? "–draws" : ""}, then spread. Categories play
-            separately, so a placing is a placing within its own category.{" "}
-            {/* Credit for the software, in place of naming the tool that produced the standings. */}
-            Software made by{" "}
+          <p
+            className="mt-12 border-t pt-6 text-sm leading-relaxed"
+            style={{ borderColor: RULE, color: MUTED }}
+          >
+            Wins–losses{rows.some((r) => r.draws > 0) ? "–draws" : ""}, then
+            spread. Categories play separately, so a placing is a placing within
+            its own category.
+          </p>
+        ) : null}
+
+        {loaded ? (
+          <div className="mt-8 flex justify-center">
             <a
               href="https://odoovations.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2"
-              style={{ color: BRASS }}
+              className="group inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-transform hover:-translate-y-0.5"
+              style={{
+                borderColor: GILT,
+                color: INK,
+                background:
+                  "linear-gradient(135deg, rgba(199,154,91,0.22), rgba(199,154,91,0.06))",
+                boxShadow: "0 2px 10px rgba(169,123,63,0.18)",
+              }}
             >
-              Odoovation
+              <span aria-hidden style={{ color: BRASS }}>
+                ✦
+              </span>
+              <span style={{ color: MUTED, fontWeight: 500 }}>Made by</span>
+              <span
+                style={{ color: BRASS }}
+                className="font-bold tracking-wide underline-offset-4 group-hover:underline"
+              >
+                Odoovations
+              </span>
+              <span aria-hidden style={{ color: BRASS }}>
+                →
+              </span>
             </a>
-            .
-          </p>
+          </div>
         ) : null}
       </div>
     </main>
@@ -229,7 +298,11 @@ function formatDay(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 /** The same slug the certificate page resolves: lowercase, words joined by hyphens. */
