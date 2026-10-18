@@ -204,8 +204,7 @@ export function CertificateSheet({
             <>
               for {placement}
               <br />
-              at Blufy&rsquo;s Alphabattle&rsquo;s Speed Scrabble Competition,
-              {" "}
+              at Blufy&rsquo;s Alphabattle&rsquo;s Speed Scrabble Competition,{" "}
               {venue}.
             </>
           ) : (
@@ -260,7 +259,16 @@ export function CertificateSheet({
         </p>
 
         <Signature
-          left="18%"
+          /*
+           * Alone, the founder's signature sits in the middle of the page (a 27% block is
+           * centred at 36.5%). Beside a venue co-signature it keeps its place on the left.
+           */
+          left={
+            (venueSignature === undefined && venue === "Chai Chatt") ||
+            venueSignature
+              ? "18%"
+              : "36.5%"
+          }
           image="/certificate/signature-hani.png"
           imageWidth="15cqw"
           name="Hani Garib"
