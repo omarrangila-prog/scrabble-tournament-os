@@ -78,7 +78,11 @@ export async function buildCertificatePdf(
   ]);
 
   drawCertificate(doc, entry, { paper, artwork, signHani, signChai });
-  drawRecord(doc, entry, paper);
+  /*
+   * A page headed "every round" with no rounds under it is a blank sheet. Events whose
+   * boards were never entered here (published standings only) get the certificate alone.
+   */
+  if (entry.rounds.length > 0) drawRecord(doc, entry, paper);
 
   return doc.output("blob");
 }
@@ -262,7 +266,7 @@ function drawRecord(doc: jsPDF, entry: CertificateDoc, paper: Loaded | null) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.text(
-    `${entry.division.toUpperCase()}  DIVISION  ·  23 AUGUST 2026  ·  KARACHI`,
+    `${entry.division.toUpperCase()}  DIVISION  ·  ${(entry.dateLabel ?? "23rd August, 2026").toUpperCase()}  ·  KARACHI`,
     M,
     26,
   );
