@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { Certificate } from "@/components/results/Certificate";
+import { recordHit } from "@/lib/supabase/publicHits";
 import { readPublicEvent } from "@/lib/supabase/events";
 import { officialOrDerivedStandings, type PublicStanding } from "@/lib/supabase/submitResult";
 
@@ -58,6 +59,10 @@ export default function PlayerCertificatePage() {
   const [venue, setVenue] = React.useState("");
   const [rows, setRows] = React.useState<PublicStanding[]>([]);
   const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    recordHit("certificate_view", eventSlug);
+  }, [eventSlug]);
 
   React.useEffect(() => {
     let live = true;

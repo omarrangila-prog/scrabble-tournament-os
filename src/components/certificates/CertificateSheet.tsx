@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { recordHit } from "@/lib/supabase/publicHits";
+
 /**
  * The certificate, as the organizer's own design.
  *
@@ -307,6 +309,7 @@ export function CertificateSheet({
           href="https://odoovations.com/"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => recordHit("odoovations_click")}
           className="absolute text-right"
           style={{ right: "3%", bottom: "2.4%", fontSize: "1.35cqw", opacity: 0.75, color: INK }}
         >

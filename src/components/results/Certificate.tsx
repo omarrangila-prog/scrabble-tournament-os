@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { recordHit } from "@/lib/supabase/publicHits";
+
 import { CertificateSheet } from "@/components/certificates/CertificateSheet";
 import {
   buildCertificatePdf,
@@ -62,6 +64,7 @@ export function Certificate({
       /* Let the browser start the save before the blob is thrown away. */
       window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
       setState("idle");
+      recordHit("certificate_download");
     } catch {
       setState("failed");
     }

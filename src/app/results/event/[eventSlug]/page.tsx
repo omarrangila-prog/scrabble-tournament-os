@@ -8,6 +8,7 @@ import {
   officialOrDerivedStandings,
   type PublicStanding,
 } from "@/lib/supabase/submitResult";
+import { recordHit } from "@/lib/supabase/publicHits";
 import { readPublicEvent } from "@/lib/supabase/events";
 
 /**
@@ -54,6 +55,10 @@ export default function LiveResultsPage() {
   const [rows, setRows] = React.useState<PublicStanding[]>([]);
   const [source, setSource] = React.useState<string | null>(null);
   const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    recordHit("results_view", slug);
+  }, [slug]);
 
   React.useEffect(() => {
     let live = true;
@@ -263,6 +268,7 @@ export default function LiveResultsPage() {
               href="https://odoovations.com/"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => recordHit("odoovations_click", slug)}
               className="group inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-semibold transition-transform hover:-translate-y-0.5"
               style={{
                 borderColor: GILT,

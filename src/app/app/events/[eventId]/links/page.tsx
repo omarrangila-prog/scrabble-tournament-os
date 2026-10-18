@@ -5,9 +5,17 @@ import { useParams } from "next/navigation";
 import { Check, Copy, ExternalLink, ShieldAlert } from "lucide-react";
 
 import { Badge, Button, Card, CardHeader, EmptyState } from "@/components/ui";
-import { DEFAULT_PUBLIC_COLUMNS, PUBLIC_COLUMNS, exposesPrivateColumns } from "@/lib/domain/publicRegistrations";
+import {
+  DEFAULT_PUBLIC_COLUMNS,
+  PUBLIC_COLUMNS,
+  exposesPrivateColumns,
+} from "@/lib/domain/publicRegistrations";
 import { publicLinks } from "@/lib/domain/publicLinks";
-import { saveLiveDefaultCategory, savePublicRegistrationSettings } from "@/lib/supabase/publicSettings";
+import { readHits, type HitTotals } from "@/lib/supabase/publicHits";
+import {
+  saveLiveDefaultCategory,
+  savePublicRegistrationSettings,
+} from "@/lib/supabase/publicSettings";
 import { useEventById } from "@/lib/supabase/useCurrentEvent";
 import { useEventCategories } from "@/lib/supabase/useEventCategories";
 import { useStaffRole } from "@/lib/supabase/useStaffRole";
@@ -42,18 +50,41 @@ export default function PublicLinksPage() {
   );
 
   /* The in-progress choice, or null while the stored one is still what is shown. */
-  const [draft, setDraft] = React.useState<{ enabled: boolean; columns: string[] } | null>(null);
+  const [draft, setDraft] = React.useState<{
+    enabled: boolean;
+    columns: string[];
+  } | null>(null);
   const [confirmed, setConfirmed] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const [message, setMessage] = React.useState<{ ok: boolean; text: string } | null>(null);
+  const [message, setMessage] = React.useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
   const [copied, setCopied] = React.useState<string | null>(null);
+  const [hits, setHits] = React.useState<HitTotals[] | null>(null);
 
-  if (!loaded) return <p className="py-10 text-center text-[14px] text-muted">Loading…</p>;
+  React.useEffect(() => {
+    let live = true;
+    void (async () => {
+      if (!role.isDirector) return;
+      const rows = await readHits(eventId);
+      if (live) setHits(rows);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [eventId, role.isDirector]);
+
+  if (!loaded)
+    return <p className="py-10 text-center text-[14px] text-muted">Loading…</p>;
 
   if (!event) {
     return (
       <Card>
-        <EmptyState title="Event not found" description="This event may have been deleted." />
+        <EmptyState
+          title="Event not found"
+          description="This event may have been deleted."
+        />
       </Card>
     );
   }
@@ -68,9 +99,13 @@ export default function PublicLinksPage() {
   const needsConfirm = wantsPrivate && !wasPrivate;
 
   const toggleColumn = (key: string) => {
-    const next = columns.includes(key) ? columns.filter((c) => c !== key) : [...columns, key];
+    const next = columns.includes(key)
+      ? columns.filter((c) => c !== key)
+      : [...columns, key];
     /* Kept in the order the list is written in, so the table reads the same however it was ticked. */
-    const ordered = PUBLIC_COLUMNS.map((c) => c.key).filter((k) => next.includes(k));
+    const ordered = PUBLIC_COLUMNS.map((c) => c.key).filter((k) =>
+      next.includes(k),
+    );
     setDraft({ enabled, columns: ordered });
     setConfirmed(false);
     setMessage(null);
@@ -82,7 +117,10 @@ export default function PublicLinksPage() {
       setCopied(id);
       window.setTimeout(() => setCopied((c) => (c === id ? null : c)), 1600);
     } catch {
-      setMessage({ ok: false, text: "Could not copy. Select the address and copy it by hand." });
+      setMessage({
+        ok: false,
+        text: "Could not copy. Select the address and copy it by hand.",
+      });
     }
   };
 
@@ -103,11 +141,21 @@ export default function PublicLinksPage() {
     }
     setDraft(null);
     setConfirmed(false);
-    setMessage({ ok: true, text: "Saved. The public list and the CSV change immediately." });
+    setMessage({
+      ok: true,
+      text: "Saved. The public list and the CSV change immediately.",
+    });
     reload();
   };
 
-  const rows: { id: string; title: string; description: string; url: string; copy: string; open: string }[] = [
+  const rows: {
+    id: string;
+    title: string;
+    description: string;
+    url: string;
+    copy: string;
+    open: string;
+  }[] = [
     {
       id: "live",
       title: "Live results",
@@ -127,7 +175,8 @@ export default function PublicLinksPage() {
     {
       id: "csv",
       title: "Registration CSV",
-      description: "The same list, regenerated from the database every time it is opened.",
+      description:
+        "The same list, regenerated from the database every time it is opened.",
       url: links.csv,
       copy: "Copy CSV link",
       open: "Open",
@@ -135,7 +184,8 @@ export default function PublicLinksPage() {
     {
       id: "tv",
       title: "TV pairings",
-      description: "Large current pairings for the venue screen, pinned to this event.",
+      description:
+        "Large current pairings for the venue screen, pinned to this event.",
       url: links.tv,
       copy: "Copy TV link",
       open: "Open TV pairings",
@@ -145,18 +195,33 @@ export default function PublicLinksPage() {
   return (
     <div className="space-y-5">
       <Card>
-        <CardHeader title="Public links" subtitle="Copy these. Nobody should have to type an address." />
+        <CardHeader
+          title="Public links"
+          subtitle="Copy these. Nobody should have to type an address."
+        />
         <ul className="divide-y divide-line">
           {rows.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <li
+              key={r.id}
+              className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"
+            >
               <div className="min-w-0 flex-1 basis-64">
                 <p className="text-[14.5px] font-bold text-ink">{r.title}</p>
                 <p className="text-[12.5px] text-muted">{r.description}</p>
-                <p className="mt-1 break-all font-mono text-[12px] text-faint">{r.url}</p>
+                <p className="mt-1 break-all font-mono text-[12px] text-faint">
+                  {r.url}
+                </p>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
-                <Button variant="secondary" onClick={() => void copy(r.id, r.url)}>
-                  {copied === r.id ? <Check className="size-4" /> : <Copy className="size-4" />}
+                <Button
+                  variant="secondary"
+                  onClick={() => void copy(r.id, r.url)}
+                >
+                  {copied === r.id ? (
+                    <Check className="size-4" />
+                  ) : (
+                    <Copy className="size-4" />
+                  )}
                   {copied === r.id ? "Copied" : r.copy}
                 </Button>
                 <a href={r.url} target="_blank" rel="noreferrer">
@@ -175,13 +240,18 @@ export default function PublicLinksPage() {
         <CardHeader
           title="What the public registration list shows"
           subtitle="Applies to the table and the CSV alike. Anybody holding the link can read it."
-          action={<Badge tone={enabled ? "success" : "neutral"}>{enabled ? "On" : "Off"}</Badge>}
+          action={
+            <Badge tone={enabled ? "success" : "neutral"}>
+              {enabled ? "On" : "Off"}
+            </Badge>
+          }
         />
 
         <div className="space-y-4 px-5 pb-5">
           {!role.isDirector ? (
             <p className="rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] text-muted">
-              Only a director can change this. You can see what is currently shown.
+              Only a director can change this. You can see what is currently
+              shown.
             </p>
           ) : null}
 
@@ -201,14 +271,19 @@ export default function PublicLinksPage() {
             </span>
           </label>
 
-          <fieldset className="grid gap-2 sm:grid-cols-2" disabled={!role.isDirector}>
+          <fieldset
+            className="grid gap-2 sm:grid-cols-2"
+            disabled={!role.isDirector}
+          >
             <legend className="sr-only">Columns</legend>
             {PUBLIC_COLUMNS.map((c) => (
               <label
                 key={c.key}
                 className={cn(
                   "flex cursor-pointer items-center gap-2.5 rounded-control border px-3 py-2.5",
-                  columns.includes(c.key) ? "border-primary bg-primary-050" : "border-line",
+                  columns.includes(c.key)
+                    ? "border-primary bg-primary-050"
+                    : "border-line",
                   c.private && "border-dashed",
                 )}
               >
@@ -231,18 +306,21 @@ export default function PublicLinksPage() {
           </fieldset>
 
           <p className="text-[12.5px] leading-relaxed text-muted">
-            Payment proofs, internal notes, check-in codes and private ids are never available here,
-            whatever is ticked.
+            Payment proofs, internal notes, check-in codes and private ids are
+            never available here, whatever is ticked.
           </p>
 
           {wantsPrivate ? (
             <div className="flex items-start gap-2.5 rounded-control bg-critical-050 px-3.5 py-3 text-[13px] leading-relaxed text-critical">
               <ShieldAlert className="mt-0.5 size-4.5 shrink-0" />
               <div>
-                <p className="font-bold">Phone numbers or email addresses will be public.</p>
+                <p className="font-bold">
+                  Phone numbers or email addresses will be public.
+                </p>
                 <p>
-                  Anybody with the link — and anybody they forward it to — can read them. Turn
-                  these on only for a controlled export, and off again afterwards.
+                  Anybody with the link — and anybody they forward it to — can
+                  read them. Turn these on only for a controlled export, and off
+                  again afterwards.
                 </p>
                 {needsConfirm ? (
                   <label className="mt-2 flex cursor-pointer items-start gap-2">
@@ -252,7 +330,9 @@ export default function PublicLinksPage() {
                       onChange={(e) => setConfirmed(e.target.checked)}
                       className="mt-0.5 size-4.5 accent-critical"
                     />
-                    <span className="font-semibold">I understand, and I want this public.</span>
+                    <span className="font-semibold">
+                      I understand, and I want this public.
+                    </span>
                   </label>
                 ) : null}
               </div>
@@ -263,7 +343,9 @@ export default function PublicLinksPage() {
             <p
               className={cn(
                 "rounded-control px-3.5 py-3 text-[13px]",
-                message.ok ? "bg-success-050 text-[#12855c]" : "bg-critical-050 text-critical",
+                message.ok
+                  ? "bg-success-050 text-[#12855c]"
+                  : "bg-critical-050 text-critical",
               )}
             >
               {message.text}
@@ -273,7 +355,13 @@ export default function PublicLinksPage() {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
-              disabled={!dirty || busy || !role.isDirector || columns.length === 0 || (needsConfirm && !confirmed)}
+              disabled={
+                !dirty ||
+                busy ||
+                !role.isDirector ||
+                columns.length === 0 ||
+                (needsConfirm && !confirmed)
+              }
               onClick={() => void save()}
             >
               {busy ? "Saving…" : "Save"}
@@ -304,7 +392,10 @@ export default function PublicLinksPage() {
             value={event.details.liveDefaultCategory || "all"}
             disabled={!role.canResults}
             onChange={async (e) => {
-              const result = await saveLiveDefaultCategory(eventId, e.target.value);
+              const result = await saveLiveDefaultCategory(
+                eventId,
+                e.target.value,
+              );
               setMessage(
                 result.ok
                   ? { ok: true, text: "Saved." }
@@ -323,6 +414,47 @@ export default function PublicLinksPage() {
           </select>
         </div>
       </Card>
+      {role.isDirector ? (
+        <Card>
+          <CardHeader
+            title="How the public pages are used"
+            subtitle="Counts only, no names. Page views count once per visit."
+          />
+          <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2">
+            {(
+              [
+                ["results_view", "Opened the results page"],
+                ["certificate_view", "Opened a certificate page"],
+                ["certificate_download", "Downloaded a certificate"],
+                ["odoovations_click", "Clicked the Odoovations link"],
+              ] as const
+            ).map(([kind, label]) => {
+              const row = hits?.find((h) => h.kind === kind);
+              return (
+                <div
+                  key={kind}
+                  className="rounded-control border border-line px-4 py-3"
+                >
+                  <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">
+                    {label}
+                  </p>
+                  <p className="mt-1 text-[24px] font-bold">
+                    {hits ? (row?.total ?? 0) : "…"}
+                  </p>
+                  <p className="text-[12px] text-muted">
+                    {hits ? `${row?.today ?? 0} today` : ""}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <p className="px-5 pb-5 text-[12px] text-muted">
+            Counting started when this was added; earlier visits were not
+            recorded. A certificate opened from inside a downloaded PDF cannot
+            be counted.
+          </p>
+        </Card>
+      ) : null}
     </div>
   );
 }
