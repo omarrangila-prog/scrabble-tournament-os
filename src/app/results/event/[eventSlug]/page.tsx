@@ -205,12 +205,8 @@ export default function LiveResultsPage() {
           <p className="mt-12 border-t pt-6 text-sm leading-relaxed" style={{ borderColor: RULE, color: MUTED }}>
             Wins–losses{rows.some((r) => r.draws > 0) ? "–draws" : ""}, then spread. Categories play
             separately, so a placing is a placing within its own category.{" "}
-            {/*
-              Where the figures came from. An official table was published by the software
-              that ran the pairings; nothing here is recomputed, so this page and the ranking
-              report cannot disagree.
-            */}
-            {source ? `Published by ${source}.` : "This page updates as results are recorded."}
+            {/* Credit for the software, in place of naming the tool that produced the standings. */}
+            Software made by Odoovation.
           </p>
         ) : null}
       </div>
