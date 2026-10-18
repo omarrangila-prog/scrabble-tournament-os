@@ -302,13 +302,13 @@ export function CertificateSheet({
           />
         ) : null}
 
-        {/* The maker's credit, small and in the margin below the signatures. */}
+        {/* The maker's credit, small, in the bottom corner clear of the signatures. */}
         <a
           href="https://odoovations.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute inset-x-0 text-center"
-          style={{ top: "94.6%", fontSize: "1.35cqw", opacity: 0.75, color: INK }}
+          className="absolute text-right"
+          style={{ right: "3%", bottom: "2.4%", fontSize: "1.35cqw", opacity: 0.75, color: INK }}
         >
           Made by Odoovations &middot; odoovations.com
         </a>
