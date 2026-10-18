@@ -206,7 +206,17 @@ export default function LiveResultsPage() {
             Wins–losses{rows.some((r) => r.draws > 0) ? "–draws" : ""}, then spread. Categories play
             separately, so a placing is a placing within its own category.{" "}
             {/* Credit for the software, in place of naming the tool that produced the standings. */}
-            Software made by Odoovation.
+            Software made by{" "}
+            <a
+              href="https://odoovations.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+              style={{ color: BRASS }}
+            >
+              Odoovation
+            </a>
+            .
           </p>
         ) : null}
       </div>
