@@ -174,7 +174,8 @@ function drawCertificate(doc: jsPDF, entry: CertificateDoc, art: Art) {
   signature(
     doc,
     art.signHani,
-    pct(W, 18),
+    /* Alone, the founder's signature sits in the middle; beside a venue's it keeps the left. */
+    art.signChai ? pct(W, 18) : pct(W, 36.5),
     pct(W, 15),
     "Hani Garib",
     "Founder - Blufy's Alphabattle",
@@ -192,6 +193,16 @@ function drawCertificate(doc: jsPDF, entry: CertificateDoc, art: Art) {
       "sign-chai",
     );
   }
+
+  /* The maker's credit, small and in the margin below the signatures. */
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(pt(1.35));
+  doc.setTextColor(MUTED);
+  const credit = "Made by Odoovations  \u00B7  odoovations.com";
+  const creditWidth = doc.getTextWidth(credit);
+  doc.textWithLink(credit, (W - creditWidth) / 2, pct(H, 96), {
+    url: "https://odoovations.com/",
+  });
 }
 
 function signature(
