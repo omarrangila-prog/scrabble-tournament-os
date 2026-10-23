@@ -23,8 +23,10 @@ const EMERALD = "#4FA87A";
  * re-added everywhere else, so a Masters board would have been on the wall in the room and
  * absent from the wall on the screen.
  */
-const DIVISIONS = ["beginner", "recreational", "advanced", "masters"] as const;
+const DIVISIONS = ["rookie", "beginner", "recreational", "advanced", "premier", "masters"] as const;
 const LABEL: Record<string, string> = {
+  rookie: "Rookie",
+  premier: "Premier",
   beginner: "Beginner",
   recreational: "Recreational",
   advanced: "Advanced",

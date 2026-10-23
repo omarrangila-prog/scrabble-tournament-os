@@ -35,8 +35,10 @@ const BRASS = "#A97B3F";
 const GILT = "#C79A5B";
 const RULE = "rgba(199,154,91,0.35)";
 
-const DIVISION_ORDER = ["beginner", "recreational", "advanced", "masters"];
+const DIVISION_ORDER = ["rookie", "beginner", "recreational", "advanced", "premier", "masters"];
 const DIVISION_LABEL: Record<string, string> = {
+  rookie: "Rookie",
+  premier: "Premier",
   beginner: "Beginner",
   recreational: "Recreational",
   advanced: "Advanced",

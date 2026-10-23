@@ -34,6 +34,8 @@ const BRASS = "#A97B3F";
 const RULE = "rgba(199,154,91,0.35)";
 
 const DIVISION_LABEL: Record<string, string> = {
+  rookie: "Rookie",
+  premier: "Premier",
   beginner: "Beginner",
   recreational: "Recreational",
   advanced: "Advanced",
