@@ -757,7 +757,13 @@ export function QuickForm({
             width — each is a short list of names and amounts, and stacking them on a phone
             would put the two prices somebody is comparing a scroll apart.
           */}
-          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-3">
+          <div
+            className={cn(
+              "mt-2.5 grid gap-x-3 gap-y-3",
+              /* One ticket sits in the middle at a readable width, not in half a row. */
+              activities.length === 1 ? "mx-auto max-w-[18rem] grid-cols-1" : "grid-cols-2",
+            )}
+          >
             {activities.map((a) => {
               const price = activityPrices.get(a.key);
               const chosen = a.key === effectiveActivity;
@@ -855,7 +861,7 @@ export function QuickForm({
                 placeholder="If you have one"
                 className={cn(
                   field,
-                  "mx-auto max-w-[16rem] text-center tracking-[0.12em]",
+                  "mx-auto block max-w-[16rem] text-center tracking-[0.12em]",
                   promoState.status === "accepted" ? "border-success" : "",
                 )}
               />
