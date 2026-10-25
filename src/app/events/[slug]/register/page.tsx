@@ -730,6 +730,8 @@ export default function RegisterPage() {
 
         <VenueMap event={event} />
 
+        <PrizeList prizes={event.prizes} />
+
         <div className="mt-7">
           {/*
             * Four questions on one screen, replacing four steps of eighteen. The long form
@@ -1031,6 +1033,47 @@ function GameOnConfirmation({
         </Link>
       </div>
     </main>
+  );
+}
+
+/**
+ * What is won, on the form itself.
+ *
+ * Somebody deciding whether to enter should see the prizes before the questions, not have to
+ * go back to the event page for them. Shown only when the organiser has stated some — an event
+ * with no list says nothing rather than implying there are none.
+ */
+function PrizeList({ prizes }: { prizes?: { place: string; award: string }[] }) {
+  if (!prizes?.length) return null;
+
+  return (
+    <section className="mt-5">
+      <p
+        className="text-center text-[12px] font-bold uppercase tracking-[0.14em]"
+        style={{ color: GOLD }}
+      >
+        Prizes
+      </p>
+      <div
+        className="mt-2 overflow-hidden rounded-[18px] border bg-white/70"
+        style={{ borderColor: `${BROWN}22` }}
+      >
+        {prizes.map((p, i) => (
+          <div
+            key={p.place}
+            className="flex items-baseline justify-between gap-4 px-4 py-3"
+            style={i > 0 ? { borderTop: `1px solid ${BROWN}14` } : undefined}
+          >
+            <span className="text-[13.5px]" style={{ color: `${BROWN}CC` }}>
+              {p.place}
+            </span>
+            <span className="num shrink-0 text-[15px] font-extrabold" style={{ color: BROWN }}>
+              {p.award}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
