@@ -118,7 +118,10 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
     divisions: DEFAULT_DIVISIONS,
 
     /* Nothing is promised that the organizer has not entered. */
-    prizes: [],
+    prizes: (Array.isArray(d.prizes) ? d.prizes : []).filter(
+      (p): p is { place: string; award: string } =>
+        typeof p?.place === "string" && p.place.trim() !== "" && typeof p?.award === "string",
+    ),
 
     subtitle: stored.subtitle ?? undefined,
     participationTracks: ["speed_scrabble"],
