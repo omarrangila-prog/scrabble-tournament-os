@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Gauge,
   GraduationCap,
+  Palette,
   IdCard,
   Radio,
   ShieldCheck,
@@ -68,12 +69,19 @@ export const NAV_ITEMS: NavItem[] = [
    * filter away from a board.
    */
   { href: "/app/training", label: "Training", icon: GraduationCap },
+  /* Speed Pictionary teams: stored apart from the draw for the same reason as training. */
+  { href: "/app/pictionary", label: "Pictionary", icon: Palette },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
   { href: "/app/send-codes", label: "Send codes", icon: Send },
   /* Before the day: everybody checks their own details, so the roster is right by Sunday. */
   { href: "/app/confirmations", label: "Confirmations", icon: MailCheck },
-  { href: "/app/live-event", label: "Live Event", icon: Radio, badgeKey: "live" },
+  {
+    href: "/app/live-event",
+    label: "Live Event",
+    icon: Radio,
+    badgeKey: "live",
+  },
   { href: "/app/certificates", label: "Awards", icon: Trophy },
   { href: "/app/analytics", label: "Analytics", icon: BarChart3 },
 ];
@@ -111,6 +119,7 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
   { href: "/app/standings", label: "Live Standings" },
   { href: "/app/certificates", label: "Certificates" },
   { href: "/app/training", label: "Training" },
+  { href: "/app/pictionary", label: "Pictionary" },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -134,9 +143,15 @@ export function navFor(
 ): { primary: NavItem[]; extra: NavItem[] } {
   switch (capability) {
     case "desk":
-      return { primary: NAV_ITEMS.filter((n) => n.href === "/app/desk"), extra: [] };
+      return {
+        primary: NAV_ITEMS.filter((n) => n.href === "/app/desk"),
+        extra: [],
+      };
     case "results":
-      return { primary: NAV_ITEMS.filter((n) => n.href === "/app/results"), extra: [] };
+      return {
+        primary: NAV_ITEMS.filter((n) => n.href === "/app/results"),
+        extra: [],
+      };
     case "viewer":
       return { primary: [], extra: [] };
     default:
