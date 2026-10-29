@@ -332,3 +332,308 @@
   transform: rotate(-9deg);
   opacity: 0.92;
 }
+
+/* =====================================================================================
+   Second pass: things that move, and things that catch the light.
+   Every animation below is wrapped so it only runs for people who have not asked their
+   device for less motion; the still versions are complete designs in their own right.
+   ===================================================================================== */
+
+/* ---- A lamp that follows the cursor, like an interrogation light ------------------- */
+
+.lamp {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    380px circle at var(--mx, 50%) var(--my, 18%),
+    rgba(255, 214, 160, 0.11),
+    transparent 62%
+  );
+  transition: background 0.2s ease-out;
+}
+
+/* ---- Fanned cards lying across the page's edge ------------------------------------ */
+
+.fan {
+  position: absolute;
+  pointer-events: none;
+  width: 150px;
+  height: 170px;
+}
+.fanCard {
+  position: absolute;
+  width: 96px;
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.65));
+}
+.fanOne {
+  left: 6px;
+  top: 14px;
+  transform: rotate(-24deg);
+}
+.fanTwo {
+  left: 20px;
+  top: 8px;
+  transform: rotate(-9deg);
+}
+.fanThree {
+  left: 34px;
+  top: 4px;
+  transform: rotate(7deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fan {
+    animation: bob 7s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes bob {
+  from {
+    transform: translateY(0) rotate(0deg);
+  }
+  to {
+    transform: translateY(-9px) rotate(1.6deg);
+  }
+}
+
+/* ---- The red word flickers like a sign in a window -------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .wars {
+    animation: neon 9s linear infinite;
+  }
+}
+
+@keyframes neon {
+  0%,
+  18%,
+  22%,
+  62%,
+  66%,
+  100% {
+    filter: drop-shadow(0 4px 14px rgba(160, 30, 36, 0.5));
+    opacity: 1;
+  }
+  19%,
+  21% {
+    filter: drop-shadow(0 2px 4px rgba(160, 30, 36, 0.2));
+    opacity: 0.72;
+  }
+  63%,
+  65% {
+    filter: drop-shadow(0 2px 6px rgba(160, 30, 36, 0.25));
+    opacity: 0.8;
+  }
+  40% {
+    filter: drop-shadow(0 6px 22px rgba(219, 66, 71, 0.75));
+  }
+}
+
+/* ---- The ticket catches the light every so often ---------------------------------- */
+
+.ticket::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 235, 190, 0.16) 48%,
+    rgba(255, 235, 190, 0.28) 50%,
+    rgba(255, 235, 190, 0.16) 52%,
+    transparent 62%
+  );
+  background-size: 260% 100%;
+  background-position: 130% 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ticket::after {
+    animation: foil 7s ease-in-out 1.2s infinite;
+  }
+}
+
+@keyframes foil {
+  0% {
+    background-position: 130% 0;
+  }
+  38%,
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+/* ---- Newsprint strip: the poster's newspaper, set to scroll ----------------------- */
+
+.ticker {
+  position: relative;
+  margin: 34px -16px 0;
+  overflow: hidden;
+  transform: rotate(-1.6deg);
+  background: linear-gradient(180deg, #e3d6b7, #c9b992);
+  border-top: 2px solid #15100d;
+  border-bottom: 2px solid #15100d;
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.55),
+    inset 0 0 22px rgba(120, 90, 40, 0.28);
+}
+.tickerTrack {
+  display: flex;
+  width: max-content;
+  padding: 9px 0;
+  color: #1a120d;
+  font-family: var(--font-noir-serif), Georgia, serif;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tickerTrack {
+    animation: scroll 38s linear infinite;
+  }
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ---- Countdown cards ------------------------------------------------------------ */
+
+.flip {
+  display: flex;
+  min-width: 74px;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid rgba(201, 164, 106, 0.4);
+  border-radius: 12px;
+  padding: 11px 10px 9px;
+  color: #f2e7d0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.05) 0 50%,
+      rgba(0, 0, 0, 0.18) 50% 100%
+    ),
+    #1a120d;
+  box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.7);
+}
+
+/* ---- Spades and hearts, falling once ---------------------------------------------- */
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+}
+.confetti span {
+  position: absolute;
+  top: -40px;
+  font-family: Georgia, serif;
+  line-height: 1;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .confetti span {
+    animation: fall var(--dur) cubic-bezier(0.3, 0.1, 0.6, 1) var(--delay) 1
+      both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}
+
+@keyframes fall {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--sway), 108vh, 0) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+
+/* ---- The seal presses into the ticket --------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .seal {
+    animation: press 0.7s cubic-bezier(0.2, 1.3, 0.3, 1) 0.9s both;
+  }
+}
+
+@keyframes press {
+  from {
+    opacity: 0;
+    transform: scale(1.7) rotate(-18deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-8deg);
+  }
+}
+
+.seal {
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55));
+  transform: rotate(-8deg);
+}
+
+/* ---- Sections arriving as they scroll into view; the button's sheen -------------- */
+
+.cta {
+  position: relative;
+  overflow: hidden;
+}
+.cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cta:hover:not(:disabled)::after {
+    transition: transform 0.7s ease;
+    transform: translateX(120%);
+  }
+}
+
+/* A rubber stamp pressed across the head of the file. */
+.file {
+  display: inline-block;
+  transform: rotate(-3deg);
+  border: 2px solid rgba(219, 66, 71, 0.8);
+  border-radius: 6px;
+  padding: 3px 9px;
+  color: rgba(219, 66, 71, 0.9);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}

@@ -181,3 +181,63 @@ export function calendarLink(input: {
   if (input.details) params.set("details", input.details);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+
+const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+
+/**
+ * "SUNDAY" for 2026-11-22. Worked out from the date's own parts in UTC, so the device's time zone
+ * can never turn a Sunday into a Saturday.
+ */
+export function weekdayOf(iso: string | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  if (!m) return "";
+  const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const d = new Date(t);
+  /* Rejects 2026-02-31, which JavaScript would quietly roll into March. */
+  if (d.getUTCMonth() !== Number(m[2]) - 1 || d.getUTCDate() !== Number(m[3])) return "";
+  return WEEKDAYS[d.getUTCDay()];
+}
+
+/**
+ * The moment a date and a clock time on the event row fall at, in the event's own zone (Karachi,
+ * UTC+5, which has no daylight saving). Null when either is missing or not real, because a
+ * countdown to a guess is worse than none.
+ */
+export function startInstant(date: string | undefined, time: string | undefined): number | null {
+  const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(date ?? "");
+  const t = /^(\d{1,2}):(\d{2})/.exec(time ?? "");
+  if (!d || !t) return null;
+  const hour = Number(t[1]);
+  const minute = Number(t[2]);
+  if (hour > 23 || minute > 59) return null;
+  if (weekdayOf(date) === "") return null;
+  return Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), hour - 5, minute);
+}
+
+export type CountdownState =
+  | { phase: "before"; days: number; hours: number; minutes: number }
+  | { phase: "now" }
+  | { phase: "over" };
+
+/**
+ * Where "now" stands against the night: counting down, under way, or finished. Rounds the
+ * minutes down, so it never claims there is less time than there is.
+ */
+export function countdownTo(
+  startMs: number | null,
+  endMs: number | null,
+  nowMs: number,
+): CountdownState | null {
+  if (startMs === null) return null;
+  if (nowMs < startMs) {
+    const total = Math.floor((startMs - nowMs) / 60000);
+    return {
+      phase: "before",
+      days: Math.floor(total / 1440),
+      hours: Math.floor((total % 1440) / 60),
+      minutes: total % 60,
+    };
+  }
+  if (endMs !== null && nowMs >= endMs) return { phase: "over" };
+  return { phase: "now" };
+}

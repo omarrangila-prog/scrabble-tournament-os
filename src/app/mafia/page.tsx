@@ -11,6 +11,7 @@ import {
   calendarLink,
   posterDate,
   tidyName,
+  weekdayOf,
 } from "@/lib/domain/mafia";
 import { readPublicEvent, type StoredEvent } from "@/lib/supabase/events";
 import {
@@ -21,10 +22,13 @@ import {
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
 import { formatDate } from "@/lib/utils";
 
+import { Countdown } from "./Countdown";
 import { Hat } from "./Hat";
 import { MafiaForm, type MafiaSubmission } from "./MafiaForm";
 import styles from "./mafia.module.css";
 import { NOIR } from "./noir";
+import { CardFan, Confetti, NewsTicker, WaxSeal } from "./Props";
+import { JumpToForm } from "./Reveal";
 
 /**
  * The Mafia Wars page.
@@ -177,6 +181,7 @@ export default function MafiaPage() {
   return (
     <Shell>
       <Hero
+        weekday={weekdayOf(details?.startDate)}
         date={posterDate(details?.startDate)}
         year={details?.startDate?.slice(0, 4) ?? ""}
         time={timeLabel}
@@ -185,18 +190,50 @@ export default function MafiaPage() {
         address={details?.venueAddress ?? ""}
       />
 
+      <NewsTicker
+        items={[
+          "Extra! Extra!",
+          "The underworld never sleeps",
+          `Mafia Wars ${posterDate(details?.startDate)}`,
+          details?.venueName ?? "The Social",
+          timeLabel,
+          "Food included",
+          "Will you be joining us?",
+        ].filter(Boolean)}
+      />
+
+      <div className="mt-8">
+        <Countdown
+          date={details?.startDate}
+          start={details?.startTime}
+          end={details?.endTime}
+        />
+      </div>
+
       <Ticket money={money} />
 
       <motion.div
+        id="sign-up"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.25 }}
-        className={`${styles.card} mt-6 p-5 sm:p-7`}
+        className={`${styles.card} mt-8 scroll-mt-6 p-5 pt-7 sm:p-7 sm:pt-9`}
       >
         {/* A suit badge sitting on the card's top edge, as the pip on a playing card does. */}
         <span className={styles.medallion} aria-hidden>
           ♠
         </span>
+
+        {/* The head of the file: a rubber stamp and a case number, as on a dossier. */}
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <span className={styles.file}>Confidential</span>
+          <span
+            className="text-[10.5px] font-bold uppercase tracking-[0.24em]"
+            style={{ color: NOIR.muted }}
+          >
+            Case file № 2211
+          </span>
+        </div>
 
         <MafiaForm
           fee={fee}
@@ -208,6 +245,8 @@ export default function MafiaPage() {
           onSubmit={(entry) => void submit(entry)}
         />
       </motion.div>
+
+      <JumpToForm targetId="sign-up" />
 
       <footer className="mt-8 text-center">
         <p
@@ -236,9 +275,28 @@ export default function MafiaPage() {
  * it stays put while the form scrolls.
  */
 function Shell({ children }: { children: React.ReactNode }) {
+  const lamp = React.useRef<HTMLDivElement>(null);
+  const frame = React.useRef(0);
+
+  /*
+   * The cursor carries a lamp. Only a mouse does: a finger has no hover, and a light that
+   * jumps to wherever somebody last tapped is noise. The position is written straight onto the
+   * element, one frame at a time, so moving the mouse never re-renders the page.
+   */
+  const follow = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse" || frame.current) return;
+    const { clientX, clientY } = e;
+    frame.current = window.requestAnimationFrame(() => {
+      frame.current = 0;
+      lamp.current?.style.setProperty("--mx", `${clientX}px`);
+      lamp.current?.style.setProperty("--my", `${clientY}px`);
+    });
+  };
+
   return (
     <main
-      className="relative min-h-dvh overflow-x-clip px-4 pb-16 pt-5 sm:pt-8"
+      onPointerMove={follow}
+      className="relative min-h-dvh overflow-x-clip px-4 pb-24 pt-5 sm:pt-8"
       style={{ color: NOIR.cream, background: NOIR.bg }}
     >
       {/*
@@ -251,6 +309,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className={styles.slats} />
         <div className={styles.smoke} />
         <div className={styles.smokeTwo} />
+        <div ref={lamp} className={styles.lamp} />
         <div className={styles.grain} />
         <div className={styles.vignette} />
       </div>
@@ -283,6 +342,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 /** The hat, the title and the three facts: when, what time, where. As the poster stacks them. */
 function Hero({
+  weekday,
   date,
   year,
   time,
@@ -290,6 +350,7 @@ function Hero({
   mapsUrl,
   address,
 }: {
+  weekday: string;
   date: string;
   year: string;
   time: string;
@@ -312,7 +373,15 @@ function Hero({
         };
 
   return (
-    <header className="text-center">
+    <header className="relative text-center">
+      {/* The cards lie across the page's own edge, level with the facts, as on the poster. */}
+      <div
+        className="pointer-events-none absolute -left-[78px] top-[57%] sm:-left-[120px]"
+        aria-hidden
+      >
+        <CardFan />
+      </div>
+
       <div className="relative mx-auto mt-3 w-[150px] sm:w-[190px]">
         <Hat />
       </div>
@@ -360,6 +429,14 @@ function Hero({
       </motion.p>
 
       <motion.div {...rise(0.46)} className="mt-7">
+        {weekday ? (
+          <p
+            className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.42em]"
+            style={{ color: NOIR.gold }}
+          >
+            {weekday}
+          </p>
+        ) : null}
         <div className="flex items-center justify-center gap-4">
           <span
             className="h-px w-12 sm:w-20"
@@ -527,6 +604,7 @@ function Confirmation({
 
   return (
     <div className="pt-8 text-center">
+      <Confetti />
       <span
         className="inline-grid size-14 place-items-center rounded-full"
         style={{ background: `${NOIR.red}33`, color: NOIR.redBright }}
@@ -546,72 +624,80 @@ function Confirmation({
         Welcome to the family, {name.split(" ")[0]}.
       </p>
 
-      <div
-        className={`${styles.ticket} relative mt-7 text-left`}
-        style={{ ["--tear" as string]: "76px" }}
-      >
-        <div className="flex h-[76px] items-center justify-between gap-3 px-5">
-          <div>
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.3em]"
-              style={{ color: NOIR.gold }}
-            >
-              Admit one
-            </p>
-            <p
-              className="text-[24px] font-black leading-none"
-              style={{ color: NOIR.cream, fontFamily: NOIR.serif }}
-            >
-              Mafia{" "}
-              <span
-                style={{
-                  color: NOIR.redBright,
-                  fontFamily: NOIR.brush,
-                  fontWeight: 400,
-                }}
-              >
-                Wars
-              </span>
-            </p>
-          </div>
-          <span
-            className={`${styles.stamp} rounded-[6px] border-2 px-2.5 py-1 text-[12px] font-black uppercase tracking-[0.18em]`}
-            style={{ color: NOIR.redBright, borderColor: NOIR.redBright }}
-          >
-            Confirmed
-          </span>
-        </div>
-
+      {/* The seal sits outside the ticket: the ticket's notched mask would clip it. */}
+      <div className="relative mt-7">
+        <WaxSeal
+          className={`${styles.seal} absolute -bottom-8 right-6 z-10 w-[78px]`}
+        />
         <div
-          className="border-t-2 border-dashed px-5 py-5"
-          style={{ borderColor: "rgba(201,164,106,0.4)" }}
+          className={`${styles.ticket} relative text-left`}
+          style={{ ["--tear" as string]: "76px" }}
         >
-          <dl className="space-y-3.5">
-            <Row label="Name" value={`${name}, ${entry.age.trim()}`} />
-            {whenLabel ? <Row label="When" value={whenLabel} /> : null}
-            {venueName ? (
-              <Row
-                label="Where"
-                value={
-                  mapsUrl ? (
-                    <a
-                      href={mapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={`${styles.link} underline decoration-dotted underline-offset-4`}
-                    >
-                      {venueName}
-                    </a>
-                  ) : (
-                    venueName
-                  )
-                }
-              />
-            ) : null}
-            {venueAddress ? <Row label="Address" value={venueAddress} /> : null}
-            <Row label="We will call" value={entry.phone.trim()} />
-            <Row label="Paid online" value={money} />
-          </dl>
+          <div className="flex h-[76px] items-center justify-between gap-3 px-5">
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.3em]"
+                style={{ color: NOIR.gold }}
+              >
+                Admit one
+              </p>
+              <p
+                className="text-[24px] font-black leading-none"
+                style={{ color: NOIR.cream, fontFamily: NOIR.serif }}
+              >
+                Mafia{" "}
+                <span
+                  style={{
+                    color: NOIR.redBright,
+                    fontFamily: NOIR.brush,
+                    fontWeight: 400,
+                  }}
+                >
+                  Wars
+                </span>
+              </p>
+            </div>
+            <span
+              className={`${styles.stamp} rounded-[6px] border-2 px-2.5 py-1 text-[12px] font-black uppercase tracking-[0.18em]`}
+              style={{ color: NOIR.redBright, borderColor: NOIR.redBright }}
+            >
+              Confirmed
+            </span>
+          </div>
+
+          <div
+            className="border-t-2 border-dashed px-5 pb-[58px] pt-5"
+            style={{ borderColor: "rgba(201,164,106,0.4)" }}
+          >
+            <dl className="space-y-3.5">
+              <Row label="Name" value={`${name}, ${entry.age.trim()}`} />
+              {whenLabel ? <Row label="When" value={whenLabel} /> : null}
+              {venueName ? (
+                <Row
+                  label="Where"
+                  value={
+                    mapsUrl ? (
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`${styles.link} underline decoration-dotted underline-offset-4`}
+                      >
+                        {venueName}
+                      </a>
+                    ) : (
+                      venueName
+                    )
+                  }
+                />
+              ) : null}
+              {venueAddress ? (
+                <Row label="Address" value={venueAddress} />
+              ) : null}
+              <Row label="We will call" value={entry.phone.trim()} />
+              <Row label="Paid online" value={money} />
+            </dl>
+          </div>
         </div>
       </div>
 
@@ -620,7 +706,7 @@ function Confirmation({
           href={calendar}
           target="_blank"
           rel="noreferrer"
-          className={`${styles.choice} ${styles.link} mt-5 inline-flex items-center gap-2 rounded-[12px] border px-4 py-2.5 text-[14px] font-semibold`}
+          className={`${styles.choice} ${styles.link} mt-10 inline-flex items-center gap-2 rounded-[12px] border px-4 py-2.5 text-[14px] font-semibold`}
           style={{
             borderColor: NOIR.line,
             color: NOIR.cream,

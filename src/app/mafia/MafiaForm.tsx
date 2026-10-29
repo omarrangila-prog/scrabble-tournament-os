@@ -25,6 +25,7 @@ import {
 
 import styles from "./mafia.module.css";
 import { NOIR } from "./noir";
+import { Reveal } from "./Reveal";
 
 /**
  * Signing up for Mafia Wars.
@@ -125,17 +126,25 @@ export function MafiaForm({
   const label = "block text-[11.5px] font-bold uppercase tracking-[0.16em]";
   const hint = "text-[13px] leading-relaxed";
 
-  /* A section title in the display serif, with the red spade the poster's cards carry. */
-  const title = (text: string) => (
-    <h3
-      className="flex items-center gap-2 text-[19px] font-bold leading-tight"
-      style={{ color: NOIR.cream, fontFamily: NOIR.serif }}
-    >
-      <span style={{ color: NOIR.redBright, fontSize: 15 }} aria-hidden>
-        ♠
-      </span>
-      {text}
-    </h3>
+  /*
+   * A section title in two lines: the plain name of the part in small gold capitals, so nobody
+   * has to decode anything, and a line of noir above it in the display serif for the mood.
+   */
+  const title = (numeral: string, plain: string, noir: string) => (
+    <div>
+      <p
+        className="text-[10.5px] font-bold uppercase tracking-[0.28em]"
+        style={{ color: NOIR.gold }}
+      >
+        {numeral} &middot; {plain}
+      </p>
+      <h3
+        className="mt-0.5 text-[24px] font-bold leading-tight"
+        style={{ color: NOIR.cream, fontFamily: NOIR.serif }}
+      >
+        {noir}
+      </h3>
+    </div>
   );
 
   /* A hairline with a spade in the middle, between the big parts of the form. */
@@ -188,7 +197,7 @@ export function MafiaForm({
     <form onSubmit={submit} className="space-y-6" noValidate>
       {/* ---- Who you are --------------------------------------------------- */}
       <div className="space-y-4">
-        {title("Your details")}
+        {title("I", "Your details", "Who goes there?")}
 
         <div className="grid gap-4 sm:grid-cols-[1fr_7.5rem]">
           <div>
@@ -259,168 +268,178 @@ export function MafiaForm({
 
       {divider}
 
-      {/* ---- Paying: online only, so nothing to choose -------------------- */}
-      <div className="space-y-3.5">
-        {title("Pay online")}
-        <p className={hint} style={{ color: NOIR.soft }}>
-          Transfer{" "}
-          <strong style={{ color: NOIR.cream }} className="num">
-            {money}
-          </strong>{" "}
-          to either account, then upload the screenshot below. Your place is
-          held as soon as the receipt is uploaded.
-        </p>
-
-        {paymentInstructions ? (
-          <div
-            className="whitespace-pre-line rounded-[12px] py-3.5 pl-4 pr-4 text-[13.5px] leading-relaxed"
-            style={{
-              background: NOIR.field,
-              color: NOIR.soft,
-              border: `1px solid ${NOIR.line}`,
-              borderLeft: `3px solid ${NOIR.redBright}`,
-            }}
-          >
-            {paymentInstructions}
-          </div>
-        ) : null}
-
-        <div
-          className="rounded-[12px] border p-4"
-          style={{ borderColor: NOIR.line }}
-        >
-          <span className={label} style={{ color: NOIR.muted }}>
-            Upload payment proof
-          </span>
-          <p className={`${hint} mt-1`} style={{ color: NOIR.muted }}>
-            A screenshot of the transfer, or the bank receipt. JPG, PNG or PDF.
+      <Reveal>
+        {/* ---- Paying: online only, so nothing to choose -------------------- */}
+        <div className="space-y-3.5">
+          {title("II", "Pay online", "A gentleman's fee")}
+          <p className={hint} style={{ color: NOIR.soft }}>
+            Transfer{" "}
+            <strong style={{ color: NOIR.cream }} className="num">
+              {money}
+            </strong>{" "}
+            to either account, then upload the screenshot below. Your place is
+            held as soon as the receipt is uploaded.
           </p>
 
-          <input
-            key={proofNonce}
-            id="m-proof"
-            type="file"
-            accept={PROOF_ACCEPT}
-            onChange={(e) => pickProof(e.target.files?.[0] ?? null)}
-            className="sr-only"
-          />
-
-          {entry.proofFile ? (
+          {paymentInstructions ? (
             <div
-              className="mt-3 flex items-center gap-3 rounded-[12px] border px-3 py-2.5"
+              className="whitespace-pre-line rounded-[12px] py-3.5 pl-4 pr-4 text-[13.5px] leading-relaxed"
               style={{
-                background: `${NOIR.red}26`,
-                borderColor: NOIR.redBright,
+                background: NOIR.field,
+                color: NOIR.soft,
+                border: `1px solid ${NOIR.line}`,
+                borderLeft: `3px solid ${NOIR.redBright}`,
               }}
             >
-              <span
-                className="grid size-10 shrink-0 place-items-center rounded-[9px]"
-                style={{ background: NOIR.field, color: NOIR.redBright }}
+              {paymentInstructions}
+            </div>
+          ) : null}
+
+          <div
+            className="rounded-[12px] border p-4"
+            style={{ borderColor: NOIR.line }}
+          >
+            <span className={label} style={{ color: NOIR.muted }}>
+              Upload payment proof
+            </span>
+            <p className={`${hint} mt-1`} style={{ color: NOIR.muted }}>
+              A screenshot of the transfer, or the bank receipt. JPG, PNG or
+              PDF.
+            </p>
+
+            <input
+              key={proofNonce}
+              id="m-proof"
+              type="file"
+              accept={PROOF_ACCEPT}
+              onChange={(e) => pickProof(e.target.files?.[0] ?? null)}
+              className="sr-only"
+            />
+
+            {entry.proofFile ? (
+              <div
+                className="mt-3 flex items-center gap-3 rounded-[12px] border px-3 py-2.5"
+                style={{
+                  background: `${NOIR.red}26`,
+                  borderColor: NOIR.redBright,
+                }}
               >
-                {entry.proofFile.type === "application/pdf" ? (
-                  <FileText className="size-5" />
-                ) : (
-                  <ImageIcon className="size-5" />
-                )}
-              </span>
-              <span className="min-w-0 flex-1">
                 <span
-                  className="block truncate text-[14px] font-semibold"
-                  style={{ color: NOIR.cream }}
+                  className="grid size-10 shrink-0 place-items-center rounded-[9px]"
+                  style={{ background: NOIR.field, color: NOIR.redBright }}
                 >
-                  {entry.proofFile.name}
+                  {entry.proofFile.type === "application/pdf" ? (
+                    <FileText className="size-5" />
+                  ) : (
+                    <ImageIcon className="size-5" />
+                  )}
                 </span>
-                <span
-                  className="num block text-[12px]"
+                <span className="min-w-0 flex-1">
+                  <span
+                    className="block truncate text-[14px] font-semibold"
+                    style={{ color: NOIR.cream }}
+                  >
+                    {entry.proofFile.name}
+                  </span>
+                  <span
+                    className="num block text-[12px]"
+                    style={{ color: NOIR.muted }}
+                  >
+                    {megabytes(entry.proofFile.size)} MB · attached
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={clearProof}
+                  aria-label="Remove this file"
+                  className={`${styles.choice} grid size-9 shrink-0 place-items-center rounded-[9px]`}
                   style={{ color: NOIR.muted }}
                 >
-                  {megabytes(entry.proofFile.size)} MB · attached
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={clearProof}
-                aria-label="Remove this file"
-                className={`${styles.choice} grid size-9 shrink-0 place-items-center rounded-[9px]`}
-                style={{ color: NOIR.muted }}
+                  <X className="size-4" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="m-proof"
+                className={`${styles.drop} mt-3 flex cursor-pointer items-center justify-center gap-2.5 rounded-[12px] border border-dashed px-4 py-5 text-[14.5px] font-semibold`}
+                style={{
+                  borderColor: `${NOIR.cream}38`,
+                  background: NOIR.field,
+                  color: NOIR.cream,
+                }}
               >
-                <X className="size-4" />
-              </button>
-            </div>
-          ) : (
-            <label
-              htmlFor="m-proof"
-              className={`${styles.drop} mt-3 flex cursor-pointer items-center justify-center gap-2.5 rounded-[12px] border border-dashed px-4 py-5 text-[14.5px] font-semibold`}
-              style={{
-                borderColor: `${NOIR.cream}38`,
-                background: NOIR.field,
-                color: NOIR.cream,
-              }}
-            >
-              <Paperclip className="size-4" style={{ color: NOIR.redBright }} />
-              Choose a file or take a photo
-            </label>
-          )}
+                <Paperclip
+                  className="size-4"
+                  style={{ color: NOIR.redBright }}
+                />
+                Choose a file or take a photo
+              </label>
+            )}
 
-          {proofProblem ? (
-            <p
-              className="mt-2 text-[12.5px] font-medium"
-              style={{ color: "#F59A9E" }}
-              role="alert"
-            >
-              {proofProblem}
-            </p>
-          ) : null}
-          {proofProblem ? null : problem(problemFor(problems, "proof"))}
+            {proofProblem ? (
+              <p
+                className="mt-2 text-[12.5px] font-medium"
+                style={{ color: "#F59A9E" }}
+                role="alert"
+              >
+                {proofProblem}
+              </p>
+            ) : null}
+            {proofProblem ? null : problem(problemFor(problems, "proof"))}
+          </div>
         </div>
-      </div>
+      </Reveal>
 
       {divider}
 
-      {/* ---- Photographs ---------------------------------------------------- */}
-      <div>
-        {title("Photos and video")}
-        <p className={`${hint} mt-2`} style={{ color: NOIR.soft }}>
-          I give consent for photos and videos to be taken during the event and
-          posted on the event&rsquo;s social media handles.
-        </p>
-        {yesNo(entry.mediaConsent, (v) => change({ mediaConsent: v }))}
-        {problem(problemFor(problems, "consent"))}
-      </div>
-
-      {/* ---- Cancellation, as on the Scrabble form -------------------------- */}
-      {terms.trim() ? (
+      <Reveal>
+        {/* ---- Photographs ---------------------------------------------------- */}
         <div>
-          {title("Before you sign up")}
-          <div
-            className={`mt-3 whitespace-pre-line rounded-[12px] px-4 py-3.5 ${hint}`}
-            style={{
-              background: NOIR.field,
-              color: NOIR.soft,
-              border: `1px solid ${NOIR.line}`,
-            }}
-          >
-            {terms}
-          </div>
-          <label className="mt-3.5 flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              checked={entry.termsAccepted}
-              onChange={(e) => change({ termsAccepted: e.target.checked })}
-              className="mt-0.5 size-5 shrink-0"
-              style={{ accentColor: NOIR.redBright }}
-            />
-            <span
-              className="text-[14.5px] font-semibold leading-snug"
-              style={{ color: NOIR.cream }}
-            >
-              I understand and agree, and I am happy to be contacted about this
-              event
-            </span>
-          </label>
-          {problem(problemFor(problems, "terms"))}
+          {title("III", "Photos and video", "Smile for the camera?")}
+          <p className={`${hint} mt-2`} style={{ color: NOIR.soft }}>
+            I give consent for photos and videos to be taken during the event
+            and posted on the event&rsquo;s social media handles.
+          </p>
+          {yesNo(entry.mediaConsent, (v) => change({ mediaConsent: v }))}
+          {problem(problemFor(problems, "consent"))}
         </div>
-      ) : null}
+      </Reveal>
+
+      <Reveal>
+        {/* ---- Cancellation, as on the Scrabble form -------------------------- */}
+        {terms.trim() ? (
+          <div>
+            {title("IV", "Before you sign up", "The fine print")}
+            <div
+              className={`mt-3 whitespace-pre-line rounded-[12px] px-4 py-3.5 ${hint}`}
+              style={{
+                background: NOIR.field,
+                color: NOIR.soft,
+                border: `1px solid ${NOIR.line}`,
+              }}
+            >
+              {terms}
+            </div>
+            <label className="mt-3.5 flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={entry.termsAccepted}
+                onChange={(e) => change({ termsAccepted: e.target.checked })}
+                className="mt-0.5 size-5 shrink-0"
+                style={{ accentColor: NOIR.redBright }}
+              />
+              <span
+                className="text-[14.5px] font-semibold leading-snug"
+                style={{ color: NOIR.cream }}
+              >
+                I understand and agree, and I am happy to be contacted about
+                this event
+              </span>
+            </label>
+            {problem(problemFor(problems, "terms"))}
+          </div>
+        ) : null}
+      </Reveal>
 
       {error ? (
         <p
@@ -443,7 +462,7 @@ export function MafiaForm({
           ) : (
             <span aria-hidden>♠</span>
           )}
-          {saving ? "Sending…" : "Count me in"}
+          {saving ? "Dealing you in…" : "Count me in"}
         </button>
 
         <p

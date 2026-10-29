@@ -16,9 +16,16 @@ import { resolvePrice } from "./domain/pricing";
  * Read from the environment so a preview deployment does not publish canonical
  * URLs pointing at production, which would ask search engines to index the wrong
  * host.
+ *
+ * The fallback is the address the site is actually served at. It used to name a sibling
+ * `.vercel.app` address that answers 404, so with no variable set every canonical link, every
+ * `og:url` and every share-card image URL pointed at a page that does not exist — and a link
+ * preview whose picture 404s is a bare link. Set `NEXT_PUBLIC_SITE_URL` when the site moves to a
+ * domain of its own.
  */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://scrabble-tournament-os.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  "https://scrabble-tournament-os-fvbq.vercel.app"
 ).replace(/\/$/, "");
 
 /** The lowest price anybody can actually pay, so "from" is never overstated. */
@@ -82,13 +89,18 @@ export function eventJsonLd(event: PublicEvent, now = new Date()) {
         ? "https://schema.org/EventScheduled"
         : "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    description: event.seoDescription || event.shortDescription || event.description,
+    description:
+      event.seoDescription || event.shortDescription || event.description,
     /*
      * The generated share card, when the event has no image of its own. An Event without
      * an `image` is ineligible for Google's event rich results, so this is the difference
      * between a listing with a picture and a line of blue text.
      */
-    image: [event.bannerImage ? `${SITE_URL}${event.bannerImage}` : `${SITE_URL}/opengraph-image`],
+    image: [
+      event.bannerImage
+        ? `${SITE_URL}${event.bannerImage}`
+        : `${SITE_URL}/opengraph-image`,
+    ],
     location: {
       "@type": "Place",
       name: event.venueName,

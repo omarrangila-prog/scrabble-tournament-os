@@ -7,9 +7,12 @@ import {
   MAFIA_FEE,
   ageOf,
   calendarLink,
+  countdownTo,
   mafiaProblems,
   mafiaReady,
   posterDate,
+  startInstant,
+  weekdayOf,
   problemFor,
   tidyName,
   type MafiaEntry,
@@ -239,5 +242,71 @@ describe("the calendar link", () => {
       }),
     );
     expect(url.searchParams.get("text")).toBe("Mafia & Wars #1");
+  });
+});
+
+describe("the weekday", () => {
+  it("is worked out from the date alone", () => {
+    expect(weekdayOf("2026-11-22")).toBe("SUNDAY");
+    expect(weekdayOf("2026-11-23")).toBe("MONDAY");
+    expect(weekdayOf("2026-02-28")).toBe("SATURDAY");
+    expect(weekdayOf("2028-02-29")).toBe("TUESDAY");
+  });
+
+  it("refuses a date that does not exist rather than rolling it forward", () => {
+    expect(weekdayOf("2026-02-31")).toBe("");
+    expect(weekdayOf("2026-13-01")).toBe("");
+    expect(weekdayOf("")).toBe("");
+    expect(weekdayOf(undefined)).toBe("");
+  });
+});
+
+describe("the start of the night", () => {
+  it("is the clock time in Karachi, five hours ahead of UTC", () => {
+    expect(startInstant("2026-11-22", "16:30")).toBe(Date.UTC(2026, 10, 22, 11, 30));
+    expect(new Date(startInstant("2026-11-22", "16:30") as number).toISOString()).toBe("2026-11-22T11:30:00.000Z");
+  });
+
+  it("carries across midnight correctly for an early start", () => {
+    expect(new Date(startInstant("2026-11-22", "02:00") as number).toISOString()).toBe("2026-11-21T21:00:00.000Z");
+  });
+
+  it("is null when either part is missing or not real", () => {
+    expect(startInstant(undefined, "16:30")).toBeNull();
+    expect(startInstant("2026-11-22", undefined)).toBeNull();
+    expect(startInstant("2026-11-22", "25:00")).toBeNull();
+    expect(startInstant("2026-11-22", "16:75")).toBeNull();
+    expect(startInstant("2026-02-31", "16:30")).toBeNull();
+  });
+});
+
+describe("the countdown", () => {
+  const start = Date.UTC(2026, 10, 22, 11, 30);
+  const end = Date.UTC(2026, 10, 22, 12, 30);
+  const minute = 60000;
+
+  it("counts down in days, hours and minutes", () => {
+    const now = start - (24 * 1440 + 3 * 60 + 7) * minute;
+    expect(countdownTo(start, end, now)).toEqual({ phase: "before", days: 24, hours: 3, minutes: 7 });
+  });
+
+  it("rounds down, so it never promises less time than there is", () => {
+    expect(countdownTo(start, end, start - 90 * 1000)).toEqual({ phase: "before", days: 0, hours: 0, minutes: 1 });
+    expect(countdownTo(start, end, start - 30 * 1000)).toEqual({ phase: "before", days: 0, hours: 0, minutes: 0 });
+  });
+
+  it("says the night is on from the moment it starts until it ends", () => {
+    expect(countdownTo(start, end, start)).toEqual({ phase: "now" });
+    expect(countdownTo(start, end, end - 1)).toEqual({ phase: "now" });
+    expect(countdownTo(start, end, end)).toEqual({ phase: "over" });
+    expect(countdownTo(start, end, end + 99999999)).toEqual({ phase: "over" });
+  });
+
+  it("stays 'now' when no end is known, rather than inventing one", () => {
+    expect(countdownTo(start, null, start + 99999999)).toEqual({ phase: "now" });
+  });
+
+  it("shows nothing when there is no start", () => {
+    expect(countdownTo(null, end, 0)).toBeNull();
   });
 });
