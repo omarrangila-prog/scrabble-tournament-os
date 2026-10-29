@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button, Field, Input } from "@/components/ui";
 import { currentOrganizer, signIn } from "@/lib/supabase/organizer";
 import { homeFor } from "@/components/shell/nav";
+import { hostedEvents } from "@/lib/supabase/mafia";
 import { supabase } from "@/lib/supabase/client";
 
 const CREAM = "#F5F0E4";
@@ -53,6 +54,13 @@ export default function OrganizerSignInPage() {
           : role === "desk" || role === "checkin" ? "desk"
             : role === "viewer" ? "viewer"
               : "none";
+
+    /*
+     * An account that hosts an event but is not staff goes to its own page. Staff are never
+     * asked: a staff account that also hosts something still wants the workspace.
+     */
+    if (capability === "none" && (await hostedEvents()).length > 0) return "/host";
+
     return homeFor(capability);
   };
 

@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Gauge,
   GraduationCap,
+  Drama,
   Palette,
   IdCard,
   Radio,
@@ -71,6 +72,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/training", label: "Training", icon: GraduationCap },
   /* Speed Pictionary teams: stored apart from the draw for the same reason as training. */
   { href: "/app/pictionary", label: "Pictionary", icon: Palette },
+  /* Mafia Wars sign-ups: stored apart from the draw, and also what the host sees. */
+  { href: "/app/mafia", label: "Mafia Wars", icon: Drama },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
   { href: "/app/send-codes", label: "Send codes", icon: Send },
@@ -120,6 +123,7 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
   { href: "/app/certificates", label: "Certificates" },
   { href: "/app/training", label: "Training" },
   { href: "/app/pictionary", label: "Pictionary" },
+  { href: "/app/mafia", label: "Mafia Wars" },
 ];
 
 /* -------------------------------------------------------------------------- */
