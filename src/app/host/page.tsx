@@ -172,11 +172,11 @@ function SignInCard({
               htmlFor="h-email"
               className="block text-[14px] font-semibold text-ink"
             >
-              Email
+              Username
             </label>
             <input
               id="h-email"
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="username"
