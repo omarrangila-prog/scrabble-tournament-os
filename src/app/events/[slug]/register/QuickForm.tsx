@@ -892,7 +892,7 @@ export function QuickForm({
                   <label htmlFor="q-school" className="block text-[12.5px] font-semibold text-ink">
                     Your school
                   </label>
-                  <p className="text-[12px] text-muted">This code is for students. Please name your school.</p>
+                  <p className="text-[12px] text-muted">Please name your school to use this code.</p>
                   <input
                     id="q-school"
                     value={schoolName}
