@@ -1,0 +1,334 @@
+/*
+ * Everything on the Mafia Wars page that inline styles cannot say: the layered backdrop, the
+ * ticket's notches, focus rings, and the few things that move. Motion is limited to slow,
+ * decorative drift and one stamp, and all of it stops for anybody who has asked their device
+ * for reduced motion.
+ */
+
+/* ---- The room: light through blinds, grain, smoke, vignette --------------------------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0e0a08;
+}
+
+/* Slats of window light falling across a table, as on the poster's left edge. */
+.slats {
+  position: absolute;
+  inset: -20% -10% 0 -10%;
+  background: repeating-linear-gradient(
+    118deg,
+    transparent 0 54px,
+    rgba(255, 214, 150, 0.07) 54px 92px
+  );
+  -webkit-mask-image: radial-gradient(
+    70% 55% at 22% 8%,
+    #000 10%,
+    transparent 75%
+  );
+  mask-image: radial-gradient(70% 55% at 22% 8%, #000 10%, transparent 75%);
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      55% 38% at 24% 0%,
+      rgba(214, 150, 80, 0.26),
+      transparent 70%
+    ),
+    radial-gradient(
+      60% 40% at 90% 100%,
+      rgba(150, 40, 40, 0.18),
+      transparent 70%
+    );
+}
+
+/* Film grain: a static noise tile, so it costs nothing to draw and never shimmers. */
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 90% at 50% 30%,
+    transparent 45%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+}
+
+/*
+ * Two slow wisps of smoke: soft gradients drifting, nothing to read, only atmosphere. Plain
+ * radial gradients that fade to nothing well inside their box, so there is no edge to see and no
+ * blur filter for a phone to spend its graphics on.
+ */
+.smoke,
+.smokeTwo {
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(
+    circle,
+    rgba(222, 202, 172, 0.1),
+    transparent 66%
+  );
+}
+.smoke {
+  left: -170px;
+  top: 40%;
+}
+.smokeTwo {
+  right: -190px;
+  top: 8%;
+  width: 400px;
+  height: 400px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .smoke {
+    animation: drift 26s ease-in-out infinite alternate;
+  }
+  .smokeTwo {
+    animation: drift 32s ease-in-out -9s infinite alternate-reverse;
+  }
+  .hat {
+    animation: hatSettle 1.1s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+  .stamp {
+    animation: stampIn 0.55s cubic-bezier(0.2, 1.2, 0.3, 1) 0.35s both;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(70px, -50px, 0) scale(1.18);
+  }
+}
+
+@keyframes hatSettle {
+  from {
+    opacity: 0;
+    transform: translateY(-26px) rotate(-14deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(-5deg);
+  }
+}
+
+@keyframes stampIn {
+  from {
+    opacity: 0;
+    transform: rotate(-9deg) scale(1.9);
+  }
+  to {
+    opacity: 0.92;
+    transform: rotate(-9deg) scale(1);
+  }
+}
+
+/* ---- The title ------------------------------------------------------------------------ */
+
+.mafia {
+  background: linear-gradient(180deg, #fbf3df 0%, #efe2c6 55%, #cdbb97 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+}
+
+.wars {
+  background: linear-gradient(180deg, #ef5358 0%, #c52f35 60%, #8f1c22 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 14px rgba(160, 30, 36, 0.5));
+}
+
+/* ---- The ticket: a rectangle with a bite out of each side at the tear line ------------ */
+
+.ticket {
+  --notch: 11px;
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background:
+    linear-gradient(#1b130e, #1b130e) padding-box,
+    linear-gradient(
+        135deg,
+        rgba(201, 164, 106, 0.85),
+        rgba(201, 164, 106, 0.12) 45%,
+        rgba(201, 164, 106, 0.7)
+      )
+      border-box;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 var(--tear), transparent 97%, #000)
+      left / 51% 100% no-repeat,
+    radial-gradient(
+        circle var(--notch) at 100% var(--tear),
+        transparent 97%,
+        #000
+      )
+      right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 0 var(--tear), transparent 97%, #000)
+      left / 51% 100% no-repeat,
+    radial-gradient(
+        circle var(--notch) at 100% var(--tear),
+        transparent 97%,
+        #000
+      )
+      right / 51% 100% no-repeat;
+}
+
+.tear {
+  border-left: 2px dashed rgba(201, 164, 106, 0.4);
+}
+
+/* ---- The form card: a playing card, with a second hairline set inside the first ------- */
+
+.card {
+  position: relative;
+  border: 1px solid rgba(242, 231, 208, 0.16);
+  border-radius: 24px;
+  background: linear-gradient(
+    180deg,
+    rgba(31, 22, 16, 0.9),
+    rgba(20, 14, 10, 0.92)
+  );
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 240, 210, 0.07);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(201, 164, 106, 0.16);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.medallion {
+  position: absolute;
+  left: 50%;
+  top: -17px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  transform: translateX(-50%);
+  border: 1px solid rgba(201, 164, 106, 0.55);
+  border-radius: 50%;
+  background: #1a120d;
+  color: #db4247;
+  font-family: Georgia, serif;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+}
+
+/* The Alphabattle crop has its own dark ground; fade its four edges so it does not read as a box. */
+.softEdges {
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
+    linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
+    linear-gradient(180deg, transparent, #000 14%, #000 86%, transparent);
+  mask-composite: intersect;
+}
+
+/* ---- Fields --------------------------------------------------------------------------- */
+
+.field {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+.field:hover {
+  border-color: rgba(242, 231, 208, 0.28) !important;
+}
+.field:focus {
+  border-color: #db4247 !important;
+  box-shadow: 0 0 0 3px rgba(219, 66, 71, 0.22);
+  outline: none;
+}
+
+.choice {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+.choice:hover {
+  border-color: rgba(242, 231, 208, 0.34) !important;
+}
+.choice:active {
+  transform: scale(0.985);
+}
+
+.drop {
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.drop:hover {
+  border-color: #db4247 !important;
+  background-color: rgba(179, 38, 43, 0.1) !important;
+}
+
+.cta {
+  background: linear-gradient(180deg, #d23a3f 0%, #a8232a 100%);
+  box-shadow:
+    0 10px 24px -8px rgba(179, 38, 43, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+.cta:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow:
+    0 14px 30px -8px rgba(219, 66, 71, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+.cta:active:not(:disabled) {
+  transform: translateY(1px) scale(0.995);
+}
+.cta:focus-visible,
+.choice:focus-visible,
+.link:focus-visible {
+  outline: 2px solid #f2e7d0;
+  outline-offset: 2px;
+}
+
+.link {
+  text-decoration-color: rgba(201, 164, 106, 0.6);
+}
+
+/* ---- The confirmation's stamp --------------------------------------------------------- */
+
+.stamp {
+  transform: rotate(-9deg);
+  opacity: 0.92;
+}

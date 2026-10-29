@@ -114,3 +114,70 @@ export function problemFor(
 export function tidyName(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
+
+const MONTHS = [
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+];
+
+/** "1ST", "2ND", "3RD", "4TH" — including the teens, which catch people out. */
+function ordinalSuffix(n: number): string {
+  if (n % 100 >= 11 && n % 100 <= 13) return "TH";
+  return ["TH", "ST", "ND", "RD"][n % 10] ?? "TH";
+}
+
+/**
+ * The date as the poster sets it: "22ND NOV". Read from the date's own parts rather than through
+ * a `Date`, so a time zone can never move it a day; empty when the date is not a real one.
+ */
+export function posterDate(iso: string | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  if (!m) return "";
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return "";
+  return `${day}${ordinalSuffix(day)} ${MONTHS[month - 1]}`;
+}
+
+/**
+ * A link that adds the night to somebody's Google Calendar. The times are sent as written, with
+ * the zone named beside them, so it lands at 4:30 pm in Karachi whatever the phone's own zone is.
+ * Empty when the date or the start time is missing, because a calendar entry with no time is
+ * worse than none.
+ */
+export function calendarLink(input: {
+  title: string;
+  date: string | undefined;
+  start: string | undefined;
+  end: string | undefined;
+  location?: string;
+  details?: string;
+  timeZone?: string;
+}): string {
+  const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(input.date ?? "");
+  const s = /^(\d{1,2}):(\d{2})/.exec(input.start ?? "");
+  if (!d || !s) return "";
+  const e = /^(\d{1,2}):(\d{2})/.exec(input.end ?? "") ?? s;
+
+  const stamp = (t: RegExpExecArray) =>
+    `${d[1]}${d[2]}${d[3]}T${t[1].padStart(2, "0")}${t[2]}00`;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: input.title,
+    dates: `${stamp(s)}/${stamp(e)}`,
+    ctz: input.timeZone ?? "Asia/Karachi",
+  });
+  if (input.location) params.set("location", input.location);
+  if (input.details) params.set("details", input.details);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}

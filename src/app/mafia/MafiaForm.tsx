@@ -23,6 +23,7 @@ import {
   PROOF_ACCEPT,
 } from "@/lib/domain/paymentProof";
 
+import styles from "./mafia.module.css";
 import { NOIR } from "./noir";
 
 /**
@@ -33,8 +34,8 @@ import { NOIR } from "./noir";
  * it is paid online only, so the bank details and the receipt upload are always shown rather than
  * appearing after a tap.
  *
- * Styled in the poster's colours with inline styles rather than the app's theme tokens, because
- * those switch with the visitor's light or dark setting and this page must not.
+ * Styled in the poster's colours with inline styles and a CSS module rather than the app's theme
+ * tokens, because those switch with the visitor's light or dark setting and this page must not.
  */
 
 export type MafiaSubmission = MafiaEntry;
@@ -105,23 +106,49 @@ export function MafiaForm({
 
   const problem = (message: string | undefined) =>
     touched && message ? (
-      <p className="mt-1 text-[12.5px]" style={{ color: "#F08A8E" }}>
+      <p
+        className="mt-1.5 text-[12.5px] font-medium"
+        style={{ color: "#F59A9E" }}
+        role="alert"
+      >
         {message}
       </p>
     ) : null;
 
-  const field =
-    "mt-1.5 w-full rounded-[10px] border px-3.5 py-3 text-[16px] outline-none placeholder:opacity-45 focus:border-[#D23A3F]";
+  const field = `${styles.field} mt-2 w-full rounded-[12px] border px-4 py-3.5 text-[16px] placeholder:opacity-40`;
   const fieldStyle: React.CSSProperties = {
     background: NOIR.field,
     borderColor: NOIR.line,
     color: NOIR.cream,
   };
-  const heading = "block text-[14px] font-semibold";
-  const hint = "text-[12.5px] leading-relaxed";
+  /* The small spaced capitals every question is asked in. */
+  const label = "block text-[11.5px] font-bold uppercase tracking-[0.16em]";
+  const hint = "text-[13px] leading-relaxed";
+
+  /* A section title in the display serif, with the red spade the poster's cards carry. */
+  const title = (text: string) => (
+    <h3
+      className="flex items-center gap-2 text-[19px] font-bold leading-tight"
+      style={{ color: NOIR.cream, fontFamily: NOIR.serif }}
+    >
+      <span style={{ color: NOIR.redBright, fontSize: 15 }} aria-hidden>
+        ♠
+      </span>
+      {text}
+    </h3>
+  );
+
+  /* A hairline with a spade in the middle, between the big parts of the form. */
+  const divider = (
+    <div className="flex items-center gap-3" aria-hidden>
+      <span className="h-px flex-1" style={{ background: NOIR.line }} />
+      <span style={{ color: `${NOIR.gold}99`, fontSize: 13 }}>♠</span>
+      <span className="h-px flex-1" style={{ background: NOIR.line }} />
+    </div>
+  );
 
   const yesNo = (selected: boolean | null, pick: (v: boolean) => void) => (
-    <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+    <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
       {[
         { key: true, label: "Yes, that is fine" },
         { key: false, label: "No, please do not" },
@@ -133,9 +160,9 @@ export function MafiaForm({
             type="button"
             onClick={() => pick(o.key)}
             aria-pressed={on}
-            className="flex items-center gap-2.5 rounded-[10px] border px-3.5 py-3 text-left text-[15px] font-semibold transition-colors"
+            className={`${styles.choice} flex items-center gap-3 rounded-[12px] border px-4 py-3.5 text-left text-[15px] font-semibold`}
             style={{
-              background: on ? `${NOIR.red}33` : NOIR.field,
+              background: on ? `${NOIR.red}38` : NOIR.field,
               borderColor: on ? NOIR.redBright : NOIR.line,
               color: on ? NOIR.cream : NOIR.soft,
             }}
@@ -143,7 +170,7 @@ export function MafiaForm({
             <span
               className="grid size-5 shrink-0 place-items-center rounded-full border-2"
               style={{
-                borderColor: on ? NOIR.redBright : NOIR.line,
+                borderColor: on ? NOIR.redBright : `${NOIR.cream}40`,
                 background: on ? NOIR.redBright : "transparent",
                 color: "#fff",
               }}
@@ -158,112 +185,100 @@ export function MafiaForm({
   );
 
   return (
-    <form onSubmit={submit} className="space-y-5" noValidate>
-      <div className="grid gap-3 sm:grid-cols-[1fr_7rem]">
-        <div>
-          <label
-            htmlFor="m-name"
-            className={heading}
-            style={{ color: NOIR.cream }}
-          >
-            Name
-          </label>
-          <input
-            id="m-name"
-            value={entry.fullName}
-            onChange={(e) => change({ fullName: e.target.value })}
-            autoComplete="name"
-            placeholder="e.g. Ayesha Khan"
-            className={field}
-            style={fieldStyle}
-          />
-          {problem(problemFor(problems, "name"))}
+    <form onSubmit={submit} className="space-y-6" noValidate>
+      {/* ---- Who you are --------------------------------------------------- */}
+      <div className="space-y-4">
+        {title("Your details")}
+
+        <div className="grid gap-4 sm:grid-cols-[1fr_7.5rem]">
+          <div>
+            <label
+              htmlFor="m-name"
+              className={label}
+              style={{ color: NOIR.muted }}
+            >
+              Name
+            </label>
+            <input
+              id="m-name"
+              value={entry.fullName}
+              onChange={(e) => change({ fullName: e.target.value })}
+              autoComplete="name"
+              placeholder="e.g. Ayesha Khan"
+              className={field}
+              style={fieldStyle}
+            />
+            {problem(problemFor(problems, "name"))}
+          </div>
+          <div>
+            <label
+              htmlFor="m-age"
+              className={label}
+              style={{ color: NOIR.muted }}
+            >
+              Age
+            </label>
+            <input
+              id="m-age"
+              value={entry.age}
+              /* Digits only, three at most — a stray letter never lands. */
+              onChange={(e) =>
+                change({ age: e.target.value.replace(/\D/g, "").slice(0, 3) })
+              }
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="e.g. 21"
+              className={`${field} num`}
+              style={fieldStyle}
+            />
+            {problem(problemFor(problems, "age"))}
+          </div>
         </div>
+
         <div>
           <label
-            htmlFor="m-age"
-            className={heading}
-            style={{ color: NOIR.cream }}
+            htmlFor="m-phone"
+            className={label}
+            style={{ color: NOIR.muted }}
           >
-            Age
+            Contact number
           </label>
           <input
-            id="m-age"
-            value={entry.age}
-            /* Digits only, three at most — a stray letter never lands. */
-            onChange={(e) =>
-              change({ age: e.target.value.replace(/\D/g, "").slice(0, 3) })
-            }
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="e.g. 21"
+            id="m-phone"
+            value={entry.phone}
+            onChange={(e) => change({ phone: e.target.value })}
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="03XX XXXXXXX"
             className={`${field} num`}
             style={fieldStyle}
           />
-          {problem(problemFor(problems, "age"))}
+          {problem(problemFor(problems, "phone"))}
         </div>
       </div>
 
-      <div>
-        <label
-          htmlFor="m-phone"
-          className={heading}
-          style={{ color: NOIR.cream }}
-        >
-          Contact number
-        </label>
-        <input
-          id="m-phone"
-          value={entry.phone}
-          onChange={(e) => change({ phone: e.target.value })}
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="03XX XXXXXXX"
-          className={`${field} num`}
-          style={fieldStyle}
-        />
-        {problem(problemFor(problems, "phone"))}
-      </div>
-
-      {/* ---- What it costs ------------------------------------------------- */}
-      <div
-        className="rounded-[10px] border px-3.5 py-3 text-center"
-        style={{ background: NOIR.field, borderColor: NOIR.line }}
-      >
-        <p
-          className="text-[12.5px] font-semibold uppercase tracking-wide"
-          style={{ color: NOIR.muted }}
-        >
-          You pay
-        </p>
-        <p
-          className="mt-0.5 text-[24px] font-bold"
-          style={{ color: NOIR.redBright }}
-        >
-          <span className="num">{money}</span>
-        </p>
-        <p className={hint} style={{ color: NOIR.muted }}>
-          food included
-        </p>
-      </div>
+      {divider}
 
       {/* ---- Paying: online only, so nothing to choose -------------------- */}
-      <div className="space-y-2.5">
-        <span className={heading} style={{ color: NOIR.cream }}>
-          Pay online
-        </span>
-        <p className={hint} style={{ color: NOIR.muted }}>
-          Transfer {money} to either account, then upload the screenshot below.
-          Your place is held as soon as the receipt is uploaded.
+      <div className="space-y-3.5">
+        {title("Pay online")}
+        <p className={hint} style={{ color: NOIR.soft }}>
+          Transfer{" "}
+          <strong style={{ color: NOIR.cream }} className="num">
+            {money}
+          </strong>{" "}
+          to either account, then upload the screenshot below. Your place is
+          held as soon as the receipt is uploaded.
         </p>
 
         {paymentInstructions ? (
           <div
-            className="whitespace-pre-line rounded-[10px] px-3.5 py-3 text-[13px] leading-relaxed"
+            className="whitespace-pre-line rounded-[12px] py-3.5 pl-4 pr-4 text-[13.5px] leading-relaxed"
             style={{
               background: NOIR.field,
               color: NOIR.soft,
               border: `1px solid ${NOIR.line}`,
+              borderLeft: `3px solid ${NOIR.redBright}`,
             }}
           >
             {paymentInstructions}
@@ -271,13 +286,13 @@ export function MafiaForm({
         ) : null}
 
         <div
-          className="rounded-[10px] border p-3.5"
+          className="rounded-[12px] border p-4"
           style={{ borderColor: NOIR.line }}
         >
-          <span className={heading} style={{ color: NOIR.cream }}>
+          <span className={label} style={{ color: NOIR.muted }}>
             Upload payment proof
           </span>
-          <p className={hint} style={{ color: NOIR.muted }}>
+          <p className={`${hint} mt-1`} style={{ color: NOIR.muted }}>
             A screenshot of the transfer, or the bank receipt. JPG, PNG or PDF.
           </p>
 
@@ -292,25 +307,25 @@ export function MafiaForm({
 
           {entry.proofFile ? (
             <div
-              className="mt-2.5 flex items-center gap-2.5 rounded-[10px] border px-3 py-2.5"
+              className="mt-3 flex items-center gap-3 rounded-[12px] border px-3 py-2.5"
               style={{
-                background: `${NOIR.red}22`,
+                background: `${NOIR.red}26`,
                 borderColor: NOIR.redBright,
               }}
             >
               <span
-                className="grid size-9 shrink-0 place-items-center rounded-[8px]"
+                className="grid size-10 shrink-0 place-items-center rounded-[9px]"
                 style={{ background: NOIR.field, color: NOIR.redBright }}
               >
                 {entry.proofFile.type === "application/pdf" ? (
-                  <FileText className="size-4.5" />
+                  <FileText className="size-5" />
                 ) : (
-                  <ImageIcon className="size-4.5" />
+                  <ImageIcon className="size-5" />
                 )}
               </span>
               <span className="min-w-0 flex-1">
                 <span
-                  className="block truncate text-[13.5px] font-semibold"
+                  className="block truncate text-[14px] font-semibold"
                   style={{ color: NOIR.cream }}
                 >
                   {entry.proofFile.name}
@@ -326,7 +341,7 @@ export function MafiaForm({
                 type="button"
                 onClick={clearProof}
                 aria-label="Remove this file"
-                className="grid size-9 shrink-0 place-items-center rounded-[8px]"
+                className={`${styles.choice} grid size-9 shrink-0 place-items-center rounded-[9px]`}
                 style={{ color: NOIR.muted }}
               >
                 <X className="size-4" />
@@ -335,9 +350,9 @@ export function MafiaForm({
           ) : (
             <label
               htmlFor="m-proof"
-              className="mt-2.5 flex cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed px-3.5 py-4 text-[14px] font-semibold"
+              className={`${styles.drop} mt-3 flex cursor-pointer items-center justify-center gap-2.5 rounded-[12px] border border-dashed px-4 py-5 text-[14.5px] font-semibold`}
               style={{
-                borderColor: NOIR.line,
+                borderColor: `${NOIR.cream}38`,
                 background: NOIR.field,
                 color: NOIR.cream,
               }}
@@ -348,7 +363,11 @@ export function MafiaForm({
           )}
 
           {proofProblem ? (
-            <p className="mt-1.5 text-[12.5px]" style={{ color: "#F08A8E" }}>
+            <p
+              className="mt-2 text-[12.5px] font-medium"
+              style={{ color: "#F59A9E" }}
+              role="alert"
+            >
               {proofProblem}
             </p>
           ) : null}
@@ -356,12 +375,12 @@ export function MafiaForm({
         </div>
       </div>
 
+      {divider}
+
       {/* ---- Photographs ---------------------------------------------------- */}
       <div>
-        <span className={heading} style={{ color: NOIR.cream }}>
-          Photos and video
-        </span>
-        <p className={hint} style={{ color: NOIR.muted }}>
+        {title("Photos and video")}
+        <p className={`${hint} mt-2`} style={{ color: NOIR.soft }}>
           I give consent for photos and videos to be taken during the event and
           posted on the event&rsquo;s social media handles.
         </p>
@@ -372,11 +391,9 @@ export function MafiaForm({
       {/* ---- Cancellation, as on the Scrabble form -------------------------- */}
       {terms.trim() ? (
         <div>
-          <span className={heading} style={{ color: NOIR.cream }}>
-            Before you sign up
-          </span>
+          {title("Before you sign up")}
           <div
-            className={`mt-1.5 whitespace-pre-line rounded-[10px] px-3.5 py-3 ${hint}`}
+            className={`mt-3 whitespace-pre-line rounded-[12px] px-4 py-3.5 ${hint}`}
             style={{
               background: NOIR.field,
               color: NOIR.soft,
@@ -385,7 +402,7 @@ export function MafiaForm({
           >
             {terms}
           </div>
-          <label className="mt-2 flex cursor-pointer items-start gap-2.5">
+          <label className="mt-3.5 flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={entry.termsAccepted}
@@ -394,7 +411,7 @@ export function MafiaForm({
               style={{ accentColor: NOIR.redBright }}
             />
             <span
-              className="text-[14px] font-semibold"
+              className="text-[14.5px] font-semibold leading-snug"
               style={{ color: NOIR.cream }}
             >
               I understand and agree, and I am happy to be contacted about this
@@ -407,26 +424,35 @@ export function MafiaForm({
 
       {error ? (
         <p
-          className="rounded-[10px] px-3.5 py-3 text-[13px] leading-relaxed"
-          style={{ background: `${NOIR.red}33`, color: "#F5B3B6" }}
+          className="rounded-[12px] px-4 py-3 text-[13.5px] leading-relaxed"
+          style={{ background: `${NOIR.red}38`, color: "#F7C0C2" }}
+          role="alert"
         >
           {error}
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="flex w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3.5 text-[16px] font-bold text-white transition-opacity disabled:opacity-60"
-        style={{ background: NOIR.red }}
-      >
-        {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-        {saving ? "Sending…" : "Count me in"}
-      </button>
+      <div>
+        <button
+          type="submit"
+          disabled={saving}
+          className={`${styles.cta} flex w-full items-center justify-center gap-2.5 rounded-[14px] px-4 py-4 text-[17px] font-bold tracking-[0.02em] text-white disabled:opacity-60`}
+        >
+          {saving ? (
+            <Loader2 className="size-4.5 animate-spin" />
+          ) : (
+            <span aria-hidden>♠</span>
+          )}
+          {saving ? "Sending…" : "Count me in"}
+        </button>
 
-      <p className="text-center text-[12px]" style={{ color: NOIR.muted }}>
-        We will confirm on the number above.
-      </p>
+        <p
+          className="mt-3 text-center text-[12.5px]"
+          style={{ color: NOIR.muted }}
+        >
+          We will confirm on the number above.
+        </p>
+      </div>
     </form>
   );
 }
