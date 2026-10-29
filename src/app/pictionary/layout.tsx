@@ -10,13 +10,13 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Speed Pictionary",
   description:
-    "Grab a team, think fast, and get drawing! Sunday 22 November, 12 pm – 4 pm at The Social, Karachi. Teams of up to four, PKR 1,400 per player, cash prizes.",
+    "Grab a team, think fast, and get drawing! Sunday 22 November, 12 pm – 4 pm at The Social, Karachi. Ages 13 to 23, alone or as a pair, lunch included, cash prize for the winning team.",
   alternates: { canonical: "/pictionary" },
   openGraph: {
     type: "website",
     title: "Blufy's Alphabattle presents Speed Pictionary",
     description:
-      "Grab a team, think fast, and get drawing! 22 Nov, 12 – 4 pm, The Social, Karachi. Limited seats — sign up now.",
+      "Grab a team, think fast, and get drawing! 22 Nov, 12 – 4 pm, The Social, Karachi. Ages 13 to 23. Limited spots — sign up now.",
     url: "/pictionary",
   },
 };

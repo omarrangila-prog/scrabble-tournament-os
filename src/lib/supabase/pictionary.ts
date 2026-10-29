@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Speed Pictionary teams, against the database.
+ * Speed Pictionary entries, against the database.
  *
- * Written to their own collection, `pictionaryTeams`, which is the single thing keeping a team
+ * Written to their own collection, `pictionaryTeams`, which is the single thing keeping an entry
  * out of the Scrabble draw: everything that answers "who is playing" filters on
- * `collection = 'registrations'`. See `0094_pictionary_teams.sql`.
+ * `collection = 'registrations'`. See `0094_pictionary_teams.sql` and
+ * `0095_pictionary_individuals_and_pairs.sql`.
  *
  * Nothing throws at the caller. This runs at the end of a form somebody has just filled in on a
  * phone, and a screen that crashes loses what they typed.
@@ -19,11 +20,13 @@ export const PICTIONARY_TEAMS = "pictionaryTeams";
 export const PICTIONARY_EVENT_ID = "evt-pictionary-22-nov-2026";
 export const PICTIONARY_SLUG = "pictionary";
 
-export interface StoredTeam {
+export interface StoredEntry {
   id: string;
-  teamName: string;
+  type: "individual" | "team";
   players: string[];
-  captainPhone: string;
+  ages: number[];
+  phone: string;
+  email: string;
   payment: string;
   paymentStatus: string;
   autoVerified: boolean;
@@ -33,11 +36,11 @@ export interface StoredTeam {
   createdAt: string;
 }
 
-/** How many team places are taken, or null when that cannot be read. */
-export async function countTeams(): Promise<number | null> {
+/** How many spots are taken, in people, or null when that cannot be read. */
+export async function countSpotsTaken(): Promise<number | null> {
   const db = supabase();
   if (!db) return null;
-  const { data, error } = await db.rpc("pictionary_team_count", {
+  const { data, error } = await db.rpc("pictionary_spots_taken", {
     p_slug: PICTIONARY_SLUG,
   });
   if (error || typeof data !== "number") return null;
@@ -47,7 +50,7 @@ export async function countTeams(): Promise<number | null> {
 export type SaveOutcome =
   { ok: true } | { ok: false; message: string; full?: boolean };
 
-export async function saveTeam(input: {
+export async function saveEntry(input: {
   organizationId: string;
   data: Record<string, unknown>;
 }): Promise<SaveOutcome> {
@@ -64,33 +67,39 @@ export async function saveTeam(input: {
   });
 
   if (error) {
-    /* The database's own refusal when the last place went while this form was being filled. */
-    if (/team places are taken/i.test(error.message)) {
+    /* The database's own refusals, which are written to be read. */
+    if (/spots are taken/i.test(error.message)) {
       return {
         ok: false,
         full: true,
         message:
-          "Sorry, the last team place was just taken. Nothing has been recorded.",
+          "Sorry, the last spot was just taken. Nothing has been recorded.",
       };
     }
+    if (/Only \d+ spot/i.test(error.message)) {
+      return { ok: false, message: error.message };
+    }
+    if (/between \d+ and \d+ years old/i.test(error.message)) {
+      return { ok: false, message: error.message };
+    }
     /* Never show anybody a Postgres message. */
-    console.error("saveTeam", error);
+    console.error("saveEntry", error);
     return {
       ok: false,
-      message: "We could not save your team. Please try again.",
+      message: "We could not save your entry. Please try again.",
     };
   }
   return { ok: true };
 }
 
-/** Every team, for the organisers. Staff only, decided in the database. */
-export async function listTeams(): Promise<StoredTeam[]> {
+/** Every entry, for the organisers. Staff only, decided in the database. */
+export async function listEntries(): Promise<StoredEntry[]> {
   const db = supabase();
   if (!db) return [];
 
   const { data, error } = await db.rpc("pictionary_teams");
   if (error || !Array.isArray(data)) {
-    if (error) console.error("listTeams", error);
+    if (error) console.error("listEntries", error);
     return [];
   }
 
@@ -99,9 +108,11 @@ export async function listTeams(): Promise<StoredTeam[]> {
     const proof = d.paymentProof;
     return {
       id: String(row.out_id ?? ""),
-      teamName: String(d.teamName ?? ""),
+      type: d.entryType === "team" ? "team" : "individual",
       players: Array.isArray(d.players) ? d.players.map(String) : [],
-      captainPhone: String(d.captainPhone ?? ""),
+      ages: Array.isArray(d.ages) ? d.ages.map(Number) : [],
+      phone: String(d.phone ?? ""),
+      email: String(d.email ?? ""),
       payment: String(d.payment ?? ""),
       paymentStatus: String(d.paymentStatus ?? ""),
       autoVerified: d.autoVerified === true,
@@ -116,7 +127,7 @@ export async function listTeams(): Promise<StoredTeam[]> {
   });
 }
 
-export async function setTeamPaid(
+export async function setEntryPaid(
   id: string,
   paid: boolean,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -133,7 +144,7 @@ export async function setTeamPaid(
   return { ok: true };
 }
 
-export async function removeTeam(
+export async function removeEntry(
   id: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const db = supabase();

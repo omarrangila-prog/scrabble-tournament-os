@@ -15,20 +15,22 @@ import {
 import { Card, EmptyState } from "@/components/ui";
 import { eventTimeLine } from "@/lib/domain/eventTime";
 import {
-  MAX_TEAMS,
-  MAX_TEAM_SIZE,
-  PICTIONARY_FEE,
-  namedPlayers,
-  placesLeft,
-  teamTotal,
+  AGE_MAX,
+  AGE_MIN,
+  INDIVIDUAL_FEE,
+  MAX_PLAYERS,
+  TEAM_FEE,
+  entryTotal,
+  spotsLeft,
+  type PictionaryRules,
 } from "@/lib/domain/pictionary";
 import { readPublicEvent, type StoredEvent } from "@/lib/supabase/events";
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
 import {
   PICTIONARY_EVENT_ID,
   PICTIONARY_SLUG,
-  countTeams,
-  saveTeam,
+  countSpotsTaken,
+  saveEntry,
 } from "@/lib/supabase/pictionary";
 import { formatDate } from "@/lib/utils";
 
@@ -83,7 +85,7 @@ export default function PictionaryPage() {
     (async () => {
       const [stored, count] = await Promise.all([
         readPublicEvent(PICTIONARY_SLUG),
-        countTeams(),
+        countSpotsTaken(),
       ]);
       if (!live) return;
       setEvent(stored);
@@ -97,13 +99,23 @@ export default function PictionaryPage() {
 
   /* Declared before `submit`, which closes over all of them. */
   const details = event?.details;
-  const fee = details?.fee ?? PICTIONARY_FEE;
   const currency = details?.currency ?? "PKR";
-  const maxTeams = details?.maxTeams ?? MAX_TEAMS;
-  const maxSize = details?.teamSize ?? MAX_TEAM_SIZE;
+  const individualFee = details?.individualFee ?? INDIVIDUAL_FEE;
+  const teamFee = details?.teamFee ?? TEAM_FEE;
+  const ageMin = details?.ageMin ?? AGE_MIN;
+  const ageMax = details?.ageMax ?? AGE_MAX;
+  const maxPlayers = details?.maxPlayers ?? MAX_PLAYERS;
+  const terms = details?.terms ?? "";
+  const rules: PictionaryRules = {
+    individualFee,
+    teamFee,
+    ageMin,
+    ageMax,
+    termsOffered: terms.trim() !== "",
+  };
   const dateLabel = details?.startDate ? formatDate(details.startDate) : "";
   const timeLabel = eventTimeLine(details?.startTime, details?.endTime);
-  const left = placesLeft(taken, maxTeams);
+  const left = spotsLeft(taken, maxPlayers);
   const full = soldOut || left === 0;
 
   const submit = async (entry: PictionarySubmission) => {
@@ -115,13 +127,20 @@ export default function PictionaryPage() {
     try {
       /*
        * The count again, before any money moves. The page may have been open for an hour, and
-       * a team that has transferred its fees must not be told it is too late.
+       * somebody who has transferred their fee must not be told it is too late.
        */
-      const now = await countTeams();
+      const now = await countSpotsTaken();
       if (now !== null) {
         setTaken(now);
-        if (now >= maxTeams) {
+        const needed = entry.players.length;
+        if (now >= maxPlayers) {
           setSoldOut(true);
+          return;
+        }
+        if (now + needed > maxPlayers) {
+          setError(
+            "Only one spot is left, which is not enough for a team of two. Please sign up as an individual.",
+          );
           return;
         }
       }
@@ -140,15 +159,17 @@ export default function PictionaryPage() {
         proof = upload.proof;
       }
 
-      const players = namedPlayers(entry);
-      const saved = await saveTeam({
+      const players = entry.players.map((p) => p.name);
+      const saved = await saveEntry({
         organizationId: "org-federation",
         data: {
-          teamName: entry.teamName.trim(),
+          entryType: entry.type,
           players,
+          ages: entry.players.map((p) => Number(p.age)),
           playerCount: players.length,
-          captainName: players[0],
-          captainPhone: entry.captainPhone.trim(),
+          contactName: players[0],
+          phone: entry.phone,
+          email: entry.email,
           payment: entry.payment,
           /*
            * The claim they made, never a verdict. The database decides whether a stored
@@ -156,8 +177,7 @@ export default function PictionaryPage() {
            */
           paymentStatus:
             entry.payment === "online" ? "receipt-uploaded" : "cash-at-venue",
-          feePerPlayer: fee,
-          amountDue: teamTotal(players.length, fee),
+          amountDue: entryTotal(entry.type, rules),
           currency,
           ...(proof ? { paymentProof: proof } : {}),
           termsAccepted: entry.termsAccepted,
@@ -205,7 +225,7 @@ export default function PictionaryPage() {
     return (
       <Confirmation
         entry={done}
-        fee={fee}
+        total={entryTotal(done.type, rules)}
         currency={currency}
         whenLabel={[dateLabel, timeLabel].filter(Boolean).join(" · ")}
         venueName={details?.venueName ?? ""}
@@ -340,43 +360,42 @@ export default function PictionaryPage() {
           <InfoCard
             colour={BLUE}
             icon={<Users className="size-4" />}
-            title="The format"
+            title="Who can play"
             lines={[
-              `Teams of up to ${maxSize} players`,
-              `Round 1: ${maxTeams} teams`,
-              "Round 2: semi-finals",
-              "Round 3: the final",
+              `Ages ${ageMin} to ${ageMax}`,
+              "Sign up alone or with a partner",
+              "Round 1, semi-finals, then the final",
             ]}
           />
           <InfoCard
             colour={YELLOW}
             icon={<Trophy className="size-4" />}
-            title="Cash prizes"
+            title="Cash prize"
             lines={prizes.map((p) => `${p.place}: ${p.award}`)}
           />
           <InfoCard
             colour={GREEN}
             icon={<UtensilsCrossed className="size-4" />}
-            title={`${currency} ${fee.toLocaleString("en-PK")} per player`}
+            title="Lunch included"
             lines={[
-              "Food and drink included",
-              "Guess the song contest, with 4 chances to win",
+              `Individual: ${currency} ${individualFee.toLocaleString("en-PK")} per person`,
+              `Team of 2: ${currency} ${teamFee.toLocaleString("en-PK")} for both`,
             ]}
             wide
           />
         </motion.section>
 
-        {/* ---- Places ------------------------------------------------------ */}
+        {/* ---- Spots ------------------------------------------------------- */}
         {left !== null ? (
           <p
             className="mt-4 text-center text-[13.5px] font-bold"
             style={{ color: full ? ORANGE : BROWN }}
           >
             {full
-              ? `All ${maxTeams} team places are taken`
+              ? "All spots are taken"
               : left === 1
-                ? "Only 1 team place left"
-                : `${left} of ${maxTeams} team places left`}
+                ? "Only 1 spot left"
+                : `Limited spots: ${left} of ${maxPlayers} left`}
           </p>
         ) : null}
 
@@ -386,8 +405,8 @@ export default function PictionaryPage() {
               Registration is full
             </p>
             <p className="mt-1 text-[14px] leading-relaxed text-muted">
-              Every team place has been taken. Please check with the organisers
-              about a waiting list.
+              Every spot has been taken. Please check with the organisers about
+              a waiting list.
             </p>
           </div>
         ) : (
@@ -398,11 +417,11 @@ export default function PictionaryPage() {
             className="mt-4 rounded-[18px] border border-line bg-[rgb(var(--c-surface))] p-4 shadow-sm sm:p-6"
           >
             <PictionaryForm
-              fee={fee}
+              rules={rules}
               currency={currency}
-              maxSize={maxSize}
+              spotsLeft={left}
               paymentInstructions={details?.paymentInstructions ?? ""}
-              terms={details?.terms ?? ""}
+              terms={terms}
               saving={saving}
               error={error}
               onSubmit={(entry) => void submit(entry)}
@@ -467,7 +486,7 @@ function InfoCard({
  */
 function Confirmation({
   entry,
-  fee,
+  total,
   currency,
   whenLabel,
   venueName,
@@ -475,16 +494,15 @@ function Confirmation({
   mapsUrl,
 }: {
   entry: PictionarySubmission;
-  fee: number;
+  total: number;
   currency: string;
   whenLabel: string;
   venueName: string;
   venueAddress: string;
   mapsUrl: string;
 }) {
-  const players = namedPlayers(entry);
-  const total = teamTotal(players.length, fee);
   const money = `${currency} ${total.toLocaleString("en-PK")}`;
+  const first = entry.players[0]?.name.split(" ")[0] ?? "";
 
   return (
     <main
@@ -503,19 +521,25 @@ function Confirmation({
           className="mt-4 text-[26px] font-extrabold leading-tight tracking-[-0.02em] sm:text-[32px]"
           style={{ color: BROWN }}
         >
-          Your team is in
+          {entry.type === "team" ? "Your team is in" : "You\u2019re in"}
         </h1>
         <p
           className="mt-2 text-[15px] leading-relaxed"
           style={{ color: `${BROWN}CC` }}
         >
-          Thank you, {players[0]?.split(" ")[0]}. {entry.teamName.trim()} has a
-          place in Speed Pictionary.
+          Thank you, {first}. Your {entry.type === "team" ? "places" : "place"}{" "}
+          in Speed Pictionary {entry.type === "team" ? "are" : "is"} recorded.
         </p>
 
         <div className="mt-6 space-y-3 rounded-[18px] border border-line bg-[rgb(var(--c-surface))] p-4 text-left sm:p-5">
-          <Line label="Team" value={entry.teamName.trim()} />
-          <Line label="Players" value={players.join(", ")} />
+          <Line
+            label="Signed up"
+            value={entry.type === "team" ? "Team of 2" : "Individual"}
+          />
+          <Line
+            label={entry.players.length > 1 ? "Players" : "Player"}
+            value={entry.players.map((p) => `${p.name} (${p.age})`).join(", ")}
+          />
           {whenLabel ? <Line label="When" value={whenLabel} /> : null}
           {venueName ? (
             <Line
@@ -537,7 +561,8 @@ function Confirmation({
             />
           ) : null}
           {venueAddress ? <Line label="Address" value={venueAddress} /> : null}
-          <Line label="We will call" value={entry.captainPhone.trim()} />
+          <Line label="We will call" value={entry.phone.trim()} />
+          <Line label="Email" value={entry.email.trim()} />
           <Line
             label={
               entry.payment === "online" ? "Paid online" : "To pay at the desk"
@@ -551,8 +576,8 @@ function Confirmation({
           style={{ color: `${BROWN}AA` }}
         >
           {entry.payment === "online"
-            ? "We have your receipt. The organisers will be in touch on the number above if anything changes."
-            : `Please bring ${money} in cash and pay at the desk when you arrive. Your place is held for your team.`}
+            ? "We have your receipt. Lunch is included. The organisers will be in touch on the number above if anything changes."
+            : `Please bring ${money} in cash and pay at the desk when you arrive. Lunch is included. Your spot is held until then.`}
         </p>
       </div>
     </main>

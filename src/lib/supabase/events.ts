@@ -50,9 +50,12 @@ export interface EventDetails {
   activities?: ActivityOption[];
   /** Codes the organiser hands out, each taking a percentage off whatever is being charged. */
   promoCodes?: PromoCode[];
-  /** Pictionary only: teams in round one, and the most players on a team. */
-  maxTeams?: number;
-  teamSize?: number;
+  /** Pictionary only: the two prices, the age limit, and the spots (counted in people). */
+  individualFee?: number;
+  teamFee?: number;
+  ageMin?: number;
+  ageMax?: number;
+  maxPlayers?: number;
   /** What is paid out, as it is read on the event page: a place and its award. */
   prizes?: { place: string; award: string }[];
   /**

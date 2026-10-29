@@ -1,85 +1,120 @@
 /**
- * Entering a Speed Pictionary team, which is not entering a tournament.
+ * Signing up for Speed Pictionary, which is not entering a tournament.
  *
- * A team is two to four people who pay PKR 1,400 each and play as one. It has no Scrabble
- * category, rating or player number, so it shares nothing with the tournament's registration
- * beyond the two field validators — and is stored in a collection of its own for the reason
- * `training.ts` explains: a payload flag would be one forgotten `where` away from a board.
+ * An entry is one person or a pair. It has no Scrabble category, rating or player number, so it
+ * shares nothing with the tournament's registration beyond the phone validator, and is stored in
+ * a collection of its own for the reason `training.ts` explains: a payload flag would be one
+ * forgotten `where` away from a board.
  *
- * Everything a participant is told about the day — the fee, the date, the prizes — is read from
- * the event row. What lives here is the rules of the form: who must be named, what the team
- * owes, and when the form may be submitted.
+ * Everything a participant is told about the day — the prices, the age limit, the prize, the
+ * number of spots — is read from the event row. What lives here is the rules of the form: who
+ * must be named, what the entry costs, and when it may be submitted. The database enforces the
+ * age limit, the price and the spot count again (see `0095_pictionary_individuals_and_pairs.sql`),
+ * so a form that is bypassed gets the same answer.
  */
 
 import { proofRequired, type PaymentChoice } from "./paymentProof";
 import { phoneOk } from "./registrationParticipants";
 
-/** Per player. A fallback only: the event row's own `fee` is what is charged. */
-export const PICTIONARY_FEE = 1400;
+/** Fallbacks only: the event row's own settings are what is shown and charged. */
+export const INDIVIDUAL_FEE = 1250;
+export const TEAM_FEE = 2000;
+export const TEAM_OF = 2;
+export const AGE_MIN = 13;
+export const AGE_MAX = 23;
+export const MAX_PLAYERS = 32;
 
-/** The most a team may hold. The event row's `teamSize` overrides it. */
-export const MAX_TEAM_SIZE = 4;
-
-/**
- * The fewest a team may hold.
- *
- * Two, because the game needs somebody to draw and somebody to guess. The organiser only
- * stated the maximum; this is the one rule added on top, and it is a single number to change.
- */
-export const MIN_TEAM_SIZE = 2;
-
-/** Teams in round one. The event row's `maxTeams` overrides it. */
-export const MAX_TEAMS = 8;
-
+export type EntryType = "individual" | "team";
 export type PictionaryPayment = Extract<PaymentChoice, "online" | "cash">;
 
+/** Everything about the event the rules need, read from its row. */
+export interface PictionaryRules {
+  individualFee: number;
+  teamFee: number;
+  ageMin: number;
+  ageMax: number;
+  /** Whether the event has terms to agree to. A form with none must not demand a tick. */
+  termsOffered: boolean;
+}
+
+export const DEFAULT_RULES: PictionaryRules = {
+  individualFee: INDIVIDUAL_FEE,
+  teamFee: TEAM_FEE,
+  ageMin: AGE_MIN,
+  ageMax: AGE_MAX,
+  termsOffered: true,
+};
+
+export interface PictionaryPlayer {
+  name: string;
+  /** Kept as typed so a half-typed number is not rewritten under the cursor. */
+  age: string;
+}
+
 export interface PictionaryEntry {
-  teamName: string;
-  /** Player names, the captain first. Blank rows are ignored, so a team may be 2 to 4. */
-  players: string[];
-  /** The captain's number: the one the organisers ring. */
-  captainPhone: string;
+  type: EntryType;
+  /** One player for an individual, two for a pair. The first is who the organisers ring. */
+  players: PictionaryPlayer[];
+  phone: string;
+  email: string;
   payment: PictionaryPayment;
   /** The receipt, when paying online. Uploaded by the caller. */
   proofFile: File | null;
   termsAccepted: boolean;
 }
 
+const blankPlayer = (): PictionaryPlayer => ({ name: "", age: "" });
+
+/** The players an entry of this type holds, keeping what was already typed. */
+export function playersFor(
+  type: EntryType,
+  current: PictionaryPlayer[],
+): PictionaryPlayer[] {
+  const size = type === "team" ? TEAM_OF : 1;
+  return Array.from({ length: size }, (_, i) => current[i] ?? blankPlayer());
+}
+
 export const EMPTY_ENTRY: PictionaryEntry = {
-  teamName: "",
-  players: ["", ""],
-  captainPhone: "",
+  type: "individual",
+  players: [blankPlayer()],
+  phone: "",
+  email: "",
   payment: "online",
   proofFile: null,
   termsAccepted: false,
 };
 
-/** The names actually filled in, tidied. */
-export function namedPlayers(
-  entry: Pick<PictionaryEntry, "players">,
-): string[] {
-  return entry.players
-    .map((p) => p.trim().replace(/\s+/g, " "))
-    .filter((p) => p !== "");
+/** What the entry owes. A pair pays one price for both, not twice the single price. */
+export function entryTotal(
+  type: EntryType,
+  rules: Pick<PictionaryRules, "individualFee" | "teamFee">,
+): number {
+  return type === "team" ? rules.teamFee : rules.individualFee;
 }
 
-/** What the team owes: the fee for each named player. */
-export function teamTotal(playerCount: number, fee: number): number {
-  return Math.max(0, playerCount) * fee;
+/** A whole number of years as typed, or null when it is not one. */
+export function ageOf(value: string): number | null {
+  const v = value.trim();
+  if (!/^\d{1,3}$/.test(v)) return null;
+  return Number(v);
+}
+
+/** A simple shape check. Whether the address exists is not something a form can know. */
+export function emailOk(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 }
 
 export type PictionaryField =
-  "teamName" | "captain" | "players" | "phone" | "terms" | "proof";
+  "name" | "age" | "phone" | "email" | "terms" | "proof";
 
 export interface PictionaryProblem {
   field: PictionaryField;
+  /** Which player a name or age problem belongs to, so the message lands under the right row. */
+  player?: number;
   message: string;
 }
 
-/** The comparison used to spot the same person typed twice. */
-function sameName(a: string): string {
-  return a.toLowerCase().replace(/\s+/g, " ").trim();
-}
+const same = (a: string) => a.toLowerCase().replace(/\s+/g, " ").trim();
 
 /**
  * What is still missing or wrong, in one pass, so the button and the messages under the inputs
@@ -87,44 +122,57 @@ function sameName(a: string): string {
  */
 export function pictionaryProblems(
   entry: PictionaryEntry,
-  options: { termsOffered: boolean; maxSize?: number },
+  rules: PictionaryRules = DEFAULT_RULES,
 ): PictionaryProblem[] {
   const problems: PictionaryProblem[] = [];
-  const max = options.maxSize ?? MAX_TEAM_SIZE;
-  const names = namedPlayers(entry);
 
-  if (entry.teamName.trim().length < 2)
-    problems.push({
-      field: "teamName",
-      message: "Please give your team a name.",
-    });
+  entry.players.forEach((p, i) => {
+    const who =
+      entry.type === "team"
+        ? i === 0
+          ? "the first player"
+          : "the second player"
+        : "";
+    if (p.name.trim().length < 2)
+      problems.push({
+        field: "name",
+        player: i,
+        message: who
+          ? `Please give ${who}'s full name.`
+          : "Please give your full name.",
+      });
 
-  if (entry.players[0]?.trim() === "" || entry.players[0] === undefined)
-    problems.push({
-      field: "captain",
-      message: "Please give the team captain's full name.",
-    });
+    const age = ageOf(p.age);
+    if (age === null) {
+      problems.push({
+        field: "age",
+        player: i,
+        message: who ? `Please give ${who}'s age.` : "Please give your age.",
+      });
+    } else if (age < rules.ageMin || age > rules.ageMax) {
+      problems.push({
+        field: "age",
+        player: i,
+        message: `Players must be between ${rules.ageMin} and ${rules.ageMax} years old.`,
+      });
+    }
+  });
 
-  if (names.length < MIN_TEAM_SIZE)
+  const names = entry.players.map((p) => same(p.name)).filter((n) => n !== "");
+  if (entry.type === "team" && names.length === 2 && names[0] === names[1])
     problems.push({
-      field: "players",
-      message: `A team needs at least ${MIN_TEAM_SIZE} players. Please name them all.`,
-    });
-  else if (names.length > max)
-    problems.push({
-      field: "players",
-      message: `A team can have at most ${max} players.`,
-    });
-  else if (new Set(names.map(sameName)).size !== names.length)
-    problems.push({
-      field: "players",
+      field: "name",
+      player: 1,
       message: "Each player needs their own name.",
     });
 
-  if (!phoneOk(entry.captainPhone))
+  if (!phoneOk(entry.phone))
+    problems.push({ field: "phone", message: "Please give a mobile number." });
+
+  if (!emailOk(entry.email))
     problems.push({
-      field: "phone",
-      message: "Please give the captain's mobile number.",
+      field: "email",
+      message: "Please give an email address, like name@example.com.",
     });
 
   if (proofRequired(entry.payment) && entry.proofFile === null)
@@ -133,8 +181,7 @@ export function pictionaryProblems(
       message: "Please attach your payment proof.",
     });
 
-  /* Only asked for when there are terms to agree to; otherwise nobody could ever submit. */
-  if (options.termsOffered && !entry.termsAccepted)
+  if (rules.termsOffered && !entry.termsAccepted)
     problems.push({
       field: "terms",
       message: "Please confirm you have read this.",
@@ -145,29 +192,42 @@ export function pictionaryProblems(
 
 export function entryReady(
   entry: PictionaryEntry,
-  options: { termsOffered: boolean; maxSize?: number },
+  rules: PictionaryRules = DEFAULT_RULES,
 ): boolean {
-  return pictionaryProblems(entry, options).length === 0;
+  return pictionaryProblems(entry, rules).length === 0;
 }
 
+/** The message for one field (and one player where it applies), or undefined. */
 export function problemFor(
   problems: PictionaryProblem[],
   field: PictionaryField,
+  player?: number,
 ): string | undefined {
-  return problems.find((p) => p.field === field)?.message;
+  return problems.find(
+    (p) => p.field === field && (player === undefined || p.player === player),
+  )?.message;
 }
 
-/** "Team Chalk — Ayesha, Sana, Hamza (3 players)" for a list row or a message. */
-export function teamLine(team: {
-  teamName: string;
+/** "Ayesha (16)" or "Ayesha (16) & Sana (19)" — one line for a list. */
+export function entryLine(entry: {
   players: string[];
+  ages: number[];
 }): string {
-  const n = team.players.length;
-  return `${team.teamName} — ${team.players.join(", ")} (${n} player${n === 1 ? "" : "s"})`;
+  return entry.players
+    .map((name, i) =>
+      entry.ages[i] !== undefined ? `${name} (${entry.ages[i]})` : name,
+    )
+    .join(" & ");
 }
 
-/** Places left, never below zero; `null` when the count is not known. */
-export function placesLeft(taken: number | null, max: number): number | null {
+/** Spots left, never below zero; `null` when the count is not known. */
+export function spotsLeft(taken: number | null, max: number): number | null {
   if (taken === null) return null;
   return Math.max(0, max - taken);
+}
+
+/** Whether a given entry still fits in the spots that are left. */
+export function fits(type: EntryType, left: number | null): boolean {
+  if (left === null) return true;
+  return left >= (type === "team" ? TEAM_OF : 1);
 }

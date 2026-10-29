@@ -16,26 +16,26 @@ import {
   Th,
 } from "@/components/ui";
 import { ProofOpenButton } from "@/components/organizer/RegistrationDetails";
-import { MAX_TEAMS } from "@/lib/domain/pictionary";
+import { MAX_PLAYERS, entryLine } from "@/lib/domain/pictionary";
 import {
   PICTIONARY_SLUG,
-  listTeams,
-  removeTeam,
-  setTeamPaid,
-  type StoredTeam,
+  listEntries,
+  removeEntry,
+  setEntryPaid,
+  type StoredEntry,
 } from "@/lib/supabase/pictionary";
 import { formatTime } from "@/lib/utils";
 
 /**
- * The Speed Pictionary team list.
+ * The Speed Pictionary sign-ups: individuals and pairs.
  *
- * A page of its own, deliberately. A team has no Scrabble category, rating or player number, and
- * must not appear in the roster, the standings or the check-in report. Teams are stored in a
- * collection of their own and this is the only screen that reads it — see
- * `0094_pictionary_teams.sql`.
+ * A page of its own, deliberately. These entries have no Scrabble category, rating or player
+ * number, and must not appear in the roster, the standings or the check-in report. They are
+ * stored in a collection of their own and this is the only screen that reads it — see
+ * `0094_pictionary_teams.sql` and `0095_pictionary_individuals_and_pairs.sql`.
  */
 export default function PictionaryAdminPage() {
-  const [teams, setTeams] = React.useState<StoredTeam[] | null>(null);
+  const [entries, setEntries] = React.useState<StoredEntry[] | null>(null);
   const [query, setQuery] = React.useState("");
   const [problem, setProblem] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -45,29 +45,27 @@ export default function PictionaryAdminPage() {
   React.useEffect(() => {
     let live = true;
     (async () => {
-      const rows = await listTeams();
+      const rows = await listEntries();
       if (!live) return;
-      setTeams(rows);
+      setEntries(rows);
     })();
     return () => {
       live = false;
     };
   }, [reloads]);
 
-  const rows = React.useMemo(() => teams ?? [], [teams]);
+  const rows = React.useMemo(() => entries ?? [], [entries]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((t) =>
-      [t.teamName, t.captainPhone, ...t.players]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
+      [t.email, t.phone, ...t.players].join(" ").toLowerCase().includes(q),
     );
   }, [rows, query]);
 
   const players = rows.reduce((n, t) => n + t.players.length, 0);
+  const pairs = rows.filter((t) => t.type === "team").length;
   const owed = rows.reduce((n, t) => n + t.amountDue, 0);
   const collected = rows
     .filter((t) => t.paymentStatus === "verified")
@@ -97,7 +95,7 @@ export default function PictionaryAdminPage() {
     <div className="space-y-5">
       <PageHeader
         title="Speed Pictionary"
-        subtitle="Team entries. Separate from the Scrabble tournament — nobody here is in a draw."
+        subtitle="Individuals and pairs aged 13 to 23. Separate from the Scrabble tournament — nobody here is in a draw."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -121,8 +119,11 @@ export default function PictionaryAdminPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Teams" value={`${rows.length} of ${MAX_TEAMS}`} />
-        <Stat label="Players" value={String(players)} />
+        <Stat label="Spots taken" value={`${players} of ${MAX_PLAYERS}`} />
+        <Stat
+          label="Entries"
+          value={`${rows.length} (${pairs} pair${pairs === 1 ? "" : "s"})`}
+        />
         <Stat
           label="Collected"
           value={`PKR ${collected.toLocaleString("en-PK")}`}
@@ -148,20 +149,22 @@ export default function PictionaryAdminPage() {
           <SearchInput
             value={query}
             onChange={setQuery}
-            placeholder="Search a team, a player or a number"
+            placeholder="Search a name, a number or an email"
           />
         </div>
 
-        {teams === null ? (
-          <EmptyState title="Loading teams" description="One moment." />
+        {entries === null ? (
+          <EmptyState title="Loading sign-ups" description="One moment." />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<Palette className="size-5" />}
-            title={rows.length === 0 ? "No teams yet" : "Nothing matches that"}
+            title={
+              rows.length === 0 ? "No sign-ups yet" : "Nothing matches that"
+            }
             description={
               rows.length === 0
-                ? "Share the form link and teams will appear here."
-                : "Try a different name or number."
+                ? "Share the form link and sign-ups will appear here."
+                : "Try a different name, number or email."
             }
           />
         ) : (
@@ -169,11 +172,10 @@ export default function PictionaryAdminPage() {
             <table className="w-full min-w-[720px] border-collapse text-left">
               <thead>
                 <tr>
-                  <Th>Team</Th>
                   <Th>Players</Th>
-                  <Th>Captain&rsquo;s number</Th>
+                  <Th>Contact</Th>
                   <Th>Payment</Th>
-                  <Th>Registered</Th>
+                  <Th>Signed up</Th>
                   <Th>
                     <span className="sr-only">Actions</span>
                   </Th>
@@ -185,22 +187,19 @@ export default function PictionaryAdminPage() {
                   return (
                     <tr key={t.id} className="border-t border-line align-top">
                       <Td>
-                        <span className="font-semibold text-ink">
-                          {t.teamName}
+                        <span className="block font-semibold text-ink">
+                          {entryLine({ players: t.players, ages: t.ages })}
+                        </span>
+                        <span className="mt-0.5 block text-[12px] text-muted">
+                          {t.type === "team" ? "Team of 2" : "Individual"}
                         </span>
                       </Td>
                       <Td>
-                        <span className="block text-ink">
-                          {t.players.join(", ")}
+                        <span className="num block text-ink">
+                          {t.phone || "—"}
                         </span>
-                        <span className="num mt-0.5 block text-[12px] text-muted">
-                          {t.players.length} player
-                          {t.players.length === 1 ? "" : "s"}
-                        </span>
-                      </Td>
-                      <Td>
-                        <span className="num text-ink">
-                          {t.captainPhone || "—"}
+                        <span className="mt-0.5 block break-all text-[12px] text-muted">
+                          {t.email || "—"}
                         </span>
                       </Td>
                       <Td>
@@ -251,7 +250,7 @@ export default function PictionaryAdminPage() {
                             variant="secondary"
                             disabled={busy === t.id}
                             onClick={() =>
-                              void act(t.id, () => setTeamPaid(t.id, !paid))
+                              void act(t.id, () => setEntryPaid(t.id, !paid))
                             }
                           >
                             {paid ? "Mark unpaid" : "Mark paid"}
@@ -262,15 +261,19 @@ export default function PictionaryAdminPage() {
                             onClick={() => {
                               if (
                                 window.confirm(
-                                  `Remove ${t.teamName}? Their place is given back and the team disappears from this list.`,
+                                  `Remove ${t.players.join(" & ")}? Their ${
+                                    t.players.length > 1
+                                      ? "spots are"
+                                      : "spot is"
+                                  } given back and the entry disappears from this list.`,
                                 )
                               ) {
-                                void act(t.id, () => removeTeam(t.id));
+                                void act(t.id, () => removeEntry(t.id));
                               }
                             }}
                             className="text-[12.5px] font-semibold text-critical underline-offset-4 hover:underline disabled:opacity-50"
                           >
-                            Remove team
+                            Remove entry
                           </button>
                         </div>
                       </Td>

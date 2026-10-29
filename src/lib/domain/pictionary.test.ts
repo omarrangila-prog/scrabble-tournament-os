@@ -1,163 +1,227 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_RULES,
   EMPTY_ENTRY,
-  MAX_TEAM_SIZE,
-  MIN_TEAM_SIZE,
-  PICTIONARY_FEE,
+  ageOf,
+  emailOk,
+  entryLine,
   entryReady,
-  namedPlayers,
+  entryTotal,
+  fits,
   pictionaryProblems,
-  placesLeft,
+  playersFor,
   problemFor,
-  teamLine,
-  teamTotal,
+  spotsLeft,
   type PictionaryEntry,
 } from "./pictionary";
 
-const OPTIONS = { termsOffered: true };
 const RECEIPT = new File(["x"], "receipt.png", { type: "image/png" });
 
-/** A complete, valid team, so each test can break exactly one thing. */
-const team = (over: Partial<PictionaryEntry> = {}): PictionaryEntry => ({
+/** A complete individual, so each test can break exactly one thing. */
+const solo = (over: Partial<PictionaryEntry> = {}): PictionaryEntry => ({
   ...EMPTY_ENTRY,
-  teamName: "Chalk Dust",
-  players: ["Ayesha Khan", "Sana Khan", "Hamza Khan", ""],
-  captainPhone: "03001234567",
+  type: "individual",
+  players: [{ name: "Ayesha Khan", age: "16" }],
+  phone: "03001234567",
+  email: "ayesha@example.com",
   payment: "online",
   proofFile: RECEIPT,
   termsAccepted: true,
   ...over,
 });
 
-describe("what a team costs", () => {
-  it("is the fee for each named player", () => {
-    expect(teamTotal(1, 1400)).toBe(1400);
-    expect(teamTotal(3, 1400)).toBe(4200);
-    expect(teamTotal(4, PICTIONARY_FEE)).toBe(5600);
+/** A complete pair. */
+const pair = (over: Partial<PictionaryEntry> = {}): PictionaryEntry =>
+  solo({
+    type: "team",
+    players: [
+      { name: "Ayesha Khan", age: "16" },
+      { name: "Sana Khan", age: "19" },
+    ],
+    ...over,
   });
 
-  it("is never negative", () => {
-    expect(teamTotal(-2, 1400)).toBe(0);
+describe("what an entry costs", () => {
+  it("is 1,250 for one person", () => {
+    expect(entryTotal("individual", DEFAULT_RULES)).toBe(1250);
   });
 
-  it("counts only players who were actually named", () => {
-    const players = ["  Ayesha   Khan ", "", "Sana", "   "];
-    expect(namedPlayers({ players })).toEqual(["Ayesha Khan", "Sana"]);
+  it("is 2,000 for a pair — one price for both, not double the single", () => {
+    expect(entryTotal("team", DEFAULT_RULES)).toBe(2000);
+    expect(entryTotal("team", DEFAULT_RULES)).toBeLessThan(
+      2 * entryTotal("individual", DEFAULT_RULES),
+    );
+  });
+
+  it("follows the event's own prices", () => {
+    expect(entryTotal("team", { individualFee: 900, teamFee: 1500 })).toBe(
+      1500,
+    );
   });
 });
 
-describe("a valid team", () => {
-  it("passes with three of four places filled", () => {
-    expect(pictionaryProblems(team(), OPTIONS)).toEqual([]);
-    expect(entryReady(team(), OPTIONS)).toBe(true);
+describe("the players an entry holds", () => {
+  it("is one for an individual and two for a pair", () => {
+    expect(playersFor("individual", [])).toHaveLength(1);
+    expect(playersFor("team", [])).toHaveLength(2);
   });
 
-  it("passes at the smallest and the largest size", () => {
-    expect(entryReady(team({ players: ["A One", "B Two"] }), OPTIONS)).toBe(
-      true,
+  it("keeps what was already typed when the type changes", () => {
+    const typed = [{ name: "Ayesha", age: "16" }];
+    expect(playersFor("team", typed)[0]).toEqual({ name: "Ayesha", age: "16" });
+    const both = [typed[0], { name: "Sana", age: "19" }];
+    expect(playersFor("individual", both)).toEqual([
+      { name: "Ayesha", age: "16" },
+    ]);
+  });
+});
+
+describe("the age limit, 13 to 23 inclusive", () => {
+  const agedFor = (age: string) =>
+    pictionaryProblems(solo({ players: [{ name: "Ayesha Khan", age }] }));
+
+  it.each(["13", "14", "18", "22", "23"])("accepts %s", (age) => {
+    expect(problemFor(agedFor(age), "age")).toBeUndefined();
+  });
+
+  it.each(["12", "11", "0", "24", "30", "100"])("refuses %s", (age) => {
+    expect(problemFor(agedFor(age), "age")).toMatch(/between 13 and 23/);
+  });
+
+  it.each(["", "  ", "abc", "16.5", "-3", "1e1", "1000"])(
+    "refuses %j as not an age",
+    (age) => {
+      expect(problemFor(agedFor(age), "age")).toBeTruthy();
+    },
+  );
+
+  it("holds each player of a pair to it separately", () => {
+    const p = pictionaryProblems(
+      pair({
+        players: [
+          { name: "Ayesha Khan", age: "20" },
+          { name: "Sana Khan", age: "25" },
+        ],
+      }),
     );
+    expect(problemFor(p, "age", 0)).toBeUndefined();
+    expect(problemFor(p, "age", 1)).toMatch(/between 13 and 23/);
+  });
+
+  it("follows the event's own limits", () => {
+    const rules = { ...DEFAULT_RULES, ageMin: 15, ageMax: 20 };
     expect(
-      entryReady(
-        team({ players: ["A One", "B Two", "C Three", "D Four"] }),
-        OPTIONS,
+      problemFor(
+        pictionaryProblems(
+          solo({ players: [{ name: "Ayesha Khan", age: "14" }] }),
+          rules,
+        ),
+        "age",
       ),
-    ).toBe(true);
-    expect(MIN_TEAM_SIZE).toBe(2);
-    expect(MAX_TEAM_SIZE).toBe(4);
+    ).toMatch(/between 15 and 20/);
+  });
+
+  it("reads ages as whole numbers only", () => {
+    expect(ageOf("16")).toBe(16);
+    expect(ageOf(" 16 ")).toBe(16);
+    expect(ageOf("16.5")).toBeNull();
+    expect(ageOf("")).toBeNull();
+  });
+});
+
+describe("a valid entry", () => {
+  it("passes as an individual and as a pair", () => {
+    expect(pictionaryProblems(solo())).toEqual([]);
+    expect(entryReady(pair())).toBe(true);
   });
 
   it("does not need a receipt when paying cash", () => {
-    expect(
-      entryReady(team({ payment: "cash", proofFile: null }), OPTIONS),
-    ).toBe(true);
+    expect(entryReady(solo({ payment: "cash", proofFile: null }))).toBe(true);
   });
 });
 
 describe("what is missing", () => {
-  it("needs a team name", () => {
-    const p = pictionaryProblems(team({ teamName: " " }), OPTIONS);
-    expect(problemFor(p, "teamName")).toMatch(/team a name/i);
-  });
-
-  it("needs the captain's name, which is the first row", () => {
-    const p = pictionaryProblems(
-      team({ players: ["", "Sana Khan", "Hamza Khan"] }),
-      OPTIONS,
-    );
-    expect(problemFor(p, "captain")).toMatch(/captain/i);
-  });
-
-  it("needs at least two players", () => {
-    const p = pictionaryProblems(
-      team({ players: ["Ayesha Khan", "", "", ""] }),
-      OPTIONS,
-    );
-    expect(problemFor(p, "players")).toMatch(/at least 2/);
-  });
-
-  it("refuses more than the event's team size", () => {
-    const five = ["A One", "B Two", "C Three", "D Four", "E Five"];
+  it("needs a name for every player", () => {
     expect(
       problemFor(
-        pictionaryProblems(team({ players: five }), OPTIONS),
-        "players",
+        pictionaryProblems(solo({ players: [{ name: " ", age: "16" }] })),
+        "name",
       ),
-    ).toMatch(/at most 4/);
-    /* An event that allows six takes the same five. */
-    expect(
-      entryReady(team({ players: five }), { ...OPTIONS, maxSize: 6 }),
-    ).toBe(true);
-  });
-
-  it("refuses the same person twice, however it is typed", () => {
+    ).toMatch(/your full name/);
     const p = pictionaryProblems(
-      team({ players: ["Ayesha Khan", "ayesha  khan"] }),
-      OPTIONS,
+      pair({
+        players: [
+          { name: "Ayesha Khan", age: "16" },
+          { name: "", age: "19" },
+        ],
+      }),
     );
-    expect(problemFor(p, "players")).toMatch(/own name/i);
+    expect(problemFor(p, "name", 1)).toMatch(/second player/);
+    expect(problemFor(p, "name", 0)).toBeUndefined();
   });
 
-  it("needs a captain's mobile number", () => {
+  it("refuses the same person twice in a pair, however it is typed", () => {
+    const p = pictionaryProblems(
+      pair({
+        players: [
+          { name: "Ayesha Khan", age: "16" },
+          { name: "ayesha  khan", age: "16" },
+        ],
+      }),
+    );
+    expect(problemFor(p, "name", 1)).toMatch(/own name/);
+  });
+
+  it("needs a mobile number", () => {
+    expect(
+      problemFor(pictionaryProblems(solo({ phone: "0300" })), "phone"),
+    ).toBeTruthy();
+    expect(entryReady(solo({ phone: "+92 300 1234567" }))).toBe(true);
+  });
+
+  it("needs an email address that looks like one", () => {
+    expect(
+      problemFor(pictionaryProblems(solo({ email: "" })), "email"),
+    ).toBeTruthy();
+    expect(
+      problemFor(pictionaryProblems(solo({ email: "ayesha@" })), "email"),
+    ).toBeTruthy();
     expect(
       problemFor(
-        pictionaryProblems(team({ captainPhone: "0300" }), OPTIONS),
-        "phone",
+        pictionaryProblems(solo({ email: "no spaces@x.com" })),
+        "email",
       ),
     ).toBeTruthy();
-    expect(entryReady(team({ captainPhone: "+92 300 1234567" }), OPTIONS)).toBe(
-      true,
-    );
+    expect(emailOk(" ayesha@example.com ")).toBe(true);
   });
 
   it("needs a receipt when paying online, and only then", () => {
-    const p = pictionaryProblems(team({ proofFile: null }), OPTIONS);
-    expect(problemFor(p, "proof")).toMatch(/payment proof/i);
-  });
-
-  it("needs the terms ticked when there are terms to tick", () => {
     expect(
-      problemFor(
-        pictionaryProblems(team({ termsAccepted: false }), OPTIONS),
-        "terms",
-      ),
+      problemFor(pictionaryProblems(solo({ proofFile: null })), "proof"),
+    ).toMatch(/payment proof/i);
+  });
+
+  it("needs the terms ticked when there are terms, and not otherwise", () => {
+    expect(
+      problemFor(pictionaryProblems(solo({ termsAccepted: false })), "terms"),
     ).toBeTruthy();
+    expect(
+      entryReady(solo({ termsAccepted: false }), {
+        ...DEFAULT_RULES,
+        termsOffered: false,
+      }),
+    ).toBe(true);
   });
 
-  it("does not trap the form when the event has no terms", () => {
-    const noTerms = { termsOffered: false };
-    expect(entryReady(team({ termsAccepted: false }), noTerms)).toBe(true);
-  });
-
-  it("reports every problem at once", () => {
-    const p = pictionaryProblems(EMPTY_ENTRY, OPTIONS);
-    const fields = p.map((x) => x.field);
+  it("reports everything at once on an empty form", () => {
+    const fields = pictionaryProblems(EMPTY_ENTRY).map((p) => p.field);
     expect(fields).toEqual(
       expect.arrayContaining([
-        "teamName",
-        "captain",
-        "players",
+        "name",
+        "age",
         "phone",
+        "email",
         "proof",
         "terms",
       ]),
@@ -165,20 +229,29 @@ describe("what is missing", () => {
   });
 });
 
-describe("reading a team back", () => {
+describe("reading an entry back", () => {
   it("makes one line for a list", () => {
-    expect(
-      teamLine({ teamName: "Chalk Dust", players: ["Ayesha", "Sana"] }),
-    ).toBe("Chalk Dust — Ayesha, Sana (2 players)");
-    expect(teamLine({ teamName: "Solo", players: ["Ayesha"] })).toBe(
-      "Solo — Ayesha (1 player)",
+    expect(entryLine({ players: ["Ayesha"], ages: [16] })).toBe("Ayesha (16)");
+    expect(entryLine({ players: ["Ayesha", "Sana"], ages: [16, 19] })).toBe(
+      "Ayesha (16) & Sana (19)",
     );
+    expect(entryLine({ players: ["Ayesha"], ages: [] })).toBe("Ayesha");
+  });
+});
+
+describe("spots", () => {
+  it("counts what is left, never below zero", () => {
+    expect(spotsLeft(30, 32)).toBe(2);
+    expect(spotsLeft(32, 32)).toBe(0);
+    expect(spotsLeft(40, 32)).toBe(0);
+    expect(spotsLeft(null, 32)).toBeNull();
   });
 
-  it("counts the places left", () => {
-    expect(placesLeft(3, 8)).toBe(5);
-    expect(placesLeft(8, 8)).toBe(0);
-    expect(placesLeft(9, 8)).toBe(0);
-    expect(placesLeft(null, 8)).toBeNull();
+  it("knows a pair needs two and a single needs one", () => {
+    expect(fits("team", 2)).toBe(true);
+    expect(fits("team", 1)).toBe(false);
+    expect(fits("individual", 1)).toBe(true);
+    expect(fits("individual", 0)).toBe(false);
+    expect(fits("team", null)).toBe(true);
   });
 });
