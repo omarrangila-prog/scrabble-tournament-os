@@ -123,7 +123,10 @@ export function priceRegistration(
     unavailable,
     perPerson: applied.amount,
     total: applied.amount * people,
-    savedPerPerson: Math.max(0, (standard?.amount ?? applied.amount) - applied.amount),
+    savedPerPerson: Math.max(
+      0,
+      (standard?.amount ?? applied.amount) - applied.amount,
+    ),
   };
 }
 
@@ -156,7 +159,10 @@ export function cheaperRateHint(
       if (rate.id === "early-bird" && !rate.availableUntil) return false;
       // A closed early-bird rate cannot be reached; a group size can.
       if (!rate.availableUntil) return true;
-      return new Date(rate.availableUntil).getTime() >= new Date(context.at).getTime();
+      return (
+        new Date(rate.availableUntil).getTime() >=
+        new Date(context.at).getTime()
+      );
     })
     .sort((a, b) => a.rate.amount - b.rate.amount)[0];
 
@@ -167,8 +173,7 @@ export function cheaperRateHint(
   if (cheaper.rate.minGroupSize)
     return `Registering ${cheaper.rate.minGroupSize} or more together brings this down to ${money} each.`;
 
-  if (cheaper.rate.id === "member")
-    return `Association members pay ${money}.`;
+  if (cheaper.rate.id === "member") return `Association members pay ${money}.`;
 
   return null;
 }
@@ -239,7 +244,10 @@ export interface ResolvedPrice {
  * to the regular fee — the refusal is returned so the form can say which it was.
  * Someone hunting for a typo in a code that merely expired wastes their time.
  */
-export function resolvePrice(rules: PriceRules, context: PriceContext): ResolvedPrice {
+export function resolvePrice(
+  rules: PriceRules,
+  context: PriceContext,
+): ResolvedPrice {
   const typed = (context.code ?? "").trim().toUpperCase();
   const now = new Date(context.at).getTime();
 
@@ -312,8 +320,14 @@ export function resolvePrice(rules: PriceRules, context: PriceContext): Resolved
  * the regular fee, because no code anywhere connected the sentence to the price. A rate
  * card is the same information in a shape that can be charged from.
  */
-export function rateCardFor(event: { fee: number; currency?: string; rates?: Rate[] }): Rate[] {
-  const configured = (event.rates ?? []).filter((r) => Number.isFinite(r.amount) && r.amount >= 0);
+export function rateCardFor(event: {
+  fee: number;
+  currency?: string;
+  rates?: Rate[];
+}): Rate[] {
+  const configured = (event.rates ?? []).filter(
+    (r) => Number.isFinite(r.amount) && r.amount >= 0,
+  );
 
   const standard: Rate = {
     id: "standard",
@@ -366,7 +380,6 @@ export function rateNeedsVerification(rate: Rate): boolean {
  * The rule is the same as everywhere else here: **the cheapest bracket they qualify for, and
  * they are told which one it is.** Never a stack.
  */
-
 
 export interface ActivityPriceContext {
   /** Whether the participant claims membership. Checked at the desk, not here. */
@@ -426,7 +439,10 @@ export function activityRateAvailability(
   context: ActivityPriceContext,
 ): { available: boolean; reason?: string } {
   if (rate.id === "walk-in")
-    return { available: false, reason: "Paid at the door, without registering." };
+    return {
+      available: false,
+      reason: "Paid at the door, without registering.",
+    };
 
   if (rate.id === "member" && !context.isMember)
     return { available: false, reason: "For association members." };
@@ -467,14 +483,23 @@ export function priceActivity(
       ? option.rates
       : [{ id: "regular", label: "Regular", amount: option.price }];
 
-  const judged = card.map((rate) => ({ rate, ...activityRateAvailability(rate, context) }));
+  const judged = card.map((rate) => ({
+    rate,
+    ...activityRateAvailability(rate, context),
+  }));
 
   const chargeable = judged.filter((t) => t.available);
   /* Cheapest wins. Never cumulative — see priceRegistration for why. */
-  const cheapest = [...chargeable].sort((a, b) => a.rate.amount - b.rate.amount)[0];
+  const cheapest = [...chargeable].sort(
+    (a, b) => a.rate.amount - b.rate.amount,
+  )[0];
 
-  const applied =
-    cheapest?.rate ?? card.find((r) => r.id === "regular") ?? { id: "regular" as const, label: "Regular", amount: option.price };
+  const applied = cheapest?.rate ??
+    card.find((r) => r.id === "regular") ?? {
+      id: "regular" as const,
+      label: "Regular",
+      amount: option.price,
+    };
 
   /*
    * The code comes off last, against the bracket they had already earned.
@@ -524,6 +549,14 @@ export interface PromoCode {
   percentOff: number;
   /** Inclusive end date. A code with none never expires. */
   availableUntil?: string;
+  /**
+   * Whether using this code means naming a school.
+   *
+   * A code handed to a school is only worth the discount if the organiser can see who it went
+   * to; asking at the form is the one moment that is certain to work. Stated on the code, so a
+   * code for a club or a partner shop asks nothing.
+   */
+  requiresSchool?: boolean;
 }
 
 export function promoCodesFrom(payload: unknown): PromoCode[] {
@@ -541,15 +574,24 @@ export function promoCodesFrom(payload: unknown): PromoCode[] {
        * enter. Both are refused rather than clamped, because either is a typo in a figure
        * that decides money and silently correcting it hides the mistake.
        */
-      if (!code || !Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 100) return null;
+      if (
+        !code ||
+        !Number.isFinite(percentOff) ||
+        percentOff <= 0 ||
+        percentOff > 100
+      )
+        return null;
 
       const until = String(r.availableUntil ?? "").trim();
 
       return {
         code,
-        label: String(r.label ?? "").trim() || `${code} — ${Math.round(percentOff)}% off`,
+        label:
+          String(r.label ?? "").trim() ||
+          `${code} — ${Math.round(percentOff)}% off`,
         percentOff,
         ...(until ? { availableUntil: until } : {}),
+        ...(r.requiresSchool === true ? { requiresSchool: true } : {}),
       };
     })
     .filter((p): p is PromoCode => p !== null);
@@ -568,12 +610,17 @@ export type PromoState =
  * hunting for a typo in a code that simply closed is wasting their time — and the difference
  * is the whole of what the message has to convey.
  */
-export function resolvePromo(codes: PromoCode[], typed: string, at: string): PromoState {
+export function resolvePromo(
+  codes: PromoCode[],
+  typed: string,
+  at: string,
+): PromoState {
   const wanted = (typed ?? "").trim().toUpperCase();
   if (!wanted) return { status: "none" };
 
   const match = codes.find((c) => c.code.trim().toUpperCase() === wanted);
-  if (!match) return { status: "unknown", message: "That code is not recognised." };
+  if (!match)
+    return { status: "unknown", message: "That code is not recognised." };
 
   if (match.availableUntil) {
     const closes = new Date(match.availableUntil).getTime();
@@ -583,6 +630,23 @@ export function resolvePromo(codes: PromoCode[], typed: string, at: string): Pro
   }
 
   return { status: "accepted", promo: match };
+}
+
+/** Whether the code in use needs a school name before the form may be sent. */
+export function schoolRequired(promo: PromoCode | null | undefined): boolean {
+  return promo?.requiresSchool === true;
+}
+
+/**
+ * Whether a school name is good enough.
+ *
+ * Two letters, not a list: schools are named a hundred ways and a form that rejects the one a
+ * child actually types gets "x" instead. What matters is that it is filled in and is not just
+ * punctuation or digits.
+ */
+export function schoolNameOk(value: string): boolean {
+  const v = value.trim();
+  return v.length >= 2 && /\p{L}/u.test(v);
 }
 
 /** The promo taken off an amount, to the nearest whole unit. Never below zero. */

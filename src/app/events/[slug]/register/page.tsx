@@ -197,6 +197,15 @@ export default function RegisterPage() {
       city: "",
       area: "",
       /*
+       * The school, when the code they used asks for one.
+       *
+       * Stored as the player's club, which is the field the pairing seeding already reads to
+       * keep schoolmates from meeting in round one, and which the desk and the player's page
+       * already show. Empty stays empty rather than becoming "Unaffiliated" here, because that
+       * default is applied downstream and a blank is what the other forms send too.
+       */
+      ...(quick.schoolName ? { affiliation: quick.schoolName } : {}),
+      /*
        * The category they chose, and nothing invented when they chose none.
        *
        * This defaulted to "recreational", so a painting-only registration was filed as a
@@ -277,6 +286,7 @@ export default function RegisterPage() {
         ...(quick.promoCode
           ? { promoCode: quick.promoCode, promoPercentOff: String(quick.promoPercentOff) }
           : {}),
+        ...(quick.schoolName ? { schoolName: quick.schoolName } : {}),
         ...(quick.quotedRateNeedsCheck ? { rateNeedsCheck: "Yes" } : {}),
         paymentChoice: quick.payment === "online" ? "Online" : "Cash on site",
         ...(proof ? { paymentProofFile: proof.fileName } : {}),

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { applyPromo, priceActivity, promoCodesFrom, resolvePromo } from "./pricing";
+import {
+  applyPromo,
+  priceActivity,
+  promoCodesFrom,
+  resolvePromo,
+  schoolNameOk,
+  schoolRequired,
+} from "./pricing";
 import type { ActivityOption } from "./registrationParticipants";
 
 /**
@@ -143,5 +150,48 @@ describe("the code against the ladder", () => {
       price: 1000,
     };
     expect(priceActivity(painting, { ...ctx, promo: CODES[0] }).amount).toBe(700);
+  });
+});
+
+describe("a code that asks for a school", () => {
+  const SCHOOL = promoCodesFrom([
+    { code: "BAB22", percentOff: 30, requiresSchool: true },
+    { code: "PLAIN", percentOff: 10 },
+    { code: "LOOSE", percentOff: 10, requiresSchool: "yes" },
+  ]);
+
+  it("is read from the code, and only when it is plainly true", () => {
+    expect(SCHOOL[0].requiresSchool).toBe(true);
+    expect(schoolRequired(SCHOOL[0])).toBe(true);
+    /* Absent, or something that is merely truthy, asks for nothing. */
+    expect(schoolRequired(SCHOOL[1])).toBe(false);
+    expect(schoolRequired(SCHOOL[2])).toBe(false);
+    expect(schoolRequired(null)).toBe(false);
+  });
+
+  it("still takes the same percentage off as any other code", () => {
+    expect(applyPromo(1300, SCHOOL[0])).toBe(910);
+    expect(applyPromo(850, SCHOOL[0])).toBe(595);
+  });
+
+  it("is found however it is typed", () => {
+    const state = resolvePromo(SCHOOL, " bab22 ", NOW);
+    expect(state.status).toBe("accepted");
+    if (state.status === "accepted") expect(schoolRequired(state.promo)).toBe(true);
+  });
+
+  it("accepts a school name that is a name, and refuses what is not", () => {
+    expect(schoolNameOk("Karachi Grammar School")).toBe(true);
+    expect(schoolNameOk("  Beaconhouse  ")).toBe(true);
+    expect(schoolNameOk("LGS")).toBe(true);
+    expect(schoolNameOk("")).toBe(false);
+    expect(schoolNameOk("   ")).toBe(false);
+    expect(schoolNameOk("x")).toBe(false);
+    expect(schoolNameOk("12345")).toBe(false);
+    expect(schoolNameOk("--")).toBe(false);
+  });
+
+  it("accepts a school written in another script", () => {
+    expect(schoolNameOk("کراچی گرامر اسکول")).toBe(true);
   });
 });

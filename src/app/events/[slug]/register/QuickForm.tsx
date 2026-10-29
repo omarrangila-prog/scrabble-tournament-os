@@ -15,6 +15,8 @@ import {
   cheaperRateHint,
   priceActivity,
   resolvePromo,
+  schoolNameOk,
+  schoolRequired,
   priceRegistration,
   rateCardFor,
   rateNeedsVerification,
@@ -109,6 +111,8 @@ export interface QuickRegistration {
   /** The promo code that was accepted, as the organiser wrote it. Empty when none was used. */
   promoCode: string;
   promoPercentOff: number;
+  /** The school, where the code they used asks for one. Empty otherwise. */
+  schoolName: string;
 }
 
 /** How somebody found the event. Recorded so an organiser can see what actually worked. */
@@ -150,6 +154,7 @@ export function QuickForm({
   const [proofFile, setProofFile] = React.useState<File | null>(null);
   const [proofProblem, setProofProblem] = React.useState<string | null>(null);
   const [promoTyped, setPromoTyped] = React.useState("");
+  const [schoolName, setSchoolName] = React.useState("");
   /*
    * Whether they have finished typing the code.
    *
@@ -349,6 +354,9 @@ export function QuickForm({
   const heardOk = heardAbout !== "";
   const consentOk = photoConsent !== null;
   const termsOk = !event.terms || termsAccepted;
+  /* Only asked for, and only required, while a code that wants a school is in use. */
+  const needsSchool = schoolRequired(promo);
+  const schoolOk = !needsSchool || schoolNameOk(schoolName);
 
   const ready =
     activityOk &&
@@ -358,7 +366,8 @@ export function QuickForm({
     proofOk &&
     heardOk &&
     consentOk &&
-    termsOk;
+    termsOk &&
+    schoolOk;
 
   /* ---- Submitting ------------------------------------------------------ */
 
@@ -407,6 +416,7 @@ export function QuickForm({
       quotedRateNeedsCheck: quotedNeedsCheck,
       promoCode: promo?.code ?? "",
       promoPercentOff: promo?.percentOff ?? 0,
+      schoolName: needsSchool ? schoolName.trim().replace(/\s+/g, " ") : "",
     });
   };
 
@@ -870,6 +880,31 @@ export function QuickForm({
                 <p className="mt-1.5 text-center text-[12.5px] font-semibold text-success">
                   {promoState.promo.label} applied.
                 </p>
+              ) : null}
+
+              {/*
+                The school, for a code that is given out through one.
+                Shown the moment the code is accepted and gone the moment it is not, so nobody
+                who never used the code is asked for a school.
+              */}
+              {needsSchool ? (
+                <div className="mx-auto mt-3 max-w-[20rem] text-center">
+                  <label htmlFor="q-school" className="block text-[12.5px] font-semibold text-ink">
+                    Your school
+                  </label>
+                  <p className="text-[12px] text-muted">This code is for students. Please name your school.</p>
+                  <input
+                    id="q-school"
+                    value={schoolName}
+                    onChange={(e) => setSchoolName(e.target.value)}
+                    autoComplete="organization"
+                    placeholder="e.g. Karachi Grammar School"
+                    className={cn(field, "text-center")}
+                  />
+                  {touched && !schoolOk ? (
+                    <p className="mt-1.5 text-[12.5px] text-critical">Please give your school&rsquo;s name.</p>
+                  ) : null}
+                </div>
               ) : null}
 
               {/*
