@@ -386,16 +386,13 @@ export default function PictionaryPage() {
         </motion.section>
 
         {/* ---- Spots ------------------------------------------------------- */}
-        {left !== null ? (
+        {/* Only said when it matters: a count of 32 of 32 left is noise, and 'Only 1 spot left' is news. */}
+        {left !== null && (full || left === 1) ? (
           <p
             className="mt-4 text-center text-[13.5px] font-bold"
             style={{ color: full ? ORANGE : BROWN }}
           >
-            {full
-              ? "All spots are taken"
-              : left === 1
-                ? "Only 1 spot left"
-                : `Limited spots: ${left} of ${maxPlayers} left`}
+            {full ? "All spots are taken" : "Only 1 spot left"}
           </p>
         ) : null}
 
