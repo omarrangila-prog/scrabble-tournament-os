@@ -14,6 +14,7 @@
  */
 
 import { proofRequired, type PaymentChoice } from "./paymentProof";
+import { applyPromo, resolvePromo, type PromoCode } from "./pricing";
 import { phoneOk } from "./registrationParticipants";
 
 /** Fallbacks only: the event row's own settings are what is shown and charged. */
@@ -35,6 +36,8 @@ export interface PictionaryRules {
   ageMax: number;
   /** Whether the event has terms to agree to. A form with none must not demand a tick. */
   termsOffered: boolean;
+  /** The codes the event hands out. Empty means the form offers no promo box at all. */
+  promoCodes: PromoCode[];
 }
 
 export const DEFAULT_RULES: PictionaryRules = {
@@ -43,6 +46,7 @@ export const DEFAULT_RULES: PictionaryRules = {
   ageMin: AGE_MIN,
   ageMax: AGE_MAX,
   termsOffered: true,
+  promoCodes: [],
 };
 
 export interface PictionaryPlayer {
@@ -58,6 +62,8 @@ export interface PictionaryEntry {
   phone: string;
   email: string;
   payment: PictionaryPayment;
+  /** The code as typed. Empty when there is none; only counts once it matches one of the event's. */
+  promoCode: string;
   /** The receipt, when paying online. Uploaded by the caller. */
   proofFile: File | null;
   termsAccepted: boolean;
@@ -80,6 +86,7 @@ export const EMPTY_ENTRY: PictionaryEntry = {
   phone: "",
   email: "",
   payment: "online",
+  promoCode: "",
   proofFile: null,
   termsAccepted: false,
 };
@@ -90,6 +97,30 @@ export function entryTotal(
   rules: Pick<PictionaryRules, "individualFee" | "teamFee">,
 ): number {
   return type === "team" ? rules.teamFee : rules.individualFee;
+}
+
+/**
+ * The code the person typed, resolved against the event's own. The database checks any end date
+ * a code has, so the clock is not consulted here: an empty date skips the expiry test rather
+ * than guessing at one.
+ */
+export function promoFor(
+  entry: Pick<PictionaryEntry, "promoCode">,
+  rules: Pick<PictionaryRules, "promoCodes">,
+) {
+  return resolvePromo(rules.promoCodes, entry.promoCode, "");
+}
+
+/** What is actually owed: the entry's price with the accepted code, if any, taken off. */
+export function amountDue(
+  entry: Pick<PictionaryEntry, "type" | "promoCode">,
+  rules: Pick<PictionaryRules, "individualFee" | "teamFee" | "promoCodes">,
+): number {
+  const state = promoFor(entry, rules);
+  return applyPromo(
+    entryTotal(entry.type, rules),
+    state.status === "accepted" ? state.promo : null,
+  );
 }
 
 /** A whole number of years as typed, or null when it is not one. */
@@ -105,7 +136,7 @@ export function emailOk(value: string): boolean {
 }
 
 export type PictionaryField =
-  "name" | "age" | "phone" | "email" | "terms" | "proof";
+  "name" | "age" | "phone" | "email" | "terms" | "proof" | "promo";
 
 export interface PictionaryProblem {
   field: PictionaryField;
@@ -165,6 +196,14 @@ export function pictionaryProblems(
       player: 1,
       message: "Each player needs their own name.",
     });
+
+  /* A code that was typed and is not one of the event's is a mistake to fix, not to ignore. */
+  if (
+    rules.promoCodes.length > 0 &&
+    entry.promoCode.trim() !== "" &&
+    promoFor(entry, rules).status !== "accepted"
+  )
+    problems.push({ field: "promo", message: "That code is not recognised." });
 
   if (!phoneOk(entry.phone))
     problems.push({ field: "phone", message: "Please give a mobile number." });

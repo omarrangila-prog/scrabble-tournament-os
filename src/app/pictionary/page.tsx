@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Card, EmptyState } from "@/components/ui";
+import { promoCodesFrom } from "@/lib/domain/pricing";
 import { eventTimeLine } from "@/lib/domain/eventTime";
 import {
   AGE_MAX,
@@ -20,7 +21,9 @@ import {
   INDIVIDUAL_FEE,
   MAX_PLAYERS,
   TEAM_FEE,
+  amountDue,
   entryTotal,
+  promoFor,
   spotsLeft,
   type PictionaryRules,
 } from "@/lib/domain/pictionary";
@@ -112,6 +115,7 @@ export default function PictionaryPage() {
     ageMin,
     ageMax,
     termsOffered: terms.trim() !== "",
+    promoCodes: promoCodesFrom(details?.promoCodes),
   };
   const dateLabel = details?.startDate ? formatDate(details.startDate) : "";
   const timeLabel = eventTimeLine(details?.startTime, details?.endTime);
@@ -160,6 +164,9 @@ export default function PictionaryPage() {
       }
 
       const players = entry.players.map((p) => p.name);
+      const promoState = promoFor(entry, rules);
+      const promoApplied =
+        promoState.status === "accepted" ? promoState.promo : null;
       const saved = await saveEntry({
         organizationId: "org-federation",
         data: {
@@ -177,7 +184,18 @@ export default function PictionaryPage() {
            */
           paymentStatus:
             entry.payment === "online" ? "receipt-uploaded" : "cash-at-venue",
-          amountDue: entryTotal(entry.type, rules),
+          amountDue: amountDue(entry, rules),
+          /*
+           * The code honoured and the price it came off, stored beside the amount it produced,
+           * so the list never shows a PKR 750 entry with nothing to explain why it is not 1,250.
+           */
+          ...(promoApplied
+            ? {
+                promoCode: promoApplied.code,
+                promoPercentOff: promoApplied.percentOff,
+                amountBeforePromo: entryTotal(entry.type, rules),
+              }
+            : {}),
           currency,
           ...(proof ? { paymentProof: proof } : {}),
           termsAccepted: entry.termsAccepted,
@@ -225,7 +243,7 @@ export default function PictionaryPage() {
     return (
       <Confirmation
         entry={done}
-        total={entryTotal(done.type, rules)}
+        total={amountDue(done, rules)}
         currency={currency}
         whenLabel={[dateLabel, timeLabel].filter(Boolean).join(" · ")}
         venueName={details?.venueName ?? ""}

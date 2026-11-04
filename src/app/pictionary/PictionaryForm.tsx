@@ -18,7 +18,9 @@ import {
 import {
   EMPTY_ENTRY,
   entryReady,
+  amountDue,
   entryTotal,
+  promoFor,
   fits,
   pictionaryProblems,
   playersFor,
@@ -71,7 +73,9 @@ export function PictionaryForm({
   const problems = pictionaryProblems(entry, rules);
   const ready = entryReady(entry, rules);
 
-  const total = entryTotal(entry.type, rules);
+  const base = entryTotal(entry.type, rules);
+  const total = amountDue(entry, rules);
+  const promoState = promoFor(entry, rules);
   const money = (n: number) => `${currency} ${n.toLocaleString("en-PK")}`;
 
   const change = (next: Partial<PictionaryEntry>) =>
@@ -321,12 +325,54 @@ export function PictionaryForm({
           You pay
         </p>
         <p className="mt-0.5 text-[22px] font-bold text-primary">
+          {total !== base ? (
+            <span className="num mr-2 text-[15px] font-semibold text-muted line-through">
+              {money(base)}
+            </span>
+          ) : null}
           <span className="num">{money(total)}</span>
         </p>
         <p className={hint}>
           {entry.type === "team" ? "for both players" : "for one player"} ·
           lunch included
         </p>
+
+        {/* The code, only where the event has any. It sits beside the total it changes. */}
+        {rules.promoCodes.length > 0 ? (
+          <div className="mt-3 border-t border-line pt-3">
+            <label
+              htmlFor="p-promo"
+              className="block text-[12.5px] font-semibold text-ink"
+            >
+              Promo code
+            </label>
+            <input
+              id="p-promo"
+              value={entry.promoCode}
+              /* Upper-cased as they type, so a code never fails for being lower case. */
+              onChange={(e) =>
+                change({
+                  promoCode: e.target.value.toUpperCase().replace(/\s+/g, ""),
+                })
+              }
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              placeholder="If you have one"
+              className={cn(
+                field,
+                "mx-auto block max-w-[16rem] text-center tracking-[0.12em]",
+                promoState.status === "accepted" ? "border-success" : "",
+              )}
+            />
+            {promoState.status === "accepted" ? (
+              <p className="mt-1.5 text-[12.5px] font-semibold text-success">
+                {promoState.promo.label} applied.
+              </p>
+            ) : null}
+            {problem(problemFor(problems, "promo"))}
+          </div>
+        ) : null}
       </div>
 
       <div>

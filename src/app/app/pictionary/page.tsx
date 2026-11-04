@@ -229,6 +229,11 @@ export default function PictionaryAdminPage() {
                           <span className="num text-[12.5px] text-muted">
                             {t.currency} {t.amountDue.toLocaleString("en-PK")}
                           </span>
+                          {t.promoCode ? (
+                            <span className="text-[12px] font-semibold text-success">
+                              {t.promoCode} −{t.promoPercentOff}%
+                            </span>
+                          ) : null}
                           {t.proof ? (
                             <ProofOpenButton
                               path={t.proof.path}

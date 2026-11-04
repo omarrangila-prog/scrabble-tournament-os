@@ -31,6 +31,9 @@ export interface StoredEntry {
   paymentStatus: string;
   autoVerified: boolean;
   amountDue: number;
+  /** The code used, and what percentage it took off. Empty when none. */
+  promoCode: string;
+  promoPercentOff: number;
   currency: string;
   proof: StoredProof | null;
   createdAt: string;
@@ -117,6 +120,8 @@ export async function listEntries(): Promise<StoredEntry[]> {
       paymentStatus: String(d.paymentStatus ?? ""),
       autoVerified: d.autoVerified === true,
       amountDue: Number(d.amountDue ?? 0),
+      promoCode: String(d.promoCode ?? ""),
+      promoPercentOff: Number(d.promoPercentOff ?? 0),
       currency: String(d.currency ?? "PKR"),
       proof:
         proof && typeof proof === "object"

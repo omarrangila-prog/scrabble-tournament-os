@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_RULES,
+  amountDue,
   EMPTY_ENTRY,
   ageOf,
   emailOk,
@@ -253,5 +254,51 @@ describe("spots", () => {
     expect(fits("individual", 1)).toBe(true);
     expect(fits("individual", 0)).toBe(false);
     expect(fits("team", null)).toBe(true);
+  });
+});
+
+describe("promo codes", () => {
+  const rules = {
+    ...DEFAULT_RULES,
+    promoCodes: [{ code: "ASMA", label: "ASMA — 40% off", percentOff: 40 }],
+  };
+
+  it("take their percentage off whichever option was chosen", () => {
+    expect(amountDue(solo({ promoCode: "ASMA" }), rules)).toBe(750);
+    expect(amountDue(pair({ promoCode: "ASMA" }), rules)).toBe(1200);
+  });
+
+  it("are found however they are typed", () => {
+    expect(amountDue(solo({ promoCode: " asma " }), rules)).toBe(750);
+  });
+
+  it("change nothing when there is no code, or the code is wrong", () => {
+    expect(amountDue(solo(), rules)).toBe(1250);
+    expect(amountDue(pair(), rules)).toBe(2000);
+    expect(amountDue(solo({ promoCode: "NOPE" }), rules)).toBe(1250);
+  });
+
+  it("make a typed code that is not recognised a problem to fix", () => {
+    expect(
+      problemFor(
+        pictionaryProblems(solo({ promoCode: "NOPE" }), rules),
+        "promo",
+      ),
+    ).toMatch(/not recognised/);
+    expect(
+      problemFor(
+        pictionaryProblems(solo({ promoCode: "ASMA" }), rules),
+        "promo",
+      ),
+    ).toBeUndefined();
+    expect(
+      problemFor(pictionaryProblems(solo({ promoCode: "" }), rules), "promo"),
+    ).toBeUndefined();
+  });
+
+  it("are not a problem when the event has no codes at all", () => {
+    expect(
+      problemFor(pictionaryProblems(solo({ promoCode: "ASMA" })), "promo"),
+    ).toBeUndefined();
   });
 });
