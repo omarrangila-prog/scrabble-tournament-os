@@ -274,6 +274,9 @@ export interface PublicEvent {
 
   prizes: { place: string; award: string }[];
 
+  /** Where the money goes, in one line, when the event is for a cause. */
+  cause?: string;
+
   /**
    * Priority pricing: one price, chosen by coupon, then membership, then the
    * regular fee. Preferred over `rates` where present, because the organizer

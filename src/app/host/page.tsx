@@ -3,9 +3,15 @@
 import * as React from "react";
 import { LogOut, RefreshCw } from "lucide-react";
 
+import { HostRegistrationsTable } from "@/components/organizer/HostRegistrationsTable";
 import { MafiaTable } from "@/components/organizer/MafiaTable";
 import { Button, Card, EmptyState, PageHeader } from "@/components/ui";
 import {
+  listHostRegistrations,
+  type HostRegistration,
+} from "@/lib/supabase/hostRegistrations";
+import {
+  MAFIA_SLUG,
   hostedEvents,
   listMafiaEntries,
   type HostedEvent,
@@ -227,7 +233,9 @@ function HostedEvent({
   email: string;
   onSignOut: () => void | Promise<void>;
 }) {
+  const isMafia = event.slug === MAFIA_SLUG;
   const [entries, setEntries] = React.useState<StoredMafiaEntry[] | null>(null);
+  const [registrations, setRegistrations] = React.useState<HostRegistration[] | null>(null);
   const [problem, setProblem] = React.useState<string | null>(null);
   /* Bumped to ask for the list again: the button, and a gentle timer while the page is open. */
   const [reloads, setReloads] = React.useState(0);
@@ -235,13 +243,19 @@ function HostedEvent({
   React.useEffect(() => {
     let live = true;
     (async () => {
-      const rows = await listMafiaEntries(event.id);
-      if (live) setEntries(rows);
+      /* Mafia Wars keeps its sign-ups apart; every other hosted event takes ordinary registrations. */
+      if (isMafia) {
+        const rows = await listMafiaEntries(event.id);
+        if (live) setEntries(rows);
+      } else {
+        const rows = await listHostRegistrations(event.id);
+        if (live) setRegistrations(rows);
+      }
     })();
     return () => {
       live = false;
     };
-  }, [event.id, reloads]);
+  }, [event.id, isMafia, reloads]);
 
   React.useEffect(() => {
     const id = window.setInterval(() => setReloads((n) => n + 1), 30_000);
@@ -276,7 +290,11 @@ function HostedEvent({
         </p>
       ) : null}
 
-      <MafiaTable entries={entries} onProblem={setProblem} />
+      {isMafia ? (
+        <MafiaTable entries={entries} onProblem={setProblem} />
+      ) : (
+        <HostRegistrationsTable entries={registrations} onProblem={setProblem} />
+      )}
     </div>
   );
 }

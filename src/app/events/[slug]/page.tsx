@@ -345,6 +345,57 @@ export default function PublicEventPage() {
         ) : null}
 
         {/*
+          * Where the money goes, for an event that is held for a cause. Stated by the
+          * organiser and shown exactly as written, above everything else they are asked to
+          * decide on.
+          */}
+        {event.cause ? (
+          <section
+            className="mt-8 rounded-2xl border px-5 py-4 text-center"
+            style={{ borderColor: `${GOLD}66`, background: `${GOLD}1F` }}
+          >
+            <p className="text-[15px] font-bold leading-snug" style={{ color: BROWN }}>
+              {event.cause}
+            </p>
+          </section>
+        ) : null}
+
+        {/* What is on, where an event sells more than one thing. */}
+        {event.activities && event.activities.length > 1 ? (
+          <section className="mt-10">
+            <h2 className="text-[20px] font-extrabold" style={{ color: BROWN }}>
+              What is on
+            </h2>
+            <div
+              className="mt-3 overflow-hidden rounded-2xl border bg-white/70"
+              style={{ borderColor: `${BROWN}1A` }}
+            >
+              {event.activities.map((a, i) => (
+                <div
+                  key={a.key}
+                  className={cn("flex items-baseline justify-between gap-4 p-4", i > 0 && "border-t")}
+                  style={i > 0 ? { borderColor: `${BROWN}14` } : undefined}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-bold" style={{ color: BROWN }}>
+                      {a.label}
+                    </span>
+                    {a.includes ? (
+                      <span className="block text-[12.5px]" style={{ color: `${BROWN}99` }}>
+                        {a.includes}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="num shrink-0 text-[17px] font-extrabold" style={{ color: FOREST }}>
+                    {a.price === 0 ? "Price to be announced" : money(a.price)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/*
           * Choose your experience — only where there is a genuine choice.
           *
           * With a single track the heading and "you can join either, or both"

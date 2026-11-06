@@ -123,6 +123,8 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
         typeof p?.place === "string" && p.place.trim() !== "" && typeof p?.award === "string",
     ),
 
+    cause: typeof d.cause === "string" && d.cause.trim() ? d.cause.trim() : undefined,
+
     subtitle: stored.subtitle ?? undefined,
     participationTracks: ["speed_scrabble"],
 

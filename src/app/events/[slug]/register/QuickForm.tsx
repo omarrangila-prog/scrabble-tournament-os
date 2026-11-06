@@ -199,6 +199,13 @@ export function QuickForm({
     : "";
 
   const activityRate = activities.find((a) => a.key === effectiveActivity) ?? null;
+  /*
+   * An activity priced at zero is one whose price has not been announced yet — an arts and
+   * crafts workshop whose organisers are still working out the cost. Nothing is charged here,
+   * so there is nothing to ask about paying: the form records it as to be settled at the venue
+   * and says plainly that the price is coming, rather than printing "PKR 0".
+   */
+  const priceTba = activityRate !== null && activityRate.price === 0;
 
   /* ---- Pricing --------------------------------------------------------- */
 
@@ -348,8 +355,9 @@ export function QuickForm({
   const problemFor = (field: ParticipantField) => problems.find((p) => p.field === field)?.message;
 
   const activityOk = !asksActivity || activity !== "";
-  const payOk = payment !== null;
-  const proofOk = !proofRequired(payment) || proofFile !== null;
+  const paymentUsed: PaymentChoice | null = priceTba ? "cash" : payment;
+  const payOk = paymentUsed !== null;
+  const proofOk = !proofRequired(paymentUsed) || proofFile !== null;
   const psaOk = !memberRate || psaMember !== null;
   const heardOk = heardAbout !== "";
   const consentOk = photoConsent !== null;
@@ -396,8 +404,8 @@ export function QuickForm({
       category: chosenCategory,
       categoryLabel: categories.find((c) => c.id === chosenCategory)?.name ?? "",
       psaMember: psaMember === true,
-      payment: payment as PaymentChoice,
-      payAtVenue: payment !== "online",
+      payment: paymentUsed as PaymentChoice,
+      payAtVenue: paymentUsed !== "online",
       proofFile,
       heardAbout,
       photoConsent: photoConsent === true,
@@ -618,9 +626,11 @@ export function QuickForm({
                * picker never advertises a number the panel underneath contradicts.
                */
               note: [
-                (activityFloors.get(a.key) ?? a.price) < a.price
-                  ? `from ${money(activityFloors.get(a.key) ?? a.price)}`
-                  : `${money(a.price)} per person`,
+                a.price === 0
+                  ? "Price to be announced"
+                  : (activityFloors.get(a.key) ?? a.price) < a.price
+                    ? `from ${money(activityFloors.get(a.key) ?? a.price)}`
+                    : `${money(a.price)} per person`,
                 a.note,
               ]
                 .filter(Boolean)
@@ -731,6 +741,7 @@ export function QuickForm({
       ) : null}
 
       {/* ---- How they will pay, which is part of the price ---------------- */}
+      {priceTba ? null : (
       <div>
         <span className={heading}>How will you pay?</span>
         {/*
@@ -754,6 +765,7 @@ export function QuickForm({
         )}
         {problem("Please choose how you will pay.", !payOk)}
       </div>
+      )}
 
       {/* ---- What it costs, once both answers are in ---------------------- */}
       {usingActivityPrice ? (
@@ -818,7 +830,7 @@ export function QuickForm({
                                 : "text-faint",
                           )}
                         >
-                          {money(rate.amount)}
+                          {rate.amount === 0 ? "To be announced" : money(rate.amount)}
                         </span>
                         {/*
                           Why a bracket is out of reach, where the reason is something
@@ -923,11 +935,17 @@ export function QuickForm({
           <div className="mt-2.5 border-t border-line pt-2.5 text-center">
             {activityRate && chosenPrice ? (
               <>
-                <p className="text-[14px] font-semibold text-ink">
-                  You pay <span className="num text-primary">{money(quotedTotal)}</span>
-                  {" — "}
-                  {quotedRateLabel}
-                </p>
+                {priceTba ? (
+                  <p className="text-[14px] font-semibold text-ink">
+                    Price to be announced. <span className="text-primary">Nothing to pay now.</span>
+                  </p>
+                ) : (
+                  <p className="text-[14px] font-semibold text-ink">
+                    You pay <span className="num text-primary">{money(quotedTotal)}</span>
+                    {" — "}
+                    {quotedRateLabel}
+                  </p>
+                )}
                 {/*
                   What the code took off, said in money.
                   A percentage is a claim; the rupees are the thing somebody checks against
@@ -1011,7 +1029,7 @@ export function QuickForm({
       )}
 
       <div>
-        {payment === "online" ? (
+        {paymentUsed === "online" ? (
           <div className="mt-2.5 space-y-2.5">
             {event.paymentInstructions ? (
               <div className="whitespace-pre-line rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3 text-[13px] leading-relaxed text-ink">

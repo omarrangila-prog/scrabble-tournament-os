@@ -58,6 +58,8 @@ export interface EventDetails {
   maxPlayers?: number;
   /** What is paid out, as it is read on the event page: a place and its award. */
   prizes?: { place: string; award: string }[];
+  /** A line about where the money goes, shown on the event page and the form. */
+  cause?: string;
   /**
    * Which category the public live results page opens on: a category id, or `all`.
    *

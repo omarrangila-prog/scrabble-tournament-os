@@ -740,6 +740,15 @@ export default function RegisterPage() {
 
         <VenueMap event={event} />
 
+        {event.cause ? (
+          <p
+            className="mt-5 rounded-[18px] border px-4 py-3 text-center text-[14px] font-bold leading-snug"
+            style={{ borderColor: `${GOLD}66`, background: `${GOLD}1F`, color: BROWN }}
+          >
+            {event.cause}
+          </p>
+        ) : null}
+
         <PrizeList prizes={event.prizes} />
 
         <div className="mt-7">
@@ -895,8 +904,10 @@ function GameOnConfirmation({
                 const cut = line.indexOf(": ");
                 return [line.slice(0, cut), line.slice(cut + 2)];
               }),
-              ["Joining", TRACK_LABEL[registration.track]],
-              [pay.amountLabel, money(payable)],
+              /* The activity as the event names it: a workshop is not "Speed Scrabble". */
+              ["Joining", registration.quickAnswers?.activity || TRACK_LABEL[registration.track]],
+              /* Zero means the price has not been announced, not that it is free. */
+              [pay.amountLabel, payable === 0 ? "To be announced" : money(payable)],
               ...(registration.paymentProof
                 ? ([["Payment proof", registration.paymentProof.fileName]] as [string, string][])
                 : []),
