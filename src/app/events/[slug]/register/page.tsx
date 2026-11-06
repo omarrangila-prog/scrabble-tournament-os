@@ -902,7 +902,12 @@ function GameOnConfirmation({
                 paintingName: registration.quickAnswers?.paintingName,
               }).map((line): [string, string] => {
                 const cut = line.indexOf(": ");
-                return [line.slice(0, cut), line.slice(cut + 2)];
+                const label = line.slice(0, cut);
+                /* The workshop is named as the event names it, not always "Painting". */
+                return [
+                  label === "Painting" ? registration.quickAnswers?.activity || label : label,
+                  line.slice(cut + 2),
+                ];
               }),
               /* The activity as the event names it: a workshop is not "Speed Scrabble". */
               ["Joining", registration.quickAnswers?.activity || TRACK_LABEL[registration.track]],
