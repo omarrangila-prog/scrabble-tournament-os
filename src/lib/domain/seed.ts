@@ -69,9 +69,8 @@ export const DIVISIONS: Division[] = [
    * nobody could be placed in, which is how two screens came to default to an
    * empty table.
    */
-  { id: "advanced", name: "Advanced", shortName: "ADV", accent: "secondary" },
-  { id: "recreational", name: "Recreational", shortName: "REC", accent: "success" },
-  { id: "beginner", name: "Beginner", shortName: "NOV", accent: "warning" },
+  { id: "beginner", name: "Beginner", shortName: "BEG", accent: "warning" },
+  { id: "masters", name: "Masters", shortName: "MAS", accent: "secondary" },
 ];
 
 /**
@@ -110,7 +109,7 @@ export const TOURNAMENT: Tournament = {
   totalRounds: 5,
   currentRound: 0,
   // The three the event actually runs. Masters was removed by the organizer.
-  divisions: ["advanced", "recreational", "beginner"],
+  divisions: ["beginner", "masters"],
   rankingRules: ["wins", "spread", "head-to-head"],
   constraints: {
     avoidRepeatOpponents: true,

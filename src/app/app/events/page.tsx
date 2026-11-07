@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, DoorOpen, Eye, EyeOff, Plus, RefreshCw } from "lucide-react";
+import { CalendarPlus, DoorOpen, Eye, EyeOff, LayoutDashboard, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import {
   Badge,
@@ -15,6 +15,7 @@ import {
   Stat,
 } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
+import { DeleteEventModal, EditEventModal } from "@/components/organizer/EventEditDelete";
 import { useCurrentEvent } from "@/lib/supabase/useCurrentEvent";
 import { EVENT_STATE_LABEL, type EventState } from "@/lib/domain/events";
 import { listEvents, setEventVisibility, type StoredEvent } from "@/lib/supabase/events";
@@ -40,6 +41,8 @@ export default function EventsPage() {
   const [loaded, setLoaded] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState<StoredEvent | null>(null);
+  const [deleting, setDeleting] = React.useState<StoredEvent | null>(null);
 
   // A counter, so refreshing is a state change rather than a call from an effect.
   const [reloads, setReloads] = React.useState(0);
@@ -286,6 +289,36 @@ export default function EventsPage() {
 
                       <Button
                         size="sm"
+                        variant="secondary"
+                        icon={<Pencil className="size-3.5" />}
+                        onClick={() => setEditing(event)}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<Trash2 className="size-3.5" />}
+                        onClick={() => setDeleting(event)}
+                      >
+                        Delete
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<LayoutDashboard className="size-3.5" />}
+                        onClick={() => {
+                          currentEvent.setCurrentEventId(event.id);
+                          router.push("/app/manage");
+                        }}
+                      >
+                        Manage
+                      </Button>
+
+                      <Button
+                        size="sm"
                         variant="primary"
                         onClick={() => {
                           currentEvent.setCurrentEventId(event.id);
@@ -302,6 +335,29 @@ export default function EventsPage() {
           </div>
         )}
       </RosterGate>
+
+      {editing ? (
+        <EditEventModal
+          event={editing}
+          by={app.currentUser?.name ?? "Director"}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setReloads((n) => n + 1);
+            app.toast({ title: "Event saved", description: "", tone: "success" });
+          }}
+        />
+      ) : null}
+      {deleting ? (
+        <DeleteEventModal
+          event={deleting}
+          by={app.currentUser?.name ?? "Director"}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => {
+            setReloads((n) => n + 1);
+            app.toast({ title: "Event deleted", description: "", tone: "info" });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -385,7 +385,7 @@ function WalkInModal({
     fullName: "",
     mobile: "",
     area: "",
-    level: "recreational",
+    level: "beginner",
     amount: String(ALPHABATTLE_PRICES.base),
   });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -395,7 +395,7 @@ function WalkInModal({
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const reset = () => {
-    setForm({ fullName: "", mobile: "", area: "", level: "recreational", amount: String(ALPHABATTLE_PRICES.base) });
+    setForm({ fullName: "", mobile: "", area: "", level: "beginner", amount: String(ALPHABATTLE_PRICES.base) });
     setErrors({});
     setCode(null);
   };

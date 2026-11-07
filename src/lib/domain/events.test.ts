@@ -413,9 +413,9 @@ describe("seeded event data", () => {
     }
   });
 
-  it("offers AlphaBattle the three categories the organizer named", () => {
+  it("offers AlphaBattle the two categories the organizer now runs", () => {
     const alphaBattle = seed.events.find((e) => e.slug === "alphabattle-23-august");
-    expect(alphaBattle?.divisions).toEqual(["beginner", "recreational", "advanced"]);
+    expect(alphaBattle?.divisions).toEqual(["beginner", "advanced"]);
     // Masters would imply a standard this event does not claim to run.
     expect(alphaBattle?.divisions).not.toContain("masters");
   });

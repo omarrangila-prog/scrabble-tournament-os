@@ -48,7 +48,7 @@ const filled = (): Record<string, string> => ({
   phone: "0300 1234567",
   dob: "2004-03-15",
   experience: "1–3 years",
-  division: "Advanced",
+  division: "Masters",
   city: "Karachi",
   club: "Karachi Scrabble Club",
   paymentMethod: "Bank transfer",

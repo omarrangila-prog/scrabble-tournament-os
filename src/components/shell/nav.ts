@@ -7,6 +7,7 @@ import {
   CircleHelp,
   ClipboardList,
   Gauge,
+  LayoutDashboard,
   GraduationCap,
   Drama,
   Palette,
@@ -51,6 +52,8 @@ export const NAV_ITEMS: NavItem[] = [
    * behind knowing it existed.
    */
   { href: "/app/events", label: "Tournaments", icon: CalendarDays },
+  /* Everything for one tournament on a single page: students, pairings, tables, scores, standings. */
+  { href: "/app/manage", label: "Tournament Manager", icon: LayoutDashboard },
   /*
    * The database-backed list, now inside the dashboard shell rather than on its own
    * page. One set of navigation, so no screen is a dead end.

@@ -252,7 +252,7 @@ const ALPHABATTLE: PublicEvent = {
   rounds: 5,
   roundMinutes: 20,
   breakMinutes: 0,
-  divisions: ["beginner", "recreational", "advanced"],
+  divisions: ["beginner", "advanced"],
 
   /*
    * What the fee covers, so it can be badged on the card rather than buried in

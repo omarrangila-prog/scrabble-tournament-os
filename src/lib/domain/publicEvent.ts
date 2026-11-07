@@ -40,7 +40,7 @@ function stateOf(value: string): EventState {
  * standings are built around. A created event that named none would otherwise offer a
  * participant no category to enter.
  */
-const DEFAULT_DIVISIONS: PlayerCategory[] = ["beginner", "recreational", "advanced"];
+const DEFAULT_DIVISIONS: PlayerCategory[] = ["beginner", "masters"];
 
 export function publicEventFromStored(stored: StoredEvent): PublicEvent {
   const d = stored.details;

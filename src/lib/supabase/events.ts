@@ -27,6 +27,9 @@ export interface EventDetails {
   rounds?: number;
   roundMinutes?: number;
   /** Shown on the registration form when paying online. */
+  /** Named groups of players (a school's sections). Pairing can stay within a section. */
+  sections?: string[];
+  pairWithinSections?: boolean;
   paymentInstructions?: string;
   /** Shown on the registration form above the "I understand and agree" box. */
   terms?: string;

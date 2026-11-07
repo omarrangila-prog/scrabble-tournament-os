@@ -633,7 +633,7 @@ export function defaultForm(eventId: string): RegistrationForm {
       }),
       f("division", "select", "Preferred playing level", {
         mapsTo: "category",
-        options: ["Beginner", "Recreational", "Advanced", "Masters"],
+        options: ["Beginner", "Masters"],
         hint: "Your preferred level is a request. Final placement is confirmed using tournament history, rating and organizer approval.",
       }),
       f("previousEvents", "textarea", "Previous tournaments played", { required: false }),

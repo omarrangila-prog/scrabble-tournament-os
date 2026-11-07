@@ -1653,7 +1653,6 @@ function ReviewBlock({
 
 const LEVELS: { value: PlayerCategory; label: string }[] = [
   { value: "beginner", label: "New to the game / Beginner" },
-  { value: "recreational", label: "Intermediate / Recreational" },
   { value: "advanced", label: "Regular / Advanced" },
 ];
 
