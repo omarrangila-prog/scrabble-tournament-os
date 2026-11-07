@@ -341,7 +341,7 @@ export default function ManagePage() {
         </Button>
       ),
     };
-  else next = { text: `Round ${round} is being played. Enter each score in step 3.` };
+  else next = { text: `Round ${round} is being played. Enter each score in step 2.` };
 
   return (
     <div className="mx-auto max-w-[1100px] space-y-5 pb-16">
