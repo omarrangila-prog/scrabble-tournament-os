@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
   MessageCircle,
+  Pencil,
   Plus,
   RefreshCw,
   Send,
@@ -18,6 +20,7 @@ import {
 
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, Progress, Select, Textarea } from "@/components/ui";
 import { RosterGate } from "@/components/organizer/RosterGate";
+import { DeleteEventModal, EditEventModal } from "@/components/organizer/EventEditDelete";
 import { useStore } from "@/lib/store/useStore";
 import { useCurrentEvent, useEventById } from "@/lib/supabase/useCurrentEvent";
 import { useRoster } from "@/lib/supabase/useRoster";
@@ -85,6 +88,9 @@ const nextKey = () => `b${++keySeed}`;
 
 export default function ManagePage() {
   const app = useStore();
+  const router = useRouter();
+  const [editing, setEditing] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const current = useCurrentEvent();
   const eventId = current.eventId;
   const { event, reload: reloadEvent } = useEventById(eventId);
@@ -553,9 +559,22 @@ export default function ManagePage() {
         title={event?.name ?? "Tournament"}
         subtitle="Everything for this tournament on one page: students, pairings, tables, scores and standings."
         actions={
-          <Button variant="secondary" icon={<RefreshCw className="size-4" />} onClick={reloadAll}>
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/app/events/new">
+              <Button variant="primary" icon={<Plus className="size-4" />}>
+                New tournament
+              </Button>
+            </Link>
+            <Button variant="secondary" icon={<Pencil className="size-4" />} disabled={!event} onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+            <Button variant="secondary" icon={<Trash2 className="size-4" />} disabled={!event} onClick={() => setDeleting(true)}>
+              Delete
+            </Button>
+            <Button variant="secondary" icon={<RefreshCw className="size-4" />} onClick={reloadAll}>
+              Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -693,6 +712,21 @@ export default function ManagePage() {
           sectionById={sectionById}
         />
       </RosterGate>
+
+      {editing && event ? (
+        <EditEventModal event={event} by={by} onClose={() => setEditing(false)} onSaved={reloadAll} />
+      ) : null}
+      {deleting && event ? (
+        <DeleteEventModal
+          event={event}
+          by={by}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => {
+            current.reload();
+            router.push("/app/events");
+          }}
+        />
+      ) : null}
     </div>
   );
 }
