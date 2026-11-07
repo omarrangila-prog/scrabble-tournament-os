@@ -29,7 +29,7 @@ import { useEventCategories, writeEventCategories } from "@/lib/supabase/useEven
 import { useTablePlan, writeTablePlan } from "@/lib/supabase/useTablePlan";
 import { writeEventDetails } from "@/lib/supabase/useEventDetails";
 import { setEventPhase } from "@/lib/supabase/useEventState";
-import { staffCheckIn, answer, listRegistrations } from "@/lib/supabase/organizer";
+import { staffCheckIn, answer, listRegistrations, type OrganizerRegistration } from "@/lib/supabase/organizer";
 import { useRoundTimerControls } from "@/lib/supabase/useRoundTimer";
 import type { StoredEvent } from "@/lib/supabase/events";
 import { clearResult, clearRound, publishRound, recordResult } from "@/lib/supabase/games";
@@ -384,7 +384,7 @@ export default function ManagePage() {
   const setMode = async (m: "beginner" | "masters" | "both"): Promise<string> => {
     const list = m === "beginner" ? [BEGINNER] : m === "masters" ? [MASTERS] : [BEGINNER, MASTERS];
     const out = await writeEventCategories(eventId, list, by);
-    if (!out.ok) return `I could not change the categories: ${out.message}`;
+    if (!out.ok) return `I could not change the categories: ${out.message} Use the "Who plays" buttons in Setup: they let you choose where those players go.`;
     cats.reload();
     return m === "both" ? "Both Beginners and Masters will play." : `${m === "beginner" ? "Beginners" : "Masters"} only.`;
   };
@@ -619,6 +619,7 @@ export default function ManagePage() {
           tablePlan={tablePlan.plan}
           totalRounds={totalRounds}
           minutesFor={minutesFor}
+          registrations={roster.registrations}
           by={by}
           onSaved={reloadAll}
           toast={toast}
@@ -742,6 +743,7 @@ function SetupCard({
   tablePlan,
   totalRounds,
   minutesFor,
+  registrations,
   by,
   onSaved,
   toast,
@@ -752,10 +754,13 @@ function SetupCard({
   tablePlan: { division: string; tables: number[] }[];
   totalRounds: number;
   minutesFor: (round: number) => number;
+  registrations: OrganizerRegistration[];
   by: string;
   onSaved: () => void;
   toast: Toast;
 }) {
+  /** A change of categories that has people in the ones being removed, waiting for the director to say where they go. */
+  const [pending, setPending] = React.useState<{ mode: CategoryMode; list: Division[]; moves: Record<string, string> } | null>(null);
   const [timeText, setTimeText] = React.useState<Record<number, string>>({});
   const ids = categories.map((c) => c.id);
   const mode: CategoryMode | null =
@@ -789,9 +794,23 @@ function SetupCard({
     return out.ok;
   };
 
+  const rawCategory = (r: OrganizerRegistration) => String(r.data.confirmedDivision ?? r.data.preferredDivision ?? "");
+
   const setMode = async (m: CategoryMode) => {
-    setBusy(true);
     const list = m === "beginner" ? [BEGINNER] : m === "masters" ? [MASTERS] : [BEGINNER, MASTERS];
+    const keep = new Set(list.map((c) => c.id));
+    const stranded = registrations.filter((r) => !keep.has(rawCategory(r)));
+    if (stranded.length > 0) {
+      /* Somebody is in a category that is going. Ask where they go; never decide it for the director. */
+      const moves: Record<string, string> = {};
+      for (const id of new Set(stranded.map(rawCategory))) {
+        const top = /master|premier|advanced|expert/i.test(id);
+        moves[id] = top && keep.has("masters") ? "masters" : keep.has("beginner") ? "beginner" : list[0].id;
+      }
+      setPending({ mode: m, list, moves });
+      return;
+    }
+    setBusy(true);
     const out = await writeEventCategories(eventId, list, by);
     setBusy(false);
     if (!out.ok) {
@@ -799,6 +818,35 @@ function SetupCard({
       return;
     }
     onSaved();
+  };
+
+  const applyPending = async () => {
+    if (!pending) return;
+    const keep = new Set(pending.list.map((c) => c.id));
+    setBusy(true);
+    for (const r of registrations.filter((x) => !keep.has(rawCategory(x)))) {
+      const problem = await callRpc("staff_update_student", {
+        p_record_id: r.id,
+        p_name: r.fullName,
+        p_category: pending.moves[rawCategory(r)],
+        p_section: answer(r, "section") ?? "",
+        p_by: by,
+      });
+      if (problem) {
+        setBusy(false);
+        toast({ title: `Could not move ${r.fullName}`, description: problem, tone: "critical" });
+        return;
+      }
+    }
+    const out = await writeEventCategories(eventId, pending.list, by);
+    setBusy(false);
+    if (!out.ok) {
+      toast({ title: "Categories not changed", description: out.message ?? "", tone: "critical" });
+      return;
+    }
+    setPending(null);
+    onSaved();
+    toast({ title: "Categories changed", description: "Everyone was moved where you chose.", tone: "success" });
   };
 
   const saveSections = async () => {
@@ -853,6 +901,42 @@ function SetupCard({
           <p className="mt-1.5 text-[12px] text-muted">
             {mode ? "Players are paired inside their category." : `Categories now: ${categories.map((c) => c.name).join(", ") || "none"}.`}
           </p>
+          {pending ? (
+            <div className="mt-3 space-y-2.5 rounded-control border border-warning bg-warning-050 p-3.5">
+              <p className="text-[13px] font-semibold text-ink">
+                Some players are in a category that is being removed. Choose where each group goes.
+              </p>
+              {Object.entries(pending.moves).map(([from, to]) => {
+                const count = registrations.filter((r) => rawCategory(r) === from).length;
+                return (
+                  <div key={from} className="flex flex-wrap items-center gap-2 text-[13px] text-ink">
+                    <span className="min-w-[10rem]">
+                      {categories.find((c) => c.id === from)?.name ?? from}: {count} player{count === 1 ? "" : "s"} to
+                    </span>
+                    <Select
+                      className="h-9 w-40"
+                      value={to}
+                      onChange={(e) => setPending({ ...pending, moves: { ...pending.moves, [from]: e.target.value } })}
+                    >
+                      {pending.list.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                );
+              })}
+              <div className="flex gap-2">
+                <Button size="sm" variant="primary" disabled={busy} onClick={() => void applyPending()}>
+                  {busy ? "Moving…" : "Move them and change categories"}
+                </Button>
+                <Button size="sm" variant="secondary" disabled={busy} onClick={() => setPending(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div>
