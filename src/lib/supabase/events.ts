@@ -29,6 +29,8 @@ export interface EventDetails {
   /** Shown on the registration form when paying online. */
   /** Named groups of players (a school's sections). Pairing can stay within a section. */
   sections?: string[];
+  /** Minutes for each round in turn (round 1 first); a round without an entry uses `roundMinutes`. */
+  roundTimes?: number[];
   pairWithinSections?: boolean;
   paymentInstructions?: string;
   /** Shown on the registration form above the "I understand and agree" box. */

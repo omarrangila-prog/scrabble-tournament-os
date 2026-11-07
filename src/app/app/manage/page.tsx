@@ -5,8 +5,11 @@ import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
+  MessageCircle,
   Plus,
   RefreshCw,
+  Send,
+  Timer,
   Shuffle,
   Trash2,
   Trophy,
@@ -23,13 +26,16 @@ import { useEventCategories, writeEventCategories } from "@/lib/supabase/useEven
 import { useTablePlan, writeTablePlan } from "@/lib/supabase/useTablePlan";
 import { writeEventDetails } from "@/lib/supabase/useEventDetails";
 import { setEventPhase } from "@/lib/supabase/useEventState";
-import { staffCheckIn, answer } from "@/lib/supabase/organizer";
+import { staffCheckIn, answer, listRegistrations } from "@/lib/supabase/organizer";
+import { useRoundTimerControls } from "@/lib/supabase/useRoundTimer";
+import type { StoredEvent } from "@/lib/supabase/events";
 import { clearResult, clearRound, publishRound, recordResult } from "@/lib/supabase/games";
 import { supabase } from "@/lib/supabase/client";
 import { generateRound } from "@/lib/engine/pairing";
 import { computeStandings } from "@/lib/engine/standings";
 import { validateBoardPlan, type BoardPlan, type GameRow } from "@/lib/domain/games";
 import { formatTableSpec, parseTableSpec } from "@/lib/domain/tables";
+import { COMMAND_EXAMPLES, parseCommand, parseDuration, parseRoster, type RosterRow } from "@/lib/domain/managerCommands";
 import type { Division, Player } from "@/lib/domain/types";
 
 /**
@@ -66,6 +72,14 @@ interface Draft {
   boards: DraftBoard[];
 }
 
+/** One database call, answered with the database's own refusal in words, or null when it worked. */
+async function callRpc(fn: string, args: Record<string, unknown>): Promise<string | null> {
+  const db = supabase();
+  if (!db) return "The database is not reachable right now.";
+  const { error } = await db.rpc(fn, args);
+  return error ? error.message.replace(/^.*?:\s*/, "") : null;
+}
+
 let keySeed = 0;
 const nextKey = () => `b${++keySeed}`;
 
@@ -85,11 +99,15 @@ export default function ManagePage() {
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const [viewRound, setViewRound] = React.useState<number | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [importText, setImportText] = React.useState("");
+  const clock = useRoundTimerControls(eventId, games.round, by);
 
   const categories = cats.categories;
   const sections = React.useMemo(() => event?.details.sections ?? [], [event]);
   const pairWithin = sections.length > 0 && event?.details.pairWithinSections !== false;
   const totalRounds = event?.details.rounds ?? 3;
+  /** Each round has its own length; one without an entry uses the event's. */
+  const minutesFor = (r: number) => event?.details.roundTimes?.[r - 1] ?? event?.details.roundMinutes ?? 20;
 
   const players = React.useMemo(
     () => roster.players.filter((p) => p.checkIn !== "withdrawn"),
@@ -305,6 +323,192 @@ export default function ManagePage() {
     });
   };
 
+  /* ---- Chat ------------------------------------------------------------- */
+
+  const saveDetails = async (patch: Record<string, unknown>): Promise<boolean> => {
+    if (!event) return false;
+    const out = await writeEventDetails(
+      eventId,
+      { name: event.name, subtitle: event.subtitle ?? "", details: { startDate: event.details.startDate, ...patch } },
+      by,
+    );
+    if (!out.ok) toast({ title: "Not saved", description: out.message ?? "", tone: "critical" });
+    else reloadEvent();
+    return out.ok;
+  };
+
+  const findStudents = (name: string, section?: string): Player[] => {
+    const n = name.trim().toLowerCase();
+    const inSection = (p: Player) => !section || (sectionById.get(p.id) ?? "").toLowerCase() === section.toLowerCase();
+    const pool = roster.players.filter((p) => p.checkIn !== "withdrawn" && inSection(p));
+    const exact = pool.filter((p) => p.fullName.toLowerCase() === n);
+    if (exact.length) return exact;
+    const starts = pool.filter((p) => p.fullName.toLowerCase().startsWith(n));
+    return starts.length ? starts : pool.filter((p) => p.fullName.toLowerCase().includes(n));
+  };
+
+  const which = (name: string, hits: Player[]): string =>
+    hits.length === 0
+      ? `I could not find a student called ${name}.`
+      : `There is more than one ${name}: ${hits
+          .map((p) => `${p.fullName} (${sectionById.get(p.id) || "no section"})`)
+          .join(", ")}. Say which, for example "${name} (${sectionById.get(hits[0].id) || "Section A"})".`;
+
+  const addStudents = async (rows: RosterRow[]): Promise<{ added: number; failed: string[] }> => {
+    const known = new Set(sections);
+    const newSections = [...new Set(rows.map((r) => r.section).filter((x) => x && !known.has(x)))];
+    if (newSections.length) await saveDetails({ sections: [...sections, ...newSections] });
+    let added = 0;
+    const failed: string[] = [];
+    for (const r of rows) {
+      const problem = await callRpc("staff_add_student", {
+        p_event_id: eventId,
+        p_name: r.name,
+        p_category: r.category ?? categories[0]?.id ?? "beginner",
+        p_section: r.section,
+        p_by: by,
+      });
+      if (problem) failed.push(`${r.name} (${problem})`);
+      else added += 1;
+    }
+    roster.reload();
+    return { added, failed };
+  };
+
+  const setMode = async (m: "beginner" | "masters" | "both"): Promise<string> => {
+    const list = m === "beginner" ? [BEGINNER] : m === "masters" ? [MASTERS] : [BEGINNER, MASTERS];
+    const out = await writeEventCategories(eventId, list, by);
+    if (!out.ok) return `I could not change the categories: ${out.message}`;
+    cats.reload();
+    return m === "both" ? "Both Beginners and Masters will play." : `${m === "beginner" ? "Beginners" : "Masters"} only.`;
+  };
+
+  /** Runs what was typed and says what happened. Anything it does not understand is left alone. */
+  const execute = async (input: string): Promise<string> => {
+    const lines = input.split("\n").filter((l) => l.trim());
+    if (lines.length >= 3) {
+      const rows = parseRoster(input, sections);
+      if (rows.length >= 2) {
+        setImportText(input);
+        return `I read ${rows.length} students. Check the list in step 1 and press Import.`;
+      }
+    }
+
+    const cmd = parseCommand(input);
+    switch (cmd.kind) {
+      case "help":
+        return `Type what you want in your own words. For example:\n${COMMAND_EXAMPLES.map((e) => `• ${e}`).join("\n")}\nYou can also paste a list of students.`;
+      case "status":
+        return `${players.length} students. ${
+          round === 0 ? "No round yet." : `Round ${round} of ${totalRounds}, ${games.progress.verified} of ${games.progress.totalBoards} scores in.`
+        } ${next.text}`;
+      case "add": {
+        const rows = cmd.names.map((name) => ({ name, section: cmd.section ?? "", category: cmd.category }));
+        const { added, failed } = await addStudents(rows);
+        return `${added} student${added === 1 ? "" : "s"} added${cmd.section ? ` to ${cmd.section}` : ""}.${failed.length ? ` Could not add: ${failed.join("; ")}` : ""}`;
+      }
+      case "rename": {
+        const hits = findStudents(cmd.from);
+        if (hits.length !== 1) return which(cmd.from, hits);
+        const p = hits[0];
+        const problem = await callRpc("staff_update_student", { p_record_id: p.id, p_name: cmd.to, p_category: p.division, p_section: sectionById.get(p.id) ?? "", p_by: by });
+        roster.reload();
+        return problem ?? `${p.fullName} is now ${cmd.to}.`;
+      }
+      case "move": {
+        const hits = findStudents(cmd.name, cmd.fromSection);
+        if (hits.length !== 1) return which(cmd.name, hits);
+        const p = hits[0];
+        if (cmd.section && !sections.includes(cmd.section)) await saveDetails({ sections: [...sections, cmd.section] });
+        const problem = await callRpc("staff_update_student", {
+          p_record_id: p.id,
+          p_name: p.fullName,
+          p_category: cmd.category ?? p.division,
+          p_section: cmd.section ?? sectionById.get(p.id) ?? "",
+          p_by: by,
+        });
+        roster.reload();
+        return problem ?? `${p.fullName} moved to ${cmd.section ?? categoryName(cmd.category ?? p.division)}.`;
+      }
+      case "delete": {
+        const hits = findStudents(cmd.name, cmd.section);
+        if (hits.length !== 1) return which(cmd.name, hits);
+        if (!window.confirm(`Delete ${hits[0].fullName}?`)) return "Left as it was.";
+        const problem = await callRpc("staff_delete_student", { p_record_id: hits[0].id, p_by: by });
+        roster.reload();
+        return problem ?? `${hits[0].fullName} deleted.`;
+      }
+      case "pair":
+        startDraft(cmd.mode === "auto");
+        return cmd.mode === "auto" ? "Pairings drafted in step 2. Check them, then say publish." : "A blank round is open in step 2. Choose the boards, then say publish.";
+      case "publish":
+        if (!draft) return "There is no draft to publish. Say pair first.";
+        await publishDraft();
+        return "Publishing…";
+      case "clock": {
+        if (round === 0) return "No round is published yet.";
+        const done =
+          cmd.action === "start"
+            ? await clock.start(minutesFor(round))
+            : cmd.action === "pause"
+              ? await clock.pause()
+              : cmd.action === "resume"
+                ? await clock.resume()
+                : await clock.end();
+        return done ? `Round ${round} clock: ${cmd.action === "start" ? `started, ${minutesFor(round)} minutes` : cmd.action}.` : "The clock did not change.";
+      }
+      case "extend": {
+        if (round === 0) return "No round is running.";
+        const done = await clock.extend(cmd.minutes, "Added from the tournament manager", by);
+        return done ? `${cmd.minutes} minutes added to round ${round}.` : "The clock did not change.";
+      }
+      case "round-times": {
+        const count = Math.max(totalRounds, ...cmd.items.map((i) => (i.round === "all" ? 0 : i.round)));
+        const times = Array.from({ length: count }, (_, i) => minutesFor(i + 1));
+        let all: number | null = null;
+        for (const it of cmd.items) {
+          if (it.round === "all") {
+            all = it.minutes;
+            times.fill(it.minutes);
+          } else times[it.round - 1] = it.minutes;
+        }
+        const ok = await saveDetails({ roundTimes: times, ...(all !== null ? { roundMinutes: all } : {}) });
+        return ok ? `Round times: ${times.map((m, i) => `round ${i + 1} ${m} min`).join(", ")}.` : "Not saved.";
+      }
+      case "rounds": {
+        if (cmd.count < Math.max(1, round)) return `Round ${round} has already been played, so there must be at least ${Math.max(1, round)} rounds.`;
+        const ok = await saveDetails({ rounds: Math.min(12, cmd.count) });
+        return ok ? `Now ${Math.min(12, cmd.count)} rounds.` : "Not saved.";
+      }
+      case "sections": {
+        const ok = await saveDetails({ sections: cmd.names });
+        return ok ? `Sections: ${cmd.names.join(", ")}.` : "Not saved.";
+      }
+      case "mode":
+        return setMode(cmd.mode);
+      case "score": {
+        const a = findStudents(cmd.a);
+        const b = findStudents(cmd.b);
+        if (a.length !== 1) return which(cmd.a, a);
+        if (b.length !== 1) return which(cmd.b, b);
+        const game = roundGames.find(
+          (g) => (g.playerA === a[0].id && g.playerB === b[0].id) || (g.playerA === b[0].id && g.playerB === a[0].id),
+        );
+        if (!game) return `${a[0].fullName} and ${b[0].fullName} are not on the same board in round ${round}.`;
+        const flip = game.playerA === b[0].id;
+        const out = await recordResult(game.id, flip ? cmd.scoreB : cmd.scoreA, flip ? cmd.scoreA : cmd.scoreB, by, "", eventId);
+        games.reload();
+        return out.ok ? `Saved: ${a[0].fullName} ${cmd.scoreA}, ${b[0].fullName} ${cmd.scoreB}.` : out.message;
+      }
+      case "finish":
+        if (!roundDone || round < totalRounds) return `Not yet. Round ${Math.max(round, 1)} of ${totalRounds} still needs its scores.`;
+        await finishTournament();
+        return "Finishing…";
+      default:
+        return `I did not understand that. Say "help" to see what I can do, or paste a list of students.`;
+    }
+  };
+
   /* ---- Render ----------------------------------------------------------- */
 
   if (!eventId) {
@@ -387,12 +591,15 @@ export default function ManagePage() {
           </div>
         </Card>
 
+        <ChatCard onSend={execute} />
+
         <SetupCard
           eventId={eventId}
           event={event}
           categories={categories}
           tablePlan={tablePlan.plan}
           totalRounds={totalRounds}
+          minutesFor={minutesFor}
           by={by}
           onSaved={reloadAll}
           toast={toast}
@@ -405,6 +612,10 @@ export default function ManagePage() {
           sections={sections}
           sectionById={sectionById}
           notHere={notHere}
+          importText={importText}
+          setImportText={setImportText}
+          events={current.events.filter((e) => e.id !== eventId)}
+          addStudents={addStudents}
           by={by}
           locked={games.games.length > 0}
           onChanged={() => {
@@ -451,6 +662,8 @@ export default function ManagePage() {
                 Choose Pair automatically, or Pair by hand to choose every board yourself.
               </p>
             ) : (
+              <>
+              <RoundClock round={round} minutes={minutesFor(round)} clock={clock} />
               <PublishedBoards
                 eventId={eventId}
                 games={games.games}
@@ -465,6 +678,7 @@ export default function ManagePage() {
                 onEditPairings={() => void editPublishedRound()}
                 toast={toast}
               />
+              </>
             )}
           </div>
         </Card>
@@ -493,6 +707,7 @@ function SetupCard({
   categories,
   tablePlan,
   totalRounds,
+  minutesFor,
   by,
   onSaved,
   toast,
@@ -502,10 +717,12 @@ function SetupCard({
   categories: Division[];
   tablePlan: { division: string; tables: number[] }[];
   totalRounds: number;
+  minutesFor: (round: number) => number;
   by: string;
   onSaved: () => void;
   toast: Toast;
 }) {
+  const [timeText, setTimeText] = React.useState<Record<number, string>>({});
   const ids = categories.map((c) => c.id);
   const mode: CategoryMode | null =
     ids.length === 1 && ids[0] === "beginner"
@@ -658,6 +875,39 @@ function SetupCard({
           </div>
           <p className="mt-1.5 text-[12px] text-muted">Boards are seated at these tables. You can still change any table below.</p>
         </div>
+
+        <div className="lg:col-span-2">
+          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Time for each round</span>
+          <div className="flex flex-wrap gap-3">
+            {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
+              <label key={r} className="flex items-center gap-2 text-[13px] text-muted">
+                Round {r}
+                <Input
+                  className="h-9 w-28"
+                  value={timeText[r] ?? `${minutesFor(r)} min`}
+                  onChange={(e) => setTimeText((t) => ({ ...t, [r]: e.target.value }))}
+                  onBlur={async () => {
+                    const typed = timeText[r];
+                    if (typed === undefined) return;
+                    const minutes = parseDuration(typed);
+                    if (minutes === null) {
+                      toast({ title: "Not a time", description: 'Write it like "25", "25 min" or "1h 15m".', tone: "warning" });
+                      setTimeText((t) => Object.fromEntries(Object.entries(t).filter(([k]) => Number(k) !== r)));
+                      return;
+                    }
+                    const times = Array.from({ length: totalRounds }, (_, i) => minutesFor(i + 1));
+                    times[r - 1] = minutes;
+                    const ok = await saveDetails({ roundTimes: times });
+                    setTimeText((t) => Object.fromEntries(Object.entries(t).filter(([k]) => Number(k) !== r)));
+                    if (ok) onSaved();
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[12px] text-muted">Write it any way you like: 25, 25 min, 1h, 1h 30m. Each round can be different.</p>
+        </div>
       </div>
     </Card>
   );
@@ -674,6 +924,10 @@ function StudentsCard({
   sections,
   sectionById,
   notHere,
+  importText,
+  setImportText,
+  events,
+  addStudents,
   by,
   locked,
   onChanged,
@@ -685,6 +939,10 @@ function StudentsCard({
   sections: string[];
   sectionById: Map<string, string>;
   notHere: Player[];
+  importText: string;
+  setImportText: (t: string) => void;
+  events: StoredEvent[];
+  addStudents: (rows: RosterRow[]) => Promise<{ added: number; failed: string[] }>;
   by: string;
   locked: boolean;
   onChanged: () => void;
@@ -693,8 +951,8 @@ function StudentsCard({
   const [name, setName] = React.useState("");
   const [section, setSection] = React.useState("");
   const [category, setCategory] = React.useState("");
-  const [paste, setPaste] = React.useState("");
   const [showPaste, setShowPaste] = React.useState(false);
+  const [source, setSource] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [filter, setFilter] = React.useState("");
 
@@ -721,32 +979,43 @@ function StudentsCard({
     onChanged();
   };
 
-  /** "Section A:" starts a section; every other line is a student. */
-  const addPasted = async () => {
-    let currentSection = section;
-    const rows: { name: string; section: string }[] = [];
-    for (const raw of paste.split("\n")) {
-      const line = raw.trim();
-      if (!line) continue;
-      const header = line.match(/^(section\s*[\w-]+|[\w ]+?)\s*:\s*$/i);
-      if (header) {
-        const found = sections.find((s) => s.toLowerCase() === header[1].trim().toLowerCase());
-        currentSection = found ?? header[1].trim();
-        continue;
-      }
-      rows.push({ name: line.replace(/^[-*\d.\s]+/, "").trim(), section: currentSection });
-    }
-    if (!rows.length) return;
+  /** What the pasted text, file or other tournament would add, read as the list will be imported. */
+  const parsed = React.useMemo(() => {
+    const have = new Set(players.map((p) => `${(sectionById.get(p.id) ?? "").toLowerCase()}|${p.fullName.toLowerCase()}`));
+    return parseRoster(importText, sections, section).map((r) => ({
+      ...r,
+      duplicate: have.has(`${r.section.toLowerCase()}|${r.name.toLowerCase()}`),
+    }));
+  }, [importText, sections, section, players, sectionById]);
+  const fresh = parsed.filter((r) => !r.duplicate);
+
+  const importAll = async () => {
+    if (!fresh.length) return;
     setBusy(true);
-    let failed = 0;
-    for (const r of rows) {
-      if (await add(r.name, r.section, defaultCategory)) failed += 1;
-    }
+    const { added, failed } = await addStudents(fresh.map((r) => ({ name: r.name, section: r.section, category: r.category ?? defaultCategory })));
     setBusy(false);
-    setPaste("");
+    setImportText("");
     setShowPaste(false);
     onChanged();
-    toast({ title: `${rows.length - failed} student${rows.length - failed === 1 ? "" : "s"} added`, description: failed ? `${failed} could not be added.` : "", tone: failed ? "warning" : "success" });
+    toast({
+      title: `${added} student${added === 1 ? "" : "s"} added`,
+      description: failed.length ? `Could not add: ${failed.join("; ")}` : "",
+      tone: failed.length ? "warning" : "success",
+    });
+  };
+
+  const readFile = async (file: File | undefined) => {
+    if (!file) return;
+    setImportText(await file.text());
+  };
+
+  /** Brings in another tournament's students, sections included, to be checked before importing. */
+  const loadFromEvent = async () => {
+    if (!source) return;
+    setBusy(true);
+    const rows = await listRegistrations(source);
+    setBusy(false);
+    setImportText(rows.map((r) => `${r.fullName}\t${answer(r, "section") ?? ""}`).join("\n"));
   };
 
   const checkInAll = async () => {
@@ -764,8 +1033,11 @@ function StudentsCard({
         title={`1. Students (${players.length})`}
         icon={<Users className="size-4.5" />}
         action={
-          <Button size="sm" variant="secondary" onClick={() => setShowPaste((v) => !v)}>
-            {showPaste ? "Close list" : "Paste a list"}
+          <Button size="sm" variant="secondary" onClick={() => {
+              if (showPaste || importText) setImportText("");
+              setShowPaste((v) => !v);
+            }}>
+            {showPaste || importText ? "Close import" : "Import students"}
           </Button>
         }
       />
@@ -779,15 +1051,65 @@ function StudentsCard({
           </div>
         ) : null}
 
-        {showPaste ? (
-          <div className="space-y-2 rounded-control border border-line p-3">
+        {showPaste || importText ? (
+          <div className="space-y-3 rounded-control border border-line p-3">
             <p className="text-[12.5px] text-muted">
-              One name per line. A line like &ldquo;Section A:&rdquo; puts the names under it in that section.
+              Paste names, drop in a CSV or text file, or copy from another tournament. Sections are found on their own from lines like
+              &ldquo;Section A:&rdquo; or from a Section column. Nothing is added until you press Import.
             </p>
-            <Textarea rows={8} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Section A:\nRania\nPrachi\n\nSection B:\nIsmail"} />
-            <Button variant="primary" disabled={busy || !paste.trim()} onClick={() => void addPasted()}>
-              {busy ? "Adding…" : "Add these students"}
-            </Button>
+            <Textarea
+              rows={7}
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder={"Section A:\nRania\nPrachi\n\nSection B:\nIsmail"}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center rounded-control border border-line px-3 py-2 text-[13px] font-semibold text-ink hover:bg-[rgb(var(--c-surface-soft))]">
+                Choose a file
+                <input type="file" accept=".csv,.txt,.tsv,text/plain,text/csv" className="sr-only" onChange={(e) => void readFile(e.target.files?.[0])} />
+              </label>
+              {events.length > 0 ? (
+                <>
+                  <Select className="h-9 w-56" value={source} onChange={(e) => setSource(e.target.value)}>
+                    <option value="">Copy from another tournament…</option>
+                    {events.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button size="sm" variant="secondary" disabled={!source || busy} onClick={() => void loadFromEvent()}>
+                    Load
+                  </Button>
+                </>
+              ) : null}
+            </div>
+
+            {parsed.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[13px] font-semibold text-ink">
+                  {fresh.length} to add{parsed.length > fresh.length ? `, ${parsed.length - fresh.length} already here` : ""}
+                </p>
+                <div className="max-h-52 overflow-auto rounded-control border border-line">
+                  <table className="w-full text-left text-[13px]">
+                    <tbody>
+                      {parsed.map((r, i) => (
+                        <tr key={i} className="border-t border-line first:border-t-0">
+                          <td className="px-2.5 py-1.5 font-semibold text-ink">{r.name}</td>
+                          <td className="px-2.5 py-1.5 text-muted">{r.section || "No section"}</td>
+                          <td className="px-2.5 py-1.5 text-right">{r.duplicate ? <Badge tone="neutral">Already here</Badge> : <Badge tone="success">New</Badge>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Button variant="primary" disabled={busy || fresh.length === 0} onClick={() => void importAll()}>
+                  {busy ? "Importing…" : `Import ${fresh.length} student${fresh.length === 1 ? "" : "s"}`}
+                </Button>
+              </div>
+            ) : importText.trim() ? (
+              <p className="text-[12.5px] text-muted">No names found yet.</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -1296,6 +1618,161 @@ function StandingsCard({
             </div>
           </div>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+/* ========================================================================== */
+/* Round clock                                                                 */
+/* ========================================================================== */
+
+function RoundClock({
+  round,
+  minutes,
+  clock,
+}: {
+  round: number;
+  minutes: number;
+  clock: ReturnType<typeof useRoundTimerControls>;
+}) {
+  const running = clock.phase === "running";
+  const paused = clock.phase === "paused";
+  const over = clock.phase === "finished";
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-control bg-[rgb(var(--c-surface-soft))] px-3.5 py-3">
+      <Timer className="size-5 text-primary" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-ink">
+          Round {round}: {minutes} minutes
+        </p>
+        <p className="text-[12px] text-muted">
+          {clock.phase === "not-started" ? "The clock has not started." : over ? "Time is up." : paused ? "Paused." : "Running."}
+        </p>
+      </div>
+      {clock.phase !== "not-started" ? <span className="num text-[26px] font-extrabold tracking-tight text-ink">{clock.clock}</span> : null}
+      <div className="flex flex-wrap gap-2">
+        {clock.phase === "not-started" ? (
+          <Button size="sm" variant="primary" onClick={() => void clock.start(minutes)}>
+            Start the clock
+          </Button>
+        ) : null}
+        {running ? (
+          <Button size="sm" variant="secondary" onClick={() => void clock.pause()}>
+            Pause
+          </Button>
+        ) : null}
+        {paused ? (
+          <Button size="sm" variant="secondary" onClick={() => void clock.resume()}>
+            Resume
+          </Button>
+        ) : null}
+        {running || paused || over ? (
+          <Button size="sm" variant="secondary" onClick={() => void clock.extend(5, "Added from the tournament manager", "Director")}>
+            +5 min
+          </Button>
+        ) : null}
+        {running || paused ? (
+          <Button size="sm" variant="secondary" onClick={() => void clock.end()}>
+            End round
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* Chat                                                                        */
+/* ========================================================================== */
+
+interface ChatMessage {
+  from: "you" | "software";
+  text: string;
+}
+
+/**
+ * Tell the software what to do in ordinary words.
+ *
+ * It understands a fixed set of requests (add, move, rename and delete students, pair, publish,
+ * run the clock, set each round's time, enter a score, finish) and says plainly when it does not
+ * recognise a sentence. It never does something it was not clearly asked to do.
+ */
+function ChatCard({ onSend }: { onSend: (text: string) => Promise<string> }) {
+  const [text, setText] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [log, setLog] = React.useState<ChatMessage[]>([
+    { from: "software", text: 'Tell me what to do, for example "round 2 is 25 minutes" or "pair round 2". Say "help" for more. You can also paste a list of students.' },
+  ]);
+  const end = React.useRef<HTMLDivElement | null>(null);
+
+  const send = async (raw: string) => {
+    const message = raw.trim();
+    if (!message || busy) return;
+    setText("");
+    setBusy(true);
+    setLog((l) => [...l, { from: "you", text: message }]);
+    let reply: string;
+    try {
+      reply = await onSend(message);
+    } catch {
+      reply = "Something went wrong. Nothing was changed that I know of; please check the page.";
+    }
+    setLog((l) => [...l, { from: "software", text: reply }]);
+    setBusy(false);
+    window.setTimeout(() => end.current?.scrollIntoView({ block: "nearest" }), 50);
+  };
+
+  return (
+    <Card>
+      <CardHeader title="Tell the software" icon={<MessageCircle className="size-4.5" />} />
+      <div className="space-y-3 p-4 pt-0 sm:p-5 sm:pt-0">
+        <div className="max-h-56 space-y-2 overflow-y-auto rounded-control bg-[rgb(var(--c-surface-soft))] p-3">
+          {log.map((m, i) => (
+            <div key={i} className={m.from === "you" ? "flex justify-end" : "flex justify-start"}>
+              <p
+                className={`max-w-[85%] whitespace-pre-line rounded-2xl px-3.5 py-2 text-[13.5px] leading-snug ${
+                  m.from === "you" ? "bg-primary text-white" : "bg-[rgb(var(--c-surface))] text-ink"
+                }`}
+              >
+                {m.text}
+              </p>
+            </div>
+          ))}
+          <div ref={end} />
+        </div>
+        <div className="flex gap-2">
+          <Textarea
+            rows={2}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send(text);
+              }
+            }}
+            placeholder='Type here, e.g. "round 1 is 20 minutes, round 2 is 25 minutes"'
+            aria-label="Tell the software what to do"
+          />
+          <Button variant="primary" icon={<Send className="size-4" />} disabled={busy || !text.trim()} onClick={() => void send(text)}>
+            Send
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {["pair round 2", "start the round", "add 5 minutes", "status"].map((c) => (
+            <button
+              key={c}
+              type="button"
+              disabled={busy}
+              onClick={() => void send(c)}
+              className="rounded-full border border-line px-3 py-1 text-[12px] font-semibold text-muted hover:bg-[rgb(var(--c-surface-soft))] hover:text-ink"
+            >
+              {c}
+            </button>
+          ))}
+        </div>
       </div>
     </Card>
   );
