@@ -37,6 +37,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.77.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",

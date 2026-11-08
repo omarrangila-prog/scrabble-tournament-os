@@ -56,10 +56,12 @@ import type { Division, Player } from "@/lib/domain/types";
 
 const BEGINNER: Division = { id: "beginner", name: "Beginner", shortName: "BEG", accent: "warning" };
 const MASTERS: Division = { id: "masters", name: "Masters", shortName: "MAS", accent: "secondary" };
+const RECREATIONAL: Division = { id: "recreational", name: "Recreational", shortName: "REC", accent: "success" };
+/** The categories offered as tick boxes. Any other category the event already runs is shown beside them. */
+const STANDARD_CATEGORIES: Division[] = [BEGINNER, MASTERS, RECREATIONAL];
 
 type Toast = (t: { title: string; description: string; tone: "success" | "info" | "warning" | "critical" }) => void;
 
-type CategoryMode = "beginner" | "masters" | "both";
 
 interface DraftBoard {
   key: string;
@@ -760,17 +762,11 @@ function SetupCard({
   toast: Toast;
 }) {
   /** A change of categories that has people in the ones being removed, waiting for the director to say where they go. */
-  const [pending, setPending] = React.useState<{ mode: CategoryMode; list: Division[]; moves: Record<string, string> } | null>(null);
+  const [pending, setPending] = React.useState<{ list: Division[]; moves: Record<string, string> } | null>(null);
   const [timeText, setTimeText] = React.useState<Record<number, string>>({});
-  const ids = categories.map((c) => c.id);
-  const mode: CategoryMode | null =
-    ids.length === 1 && ids[0] === "beginner"
-      ? "beginner"
-      : ids.length === 1 && ids[0] === "masters"
-        ? "masters"
-        : ids.includes("beginner") && ids.includes("masters") && ids.length === 2
-          ? "both"
-          : null;
+  const ids = new Set(categories.map((c) => c.id));
+  /* Every box shown: the three standard ones, then any other category this event already has. */
+  const offered = [...STANDARD_CATEGORIES, ...categories.filter((c) => !STANDARD_CATEGORIES.some((d) => d.id === c.id))];
 
   const [sectionsText, setSectionsText] = React.useState<string | null>(null);
   const [tableText, setTableText] = React.useState<Record<string, string>>({});
@@ -796,8 +792,8 @@ function SetupCard({
 
   const rawCategory = (r: OrganizerRegistration) => String(r.data.confirmedDivision ?? r.data.preferredDivision ?? "");
 
-  const setMode = async (m: CategoryMode) => {
-    const list = m === "beginner" ? [BEGINNER] : m === "masters" ? [MASTERS] : [BEGINNER, MASTERS];
+  /** Saves a new list of categories; asks first where anybody in a removed category should go. */
+  const setList = async (list: Division[]) => {
     const keep = new Set(list.map((c) => c.id));
     const stranded = registrations.filter((r) => !keep.has(rawCategory(r)));
     if (stranded.length > 0) {
@@ -807,7 +803,7 @@ function SetupCard({
         const top = /master|premier|advanced|expert/i.test(id);
         moves[id] = top && keep.has("masters") ? "masters" : keep.has("beginner") ? "beginner" : list[0].id;
       }
-      setPending({ mode: m, list, moves });
+      setPending({ list, moves });
       return;
     }
     setBusy(true);
@@ -818,6 +814,19 @@ function SetupCard({
       return;
     }
     onSaved();
+  };
+
+  /** One tick box: on adds the category, off removes it. Each box is independent of the others. */
+  const toggle = (c: Division) => {
+    if (ids.has(c.id)) {
+      if (ids.size === 1) {
+        toast({ title: "Keep at least one category", description: "Tick another category first, then untick this one.", tone: "warning" });
+        return;
+      }
+      void setList(categories.filter((x) => x.id !== c.id));
+    } else {
+      void setList([...categories, c]);
+    }
   };
 
   const applyPending = async () => {
@@ -879,27 +888,31 @@ function SetupCard({
     toast({ title: "Tables saved", description: "", tone: "success" });
   };
 
-  const modes: { key: CategoryMode; label: string }[] = [
-    { key: "beginner", label: "Beginners only" },
-    { key: "masters", label: "Masters only" },
-    { key: "both", label: "Beginners and Masters" },
-  ];
 
   return (
     <Card>
       <CardHeader title="Setup" icon={<CheckCircle2 className="size-4.5" />} />
       <div className="grid gap-5 p-4 pt-0 sm:p-5 sm:pt-0 lg:grid-cols-2">
         <div>
-          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Who plays</span>
+          <span className="mb-1.5 block text-[13px] font-semibold text-ink">Categories</span>
           <div className="flex flex-wrap gap-2">
-            {modes.map((m) => (
-              <Button key={m.key} size="sm" variant={mode === m.key ? "primary" : "secondary"} disabled={busy} onClick={() => void setMode(m.key)}>
-                {m.label}
-              </Button>
-            ))}
+            {offered.map((c) => {
+              const on = ids.has(c.id);
+              return (
+                <label
+                  key={c.id}
+                  className={`flex cursor-pointer items-center gap-2 rounded-control border px-3.5 py-2 text-[14px] font-semibold ${
+                    on ? "border-primary bg-primary-050 text-primary-600" : "border-line text-ink"
+                  } ${busy ? "opacity-60" : ""}`}
+                >
+                  <input type="checkbox" className="size-4 accent-primary" checked={on} disabled={busy} onChange={() => toggle(c)} />
+                  {c.name}
+                </label>
+              );
+            })}
           </div>
           <p className="mt-1.5 text-[12px] text-muted">
-            {mode ? "Players are paired inside their category." : `Categories now: ${categories.map((c) => c.name).join(", ") || "none"}.`}
+            Tick every category this tournament runs. Players only ever play others in their own category.
           </p>
           {pending ? (
             <div className="mt-3 space-y-2.5 rounded-control border border-warning bg-warning-050 p-3.5">
