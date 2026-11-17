@@ -75,10 +75,9 @@ function statusOf(row: GameRow): PairingStatus {
   return known ?? "scheduled";
 }
 
-const DIVISIONS: DivisionId[] = ["masters", "advanced", "recreational", "beginner"];
-
+/* A game keeps the category it was published in; only a blank one falls back. */
 function divisionOf(value: string): DivisionId {
-  return DIVISIONS.find((d) => d === value) ?? "recreational";
+  return value.trim() || "recreational";
 }
 
 /**

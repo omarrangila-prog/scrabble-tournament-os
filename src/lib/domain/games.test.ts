@@ -108,9 +108,11 @@ describe("pairingsFromGames", () => {
     expect(p!.status).toBe("scheduled");
   });
 
-  it("keeps an unknown division on the board instead of discarding the game", () => {
-    const [p] = pairingsFromGames([game({ division: "invented" })], "t-1");
-    expect(p!.division).toBe("recreational");
+  it("keeps the category a game was published in, Rookie and Premier included", () => {
+    const [p] = pairingsFromGames([game({ division: "rookie" })], "t1");
+    expect(p!.division).toBe("rookie");
+    const [blank] = pairingsFromGames([game({ division: "" })], "t1");
+    expect(blank!.division).toBe("recreational");
   });
 });
 

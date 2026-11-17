@@ -69,6 +69,14 @@ export interface RosterSource {
 export function divisionFor(playingLevel: string): DivisionId {
   const level = playingLevel.trim().toLowerCase();
 
+  /*
+   * Rookie and Premier are categories some events run. They used to fall through to the
+   * catch-all, so every Rookie and every Premier player was shown, and paired, as Recreational.
+   * Checked first: "rookie" and "premier" contain none of the words below, but a stored id must
+   * always come back as itself.
+   */
+  if (level.includes("rookie")) return "rookie";
+  if (level.includes("premier")) return "premier";
   if (level.includes("master") || level.includes("expert")) return "masters";
   if (level.includes("beginner") || level.includes("new")) return "beginner";
   if (level.includes("advanced") || level.includes("regular")) return "advanced";

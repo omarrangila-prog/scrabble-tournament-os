@@ -19,6 +19,12 @@ function source(over: Partial<RosterSource> = {}): RosterSource {
 }
 
 describe("divisionFor", () => {
+  it("keeps Rookie and Premier as their own categories", () => {
+    expect(divisionFor("rookie")).toBe("rookie");
+    expect(divisionFor("Premier")).toBe("premier");
+    expect(divisionFor("recreational")).toBe("recreational");
+  });
+
   it("reads the three levels the public form offers", () => {
     expect(divisionFor("beginner")).toBe("beginner");
     expect(divisionFor("recreational")).toBe("recreational");
