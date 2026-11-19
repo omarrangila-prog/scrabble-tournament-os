@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Check, CheckCircle2, Paintbrush, Paperclip, ShoppingBag, X } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Download, MapPin, Paintbrush, Paperclip, ShoppingBag, X } from "lucide-react";
 
 import { ART_ACTIVITIES, ART_FEE, artLabel, artProblems, artTotal, type ArtActivity, type ArtEntry, type ArtField } from "@/lib/domain/art";
 import { PROOF_ACCEPT } from "@/lib/domain/paymentProof";
 import { ART_EVENT_ID, ART_SLUG, saveArtEntry } from "@/lib/supabase/art";
 import { readPublicEvent } from "@/lib/supabase/events";
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
+import { downloadArtReceipt, type ArtReceipt } from "@/lib/results/artReceiptPdf";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,11 +30,34 @@ const ICONS: Record<ArtActivity, React.ReactNode> = {
 
 const money = (n: number) => `Rs. ${n.toLocaleString("en-PK")}`;
 
-type Done = { activities: ArtActivity[]; total: number; payment: "online" | "cash" };
+type Done = { receipt: ArtReceipt; activities: ArtActivity[]; payment: "online" | "cash" };
+
+/** "12:00" -> "12:00 PM". */
+function clock(hhmm: string): string {
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return "";
+  const h = Number(m[1]);
+  return `${((h + 11) % 12) + 1}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** A short reference to quote at the desk, unambiguous to read out (no 0/O or 1/I). */
+function receiptNumber(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return "ART-" + Array.from(bytes, (b) => chars[b % chars.length]).join("");
+}
+
+interface Place {
+  when: string;
+  venue: string;
+  address: string;
+  mapsUrl: string;
+}
 
 export default function ArtRegisterPage() {
   const [fee, setFee] = React.useState(ART_FEE);
   const [instructions, setInstructions] = React.useState("");
+  const [place, setPlace] = React.useState<Place>({ when: "", venue: "", address: "", mapsUrl: "" });
   const [entry, setEntry] = React.useState<ArtEntry>({
     fullName: "",
     age: "",
@@ -60,6 +84,17 @@ export default function ArtRegisterPage() {
       const f = Number(d.activityFee);
       if (Number.isFinite(f) && f > 0) setFee(f);
       setInstructions(String(d.paymentInstructions ?? ""));
+      const date = String(d.startDate ?? "");
+      const day = date
+        ? new Date(`${date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+        : "";
+      const hours = [clock(String(d.startTime ?? "")), clock(String(d.endTime ?? ""))].filter(Boolean).join(" to ");
+      setPlace({
+        when: [day, hours].filter(Boolean).join(", "),
+        venue: String(d.venueName ?? ""),
+        address: String(d.venueAddress ?? ""),
+        mapsUrl: String(d.mapsUrl ?? ""),
+      });
     })();
     return () => {
       live = false;
@@ -91,7 +126,9 @@ export default function ArtRegisterPage() {
         }
         proof = up.proof;
       }
+      const receiptNo = receiptNumber();
       const saved = await saveArtEntry({
+        receiptNo,
         fullName: entry.fullName.trim().replace(/\s+/g, " "),
         age: Number(entry.age),
         phone: entry.phone.trim(),
@@ -108,7 +145,23 @@ export default function ArtRegisterPage() {
         setError(saved.message);
         return;
       }
-      setDone({ activities: ART_ACTIVITIES.map((x) => x.key).filter((k) => entry.activities.includes(k)), total, payment: entry.payment! });
+      const chosen = ART_ACTIVITIES.map((x) => x.key).filter((k) => entry.activities.includes(k));
+      setDone({
+        activities: chosen,
+        payment: entry.payment!,
+        receipt: {
+          receiptNo,
+          fullName: entry.fullName.trim().replace(/\s+/g, " "),
+          age: entry.age,
+          phone: entry.phone.trim(),
+          lines: chosen.map((k) => ({ label: artLabel(k), amount: fee })),
+          total,
+          paymentLine: entry.payment === "online" ? "Online, proof submitted" : "Pending, pay at the venue",
+          when: place.when,
+          where: [place.venue, place.address].filter(Boolean).join(", "),
+          registeredAt: new Date().toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        },
+      });
       window.scrollTo({ top: 0 });
     } finally {
       sending.current = false;
@@ -122,6 +175,15 @@ export default function ArtRegisterPage() {
   const err = (m?: string) => (m ? <p className="mt-1.5 text-[13.5px] font-medium text-[#B3261E]">{m}</p> : null);
 
   if (done) {
+    const r = done.receipt;
+    const line = (k: string, v: React.ReactNode, strong = false) => (
+      <div className="flex items-baseline justify-between gap-4 border-b pb-2.5 last:border-0 last:pb-0" style={{ borderColor: `${BROWN}14` }}>
+        <span className="shrink-0 text-[12.5px] font-semibold uppercase tracking-wide" style={{ color: `${BROWN}99` }}>
+          {k}
+        </span>
+        <span className={cn("min-w-0 text-right text-[15.5px]", strong ? "font-extrabold" : "font-semibold")}>{v}</span>
+      </div>
+    );
     return (
       <main className="min-h-dvh px-4 py-10" style={{ background: CREAM, color: BROWN }}>
         <div className="mx-auto w-full max-w-[480px] text-center">
@@ -129,23 +191,44 @@ export default function ArtRegisterPage() {
             <CheckCircle2 className="size-8" />
           </span>
           <h1 className="mt-4 text-[24px] font-extrabold leading-tight">Thank you! Your registration has been received.</h1>
-          <div className="mt-6 space-y-3 rounded-3xl border bg-white/80 p-5 text-left" style={{ borderColor: `${BROWN}1A` }}>
-            {done.activities.map((a) => (
-              <p key={a} className="flex items-center gap-3 text-[17px] font-semibold">
-                <span style={{ color: FOREST }}>{ICONS[a]}</span>
-                {artLabel(a)}
+          <p className="mt-1 text-[14px]" style={{ color: `${BROWN}AA` }}>
+            Save this receipt and show it at the desk.
+          </p>
+
+          <div className="mt-6 overflow-hidden rounded-3xl border bg-white text-left shadow-sm" style={{ borderColor: `${BROWN}1A` }}>
+            <div className="px-5 py-4 text-center" style={{ background: FOREST, color: CREAM }}>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "#E8D29A" }}>
+                Registration receipt
               </p>
-            ))}
-            <p className="border-t pt-3 text-[22px] font-extrabold" style={{ borderColor: `${BROWN}14`, color: FOREST }}>
-              {money(done.total)}
-            </p>
-            <p className="text-[16px]">
-              Payment:{" "}
-              <span className="font-semibold">
-                {done.payment === "online" ? "Submitted (proof uploaded)" : "Pending, pay at the venue"}
-              </span>
-            </p>
+              <p className="mt-1 text-[22px] font-extrabold tracking-[0.06em]">{r.receiptNo}</p>
+            </div>
+            <div className="space-y-2.5 p-5">
+              {line("Name", r.fullName)}
+              {line("Age", r.age)}
+              {line("Phone", r.phone)}
+              {r.when ? line("When", r.when) : null}
+              {r.where ? line("Where", place.mapsUrl ? <a href={place.mapsUrl} target="_blank" rel="noreferrer" className="underline decoration-dotted underline-offset-4">{r.where}</a> : r.where) : null}
+              {r.lines.map((l) => line(l.label, money(l.amount)))}
+              {line("Total", <span style={{ color: FOREST }}>{money(r.total)}</span>, true)}
+              {line("Payment", done.payment === "online" ? "Submitted (proof uploaded)" : "Pending, pay at the venue")}
+              {line("Registered", r.registeredAt)}
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={() => void downloadArtReceipt(r)}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full py-4 text-[17px] font-extrabold text-white shadow-lg active:scale-[0.99]"
+            style={{ background: FOREST }}
+          >
+            <Download className="size-5" />
+            Download receipt
+          </button>
+          <p className="mt-3 text-[13px]" style={{ color: `${BROWN}99` }}>
+            {done.payment === "online"
+              ? "We have your payment proof. The organisers will contact you if anything is needed."
+              : `Please bring ${money(r.total)} in cash and pay at the desk when you arrive.`}
+          </p>
         </div>
       </main>
     );
@@ -162,6 +245,28 @@ export default function ArtRegisterPage() {
           <p className="mt-1 text-[15px]" style={{ color: `${BROWN}B3` }}>
             Choose your activity and reserve your spot.
           </p>
+          {place.when || place.venue ? (
+            <div className="mt-3 space-y-1 text-[14px] font-semibold">
+              {place.when ? (
+                <p className="flex items-center justify-center gap-1.5">
+                  <CalendarDays className="size-4" style={{ color: GOLD }} />
+                  {place.when}
+                </p>
+              ) : null}
+              {place.venue ? (
+                <p className="flex items-center justify-center gap-1.5">
+                  <MapPin className="size-4 shrink-0" style={{ color: GOLD }} />
+                  {place.mapsUrl ? (
+                    <a href={place.mapsUrl} target="_blank" rel="noreferrer" className="underline decoration-dotted underline-offset-4">
+                      {[place.venue, place.address].filter(Boolean).join(", ")}
+                    </a>
+                  ) : (
+                    [place.venue, place.address].filter(Boolean).join(", ")
+                  )}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </header>
 
         {/* ---- Activities ---- */}

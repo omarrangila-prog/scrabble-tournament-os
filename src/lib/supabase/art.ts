@@ -18,6 +18,7 @@ export const ART_PATH = "/art/register";
 
 export interface StoredArtEntry {
   id: string;
+  receiptNo: string;
   fullName: string;
   age: number | null;
   phone: string;
@@ -64,6 +65,7 @@ export async function listArtEntries(): Promise<StoredArtEntry[]> {
     const proof = d.paymentProof;
     return {
       id: String(row.out_id ?? ""),
+      receiptNo: String(d.receiptNo ?? ""),
       fullName: String(d.fullName ?? ""),
       age: Number.isFinite(age) ? age : null,
       phone: String(d.phone ?? ""),

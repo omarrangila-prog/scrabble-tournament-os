@@ -37,7 +37,7 @@ export default function ArtAdminPage() {
   const rows = React.useMemo(() => entries ?? [], [entries]);
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? rows.filter((r) => `${r.fullName} ${r.phone} ${r.email}`.toLowerCase().includes(q)) : rows;
+    return q ? rows.filter((r) => `${r.fullName} ${r.phone} ${r.email} ${r.receiptNo}`.toLowerCase().includes(q)) : rows;
   }, [rows, query]);
 
   const canvas = rows.filter((r) => r.activities.includes("canvas")).length;
@@ -92,7 +92,7 @@ export default function ArtAdminPage() {
           <span className="text-[14px] font-semibold text-ink">
             {filtered.length} of {rows.length}
           </span>
-          <SearchInput value={query} onChange={setQuery} placeholder="Search a name, phone or email" />
+          <SearchInput value={query} onChange={setQuery} placeholder="Search a name, phone or receipt no." />
         </div>
 
         {entries === null ? (
@@ -130,6 +130,7 @@ export default function ArtAdminPage() {
                     <tr key={r.id} className="border-t border-line align-top">
                       <Td>
                         <span className="block font-semibold text-ink">{r.fullName}</span>
+                        {r.receiptNo ? <span className="num block text-[12px] text-muted">{r.receiptNo}</span> : null}
                         {r.email ? <span className="block break-all text-[12px] text-muted">{r.email}</span> : null}
                       </Td>
                       <Td>
