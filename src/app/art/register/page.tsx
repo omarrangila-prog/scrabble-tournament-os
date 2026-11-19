@@ -108,7 +108,7 @@ export default function ArtRegisterPage() {
         setError(saved.message);
         return;
       }
-      setDone({ activities: entry.activities, total, payment: entry.payment! });
+      setDone({ activities: ART_ACTIVITIES.map((x) => x.key).filter((k) => entry.activities.includes(k)), total, payment: entry.payment! });
       window.scrollTo({ top: 0 });
     } finally {
       sending.current = false;
