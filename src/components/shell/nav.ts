@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   GraduationCap,
   Drama,
+  Brush,
   Palette,
   IdCard,
   Radio,
@@ -77,6 +78,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/app/pictionary", label: "Pictionary", icon: Palette },
   /* Mafia Wars sign-ups: stored apart from the draw, and also what the host sees. */
   { href: "/app/mafia", label: "Mafia Wars", icon: Drama },
+  /* Art Activity sign-ups (canvas, tote bag): stored apart from the draw. */
+  { href: "/app/art", label: "Art Activity", icon: Brush },
   { href: "/app/players", label: "Players", icon: Users },
   { href: "/app/payments", label: "Payments", icon: Wallet },
   { href: "/app/send-codes", label: "Send codes", icon: Send },
@@ -127,6 +130,7 @@ export const ALL_ROUTES: { href: string; label: string }[] = [
   { href: "/app/training", label: "Training" },
   { href: "/app/pictionary", label: "Pictionary" },
   { href: "/app/mafia", label: "Mafia Wars" },
+  { href: "/app/art", label: "Art Activity" },
 ];
 
 /* -------------------------------------------------------------------------- */
