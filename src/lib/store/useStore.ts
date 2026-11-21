@@ -121,6 +121,8 @@ interface StoreActions {
 
   updateDispute: (id: string, patch: Partial<Dispute>, entry?: string) => void;
   createDispute: (dispute: Dispute) => void;
+  /** The categories of the event being worked on, so every filter and table plan names them. */
+  setDivisions: (divisions: Division[]) => void;
 
   publishAnnouncement: (a: Announcement) => void;
   sendCampaign: (c: MessageCampaign) => void;
@@ -636,6 +638,8 @@ export const useStore = create<Store>()(
         })),
 
       createDispute: (dispute) => set((s) => ({ disputes: [dispute, ...s.disputes] })),
+
+      setDivisions: (divisions) => set({ divisions }),
 
       publishAnnouncement: (a) => {
         set((s) => ({ announcements: [a, ...s.announcements] }));
