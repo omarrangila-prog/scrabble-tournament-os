@@ -57,6 +57,8 @@ export default function LiveResultsPage() {
   const [rows, setRows] = React.useState<PublicStanding[]>([]);
   const [source, setSource] = React.useState<string | null>(null);
   const [loaded, setLoaded] = React.useState(false);
+  /* Categories published on their own link only, never on the combined page. */
+  const [separate, setSeparate] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     recordHit("results_view", slug);
@@ -80,6 +82,8 @@ export default function LiveResultsPage() {
           .join(", "),
       );
       setStartDate(event.details.startDate ?? "");
+      const sep = (event.details as unknown as { separateCategories?: unknown }).separateCategories;
+      setSeparate(Array.isArray(sep) ? sep.map(String) : []);
 
       const table = await officialOrDerivedStandings(event.id);
       if (!live) return;
@@ -116,7 +120,10 @@ export default function LiveResultsPage() {
     () => new URLSearchParams(window.location.search).get("category")?.toLowerCase() ?? "",
     () => "",
   );
-  const shown = only && rows.some((r) => r.division === only) ? rows.filter((r) => r.division === only) : rows;
+  const shown =
+    only && rows.some((r) => r.division === only)
+      ? rows.filter((r) => r.division === only)
+      : rows.filter((r) => !separate.includes(r.division));
 
   const divisions = DIVISION_ORDER.map((division) => ({
     division,
