@@ -174,7 +174,9 @@ export function CertificateSheet({
           className="font-display absolute inset-x-0 truncate px-[9%] text-center font-bold"
           style={{
             top: "29.5%",
-            fontSize: recipientName.length > 22 ? "4.4cqw" : "5.6cqw",
+            /* Stepped down by length: a 22-letter name at full size was cut off with "…". */
+            fontSize:
+              recipientName.length > 28 ? "3.5cqw" : recipientName.length > 21 ? "4.1cqw" : recipientName.length > 16 ? "4.8cqw" : "5.6cqw",
             lineHeight: 1.15,
             letterSpacing: "0.02em",
           }}
