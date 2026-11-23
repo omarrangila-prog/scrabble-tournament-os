@@ -124,7 +124,12 @@ export default function LiveResultsPage() {
   })).filter((d) => d.players.length > 0);
 
   const totalPlayers = shown.length;
-  const gamesPlayed = Math.round(shown.reduce((n, r) => n + r.played, 0) / 2);
+  /* A category with an odd number of players had one bye a round, which "played" counts but is no game. */
+  const gamesPlayed = divisions.reduce((n, d) => {
+    const played = d.players.reduce((m, r) => m + r.played, 0);
+    const byes = d.players.length % 2 === 1 ? Math.max(0, ...d.players.map((r) => r.played)) : 0;
+    return n + Math.max(0, Math.round((played - byes) / 2));
+  }, 0);
 
   return (
     <main
