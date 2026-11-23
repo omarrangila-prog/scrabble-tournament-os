@@ -107,13 +107,24 @@ export default function LiveResultsPage() {
     return () => window.clearInterval(id);
   }, [eventId]);
 
+  /*
+   * `?category=premier` shows one category on its own, so each one can be shared as its own link.
+   * Read from the address rather than `useSearchParams`, which would need a Suspense boundary.
+   */
+  const only = React.useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("category")?.toLowerCase() ?? "",
+    () => "",
+  );
+  const shown = only && rows.some((r) => r.division === only) ? rows.filter((r) => r.division === only) : rows;
+
   const divisions = DIVISION_ORDER.map((division) => ({
     division,
-    players: rows.filter((r) => r.division === division),
+    players: shown.filter((r) => r.division === division),
   })).filter((d) => d.players.length > 0);
 
-  const totalPlayers = rows.length;
-  const gamesPlayed = Math.round(rows.reduce((n, r) => n + r.played, 0) / 2);
+  const totalPlayers = shown.length;
+  const gamesPlayed = Math.round(shown.reduce((n, r) => n + r.played, 0) / 2);
 
   return (
     <main
