@@ -43,7 +43,7 @@ describe("the name printed on a certificate", () => {
      */
     const long = sheet("Rayyan hussain khan lodhi");
     const short = sheet("Hania");
-    expect(long).toContain("4.4cqw");
+    expect(long).toContain("4.1cqw");
     expect(short).toContain("5.6cqw");
     expect(long).not.toContain("5.6cqw");
   });
