@@ -143,6 +143,7 @@ export default function ArtAdminPage() {
                       <Td>{yes(r.activities.includes("tote"))}</Td>
                       <Td>
                         <span className="num font-semibold text-ink">Rs. {r.amountDue.toLocaleString("en-PK")}</span>
+                        {r.promoCode ? <span className="block text-[12px] font-semibold text-success">{r.promoCode} −Rs. {r.promoAmountOff.toLocaleString("en-PK")}</span> : null}
                       </Td>
                       <Td>{r.payment === "online" ? "Online" : "Cash / at venue"}</Td>
                       <Td>

@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { ExternalLink, FileText, ImageIcon, Loader2 } from "lucide-react";
+import { ExternalLink, FileText, ImageIcon, Loader2, Paperclip } from "lucide-react";
 
 import { participantLines } from "@/lib/domain/registrationParticipants";
 import { answer, paymentProof, type OrganizerRegistration } from "@/lib/supabase/organizer";
-import { openPaymentProof } from "@/lib/supabase/paymentProof";
+import { openPaymentProof, uploadPaymentProof } from "@/lib/supabase/paymentProof";
+import { supabase } from "@/lib/supabase/client";
+import { PROOF_ACCEPT } from "@/lib/domain/paymentProof";
 import { cn } from "@/lib/utils";
 
 /**
@@ -172,5 +174,74 @@ export function ProofOpenButton({
       {label}
       {opening ? null : <ExternalLink className="size-3 opacity-60" />}
     </button>
+  );
+}
+
+/**
+ * Attaches a receipt to a registration that has none.
+ *
+ * The 23 August and 20 September forms kept only the *name* of the file somebody chose, so those
+ * online payments have nothing to open. Staff can add the screenshot they were sent on WhatsApp;
+ * after that the row has a "View receipt" like every later event.
+ */
+export function AttachReceiptButton({
+  reg,
+  eventId,
+  onDone,
+  onProblem,
+  className,
+}: {
+  reg: OrganizerRegistration;
+  eventId: string;
+  onDone: () => void;
+  onProblem?: (message: string) => void;
+  className?: string;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  if (paymentProof(reg)) return null;
+  const named = typeof reg.data.receiptFileName === "string" ? reg.data.receiptFileName : "";
+
+  const attach = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    const up = await uploadPaymentProof({ eventId, file });
+    if (!up.ok) {
+      setBusy(false);
+      onProblem?.(up.message);
+      return;
+    }
+    const db = supabase();
+    const { error } = (await db?.rpc("staff_attach_payment_proof", { p_record_id: reg.id, p_proof: up.proof, p_by: null })) ?? {
+      error: { message: "The database is not reachable right now." },
+    };
+    setBusy(false);
+    if (error) {
+      onProblem?.(error.message.replace(/^.*?:\s*/, ""));
+      return;
+    }
+    onDone();
+  };
+
+  return (
+    <label
+      title={named ? `They uploaded "${named}", which was never saved. Attach the screenshot they sent.` : "Attach the receipt"}
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-1.5 rounded-control border border-dashed border-line px-2.5 py-1.5 text-[12.5px] font-semibold text-muted hover:text-ink",
+        busy && "pointer-events-none opacity-60",
+        className,
+      )}
+    >
+      {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
+      {busy ? "Attaching…" : "Attach receipt"}
+      <input
+        type="file"
+        accept={PROOF_ACCEPT}
+        className="sr-only"
+        onChange={(e) => {
+          void attach(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+    </label>
   );
 }

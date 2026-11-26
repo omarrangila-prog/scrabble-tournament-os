@@ -12,8 +12,8 @@ import type { StoredProof } from "./paymentProof";
 import { supabase } from "./client";
 
 export const ART_COLLECTION = "artRegistrations";
-export const ART_EVENT_ID = "evt-art-activity";
-export const ART_SLUG = "art";
+export const ART_EVENT_ID = "evt-art-activity-december-2026";
+export const ART_SLUG = "art-december-2026";
 export const ART_PATH = "/art/register";
 
 export interface StoredArtEntry {
@@ -28,6 +28,8 @@ export interface StoredArtEntry {
   paymentStatus: string;
   autoVerified: boolean;
   amountDue: number;
+  promoCode: string;
+  promoAmountOff: number;
   proof: StoredProof | null;
   createdAt: string;
 }
@@ -77,6 +79,8 @@ export async function listArtEntries(): Promise<StoredArtEntry[]> {
       paymentStatus: String(d.paymentStatus ?? ""),
       autoVerified: d.autoVerified === true,
       amountDue: Number(d.amountDue ?? 0),
+      promoCode: String(d.promoCode ?? ""),
+      promoAmountOff: Number(d.promoAmountOff ?? 0),
       proof: proof && typeof proof === "object" ? (proof as unknown as StoredProof) : null,
       createdAt: String(row.out_created_at ?? ""),
     };
@@ -88,6 +92,15 @@ async function call(fn: string, args: Record<string, unknown>): Promise<Outcome>
   if (!db) return { ok: false, message: "The database is not reachable right now." };
   const { error } = await db.rpc(fn, args);
   return error ? { ok: false, message: error.message.replace(/^.*?:\s*/, "") } : { ok: true };
+}
+
+/** Whether this phone number may use the event's code. Yes or no; nothing else comes back. */
+export async function artPromoEligible(phone: string): Promise<boolean | null> {
+  const db = supabase();
+  if (!db) return null;
+  const { data, error } = await db.rpc("art_promo_eligible", { p_art_event_id: ART_EVENT_ID, p_phone: phone });
+  if (error || typeof data !== "boolean") return null;
+  return data;
 }
 
 export const setArtPaid = (id: string, paid: boolean) =>

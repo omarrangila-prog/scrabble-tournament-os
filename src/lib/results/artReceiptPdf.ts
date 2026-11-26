@@ -18,7 +18,7 @@ export interface ArtReceipt {
   registeredAt: string;
 }
 
-const money = (n: number) => `Rs. ${n.toLocaleString("en-PK")}`;
+const money = (n: number) => (n < 0 ? `- Rs. ${(-n).toLocaleString("en-PK")}` : `Rs. ${n.toLocaleString("en-PK")}`);
 
 export async function downloadArtReceipt(r: ArtReceipt): Promise<void> {
   const { jsPDF } = await import("jspdf");

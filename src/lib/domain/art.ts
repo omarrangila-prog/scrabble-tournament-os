@@ -18,10 +18,20 @@ export const ART_FEE = 1000;
 
 export const artLabel = (key: ArtActivity) => ART_ACTIVITIES.find((a) => a.key === key)?.label ?? key;
 
-/** One price per activity chosen. */
-export function artTotal(chosen: ArtActivity[], fee = ART_FEE): number {
-  return new Set(chosen).size * fee;
+/** One price per activity chosen, less a code's amount (never below nothing). */
+export function artTotal(chosen: ArtActivity[], fee = ART_FEE, amountOff = 0): number {
+  const n = new Set(chosen).size;
+  return n === 0 ? 0 : Math.max(0, n * fee - amountOff);
 }
+
+/** The code the form offers, as the event stores it. */
+export interface ArtPromo {
+  code: string;
+  amountOff: number;
+}
+
+/** Where a typed code stands: nothing typed, checking, accepted, or refused with a reason. */
+export type ArtPromoState = "none" | "checking" | "accepted" | "unknown" | "not-eligible";
 
 export interface ArtEntry {
   fullName: string;
@@ -33,9 +43,9 @@ export interface ArtEntry {
   proofFile: { name: string; type: string; size: number } | null;
 }
 
-export type ArtField = "fullName" | "age" | "phone" | "email" | "activities" | "payment" | "proof";
+export type ArtField = "fullName" | "age" | "phone" | "email" | "activities" | "payment" | "proof" | "promo";
 
-export function artProblems(e: ArtEntry): { field: ArtField; message: string }[] {
+export function artProblems(e: ArtEntry, promo: ArtPromoState = "none"): { field: ArtField; message: string }[] {
   const out: { field: ArtField; message: string }[] = [];
   if (e.fullName.trim().length < 2) out.push({ field: "fullName", message: "Please enter your full name." });
   const age = Number(e.age);
@@ -52,5 +62,12 @@ export function artProblems(e: ArtEntry): { field: ArtField; message: string }[]
       if (!ok.ok) out.push({ field: "proof", message: ok.message });
     }
   }
+  if (promo === "unknown") out.push({ field: "promo", message: "That code is not recognised." });
+  if (promo === "not-eligible")
+    out.push({
+      field: "promo",
+      message: "This code is for players registered for Blufy's Alphabattle in Rookie or Recreational. Use the phone number you registered with.",
+    });
+  if (promo === "checking") out.push({ field: "promo", message: "Checking the code…" });
   return out;
 }

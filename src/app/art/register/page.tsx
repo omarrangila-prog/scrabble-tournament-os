@@ -3,9 +3,9 @@
 import * as React from "react";
 import { CalendarDays, Check, CheckCircle2, Download, MapPin, Paintbrush, Paperclip, ShoppingBag, X } from "lucide-react";
 
-import { ART_ACTIVITIES, ART_FEE, artLabel, artProblems, artTotal, type ArtActivity, type ArtEntry, type ArtField } from "@/lib/domain/art";
+import { ART_ACTIVITIES, ART_FEE, artLabel, artProblems, artTotal, type ArtActivity, type ArtEntry, type ArtField, type ArtPromo, type ArtPromoState } from "@/lib/domain/art";
 import { PROOF_ACCEPT } from "@/lib/domain/paymentProof";
-import { ART_EVENT_ID, ART_SLUG, saveArtEntry } from "@/lib/supabase/art";
+import { ART_EVENT_ID, ART_SLUG, artPromoEligible, saveArtEntry } from "@/lib/supabase/art";
 import { readPublicEvent } from "@/lib/supabase/events";
 import { uploadPaymentProof } from "@/lib/supabase/paymentProof";
 import { downloadArtReceipt, type ArtReceipt } from "@/lib/results/artReceiptPdf";
@@ -28,7 +28,7 @@ const ICONS: Record<ArtActivity, React.ReactNode> = {
   tote: <ShoppingBag className="size-6" />,
 };
 
-const money = (n: number) => `Rs. ${n.toLocaleString("en-PK")}`;
+const money = (n: number) => (n < 0 ? `− Rs. ${(-n).toLocaleString("en-PK")}` : `Rs. ${n.toLocaleString("en-PK")}`);
 
 type Done = { receipt: ArtReceipt; activities: ArtActivity[]; payment: "online" | "cash" };
 
@@ -56,6 +56,10 @@ interface Place {
 
 export default function ArtRegisterPage() {
   const [fee, setFee] = React.useState(ART_FEE);
+  const [promo, setPromo] = React.useState<ArtPromo | null>(null);
+  const [promoTyped, setPromoTyped] = React.useState("");
+  /* The last answer from the database, for the phone number it was asked about. */
+  const [checked, setChecked] = React.useState<{ phone: string; ok: boolean | null } | null>(null);
   const [instructions, setInstructions] = React.useState("");
   const [place, setPlace] = React.useState<Place>({ when: "", venue: "", address: "", mapsUrl: "" });
   const [entry, setEntry] = React.useState<ArtEntry>({
@@ -83,6 +87,8 @@ export default function ArtRegisterPage() {
       const d = ev.details as unknown as Record<string, unknown>;
       const f = Number(d.activityFee);
       if (Number.isFinite(f) && f > 0) setFee(f);
+      const p = d.artPromo as { code?: unknown; amountOff?: unknown } | undefined;
+      if (p && typeof p.code === "string" && Number(p.amountOff) > 0) setPromo({ code: p.code.toUpperCase(), amountOff: Number(p.amountOff) });
       setInstructions(String(d.paymentInstructions ?? ""));
       const date = String(d.startDate ?? "");
       const day = date
@@ -105,8 +111,35 @@ export default function ArtRegisterPage() {
   const toggle = (k: ArtActivity) =>
     set({ activities: entry.activities.includes(k) ? entry.activities.filter((a) => a !== k) : [...entry.activities, k] });
 
-  const total = artTotal(entry.activities, fee);
-  const problems = artProblems(entry);
+  const phone10 = entry.phone.replace(/\D/g, "").slice(-10);
+  const codeTyped = promoTyped.trim().toUpperCase();
+  const codeMatches = Boolean(promo && codeTyped === promo.code);
+
+  /* Asks the database whether this phone number is registered for the tournament the code is for. */
+  React.useEffect(() => {
+    if (!codeMatches || phone10.length < 10) return;
+    let live = true;
+    (async () => {
+      const ok = await artPromoEligible(phone10);
+      if (live) setChecked({ phone: phone10, ok });
+    })();
+    return () => {
+      live = false;
+    };
+  }, [codeMatches, phone10]);
+
+  const promoState: ArtPromoState = !codeTyped
+    ? "none"
+    : !codeMatches
+      ? "unknown"
+      : checked?.phone !== phone10 || phone10.length < 10
+        ? "checking"
+        : checked.ok
+          ? "accepted"
+          : "not-eligible";
+  const amountOff = promoState === "accepted" && promo ? promo.amountOff : 0;
+  const total = artTotal(entry.activities, fee, amountOff);
+  const problems = artProblems(entry, promoState);
   const problem = (f: ArtField) => (touched ? problems.find((p) => p.field === f)?.message : undefined);
 
   const submit = async (e: React.FormEvent) => {
@@ -138,6 +171,7 @@ export default function ArtRegisterPage() {
         payment: entry.payment,
         paymentStatus: entry.payment === "online" ? "receipt-uploaded" : "cash-at-venue",
         amountDue: total,
+        ...(amountOff && promo ? { promoCode: promo.code, promoAmountOff: amountOff, amountBeforePromo: artTotal(entry.activities, fee) } : {}),
         currency: "PKR",
         ...(proof ? { paymentProof: proof } : {}),
       });
@@ -154,7 +188,10 @@ export default function ArtRegisterPage() {
           fullName: entry.fullName.trim().replace(/\s+/g, " "),
           age: entry.age,
           phone: entry.phone.trim(),
-          lines: chosen.map((k) => ({ label: artLabel(k), amount: fee })),
+          lines: [
+            ...chosen.map((k) => ({ label: artLabel(k), amount: fee })),
+            ...(amountOff && promo ? [{ label: `Code ${promo.code}`, amount: -amountOff }] : []),
+          ],
           total,
           paymentLine: entry.payment === "online" ? "Online, proof submitted" : "Pending, pay at the venue",
           when: place.when,
@@ -315,6 +352,11 @@ export default function ArtRegisterPage() {
             ) : (
               <p className="text-[14px] opacity-90">1 activity = {money(fee)} · Both = {money(fee * 2)}</p>
             )}
+            {amountOff && entry.activities.length ? (
+              <p className="text-[14px] font-semibold" style={{ color: "#E8D29A" }}>
+                {promo?.code}: {money(-amountOff)}
+              </p>
+            ) : null}
             <p className="mt-0.5 text-[26px] font-extrabold tracking-tight">TOTAL: {money(total)}</p>
           </div>
         </section>
@@ -343,6 +385,33 @@ export default function ArtRegisterPage() {
             <input className={cn(input, problem("email") ? "border-[#B3261E]" : "border-[#3E2F2322]")} value={entry.email} onChange={(e) => set({ email: e.target.value })} inputMode="email" autoComplete="email" placeholder="you@example.com" />
             {err(problem("email"))}
           </label>
+          {promo ? (
+            <label className={label}>
+              Promo code <span className="font-normal" style={{ color: `${BROWN}88` }}>(optional)</span>
+              <input
+                className={cn(input, "uppercase tracking-[0.12em]", promoState === "accepted" ? "border-[#2F5D3A]" : problem("promo") && promoState !== "checking" ? "border-[#B3261E]" : "border-[#3E2F2322]")}
+                value={promoTyped}
+                onChange={(e) => setPromoTyped(e.target.value.replace(/\s+/g, ""))}
+                autoCapitalize="characters"
+                autoComplete="off"
+                placeholder="If you have one"
+              />
+              <span className="mt-1.5 block text-[13px] font-normal" style={{ color: `${BROWN}99` }}>
+                {promo.code}: {money(promo.amountOff)} off for players registered for Blufy&rsquo;s Alphabattle (Rookie or Recreational).
+              </span>
+              {promoState === "accepted" ? (
+                <p className="mt-1.5 text-[13.5px] font-semibold" style={{ color: FOREST }}>
+                  {promo.code} applied: {money(promo.amountOff)} off.
+                </p>
+              ) : promoState === "checking" ? (
+                <p className="mt-1.5 text-[13.5px]" style={{ color: `${BROWN}AA` }}>
+                  {phone10.length < 10 ? "Enter the phone number you registered with, above, to use this code." : "Checking…"}
+                </p>
+              ) : (
+                err(promoState === "none" || (promoState === "unknown" && !touched && codeTyped.length < promo.code.length) ? undefined : problems.find((p) => p.field === "promo")?.message)
+              )}
+            </label>
+          ) : null}
         </section>
 
         {/* ---- Payment ---- */}

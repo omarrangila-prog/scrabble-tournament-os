@@ -30,6 +30,7 @@ import { RosterGate } from "@/components/organizer/RosterGate";
 import {
   ParticipantLines,
   PaymentProofButton,
+  AttachReceiptButton,
   ProofOpenButton,
 } from "@/components/organizer/RegistrationDetails";
 import {
@@ -455,6 +456,19 @@ export default function PaymentsPage() {
                       app.toast({ title: "Receipt not opened", description, tone: "warning" })
                     }
                   />
+                  {/* An online payment with no receipt on file can be given one here. */}
+                  {/online|bank|transfer|easypaisa/i.test(stored ?? "") || field(r, "receiptFileName") ? (
+                    <AttachReceiptButton
+                      reg={r}
+                      eventId={params.eventId}
+                      className="shrink-0"
+                      onDone={() => {
+                        roster.reload();
+                        app.toast({ title: "Receipt attached", description: r.fullName, tone: "success" });
+                      }}
+                      onProblem={(description) => app.toast({ title: "Receipt not attached", description, tone: "critical" })}
+                    />
+                  ) : null}
 
                   {/*
                     An amount nobody has established says so. Rendering it as PKR 0 would
