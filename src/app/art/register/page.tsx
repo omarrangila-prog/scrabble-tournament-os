@@ -397,7 +397,7 @@ export default function ArtRegisterPage() {
                 placeholder="If you have one"
               />
               <span className="mt-1.5 block text-[13px] font-normal" style={{ color: `${BROWN}99` }}>
-                {promo.code}: {money(promo.amountOff)} off for players registered for Blufy&rsquo;s Alphabattle (Rookie or Recreational).
+                {`${promo.code}: ${money(promo.amountOff)} off for players registered for Blufy’s Alphabattle (Rookie or Recreational).`}
               </span>
               {promoState === "accepted" ? (
                 <p className="mt-1.5 text-[13.5px] font-semibold" style={{ color: FOREST }}>
