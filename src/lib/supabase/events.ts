@@ -65,6 +65,8 @@ export interface EventDetails {
   prizes?: { place: string; award: string }[];
   /** A line about where the money goes, shown on the event page and the form. */
   cause?: string;
+  /** An event with a form of its own (the Art Activity): its generic event and Scrabble pages send people there. */
+  formPath?: string;
   /**
    * Which category the public live results page opens on: a category id, or `all`.
    *

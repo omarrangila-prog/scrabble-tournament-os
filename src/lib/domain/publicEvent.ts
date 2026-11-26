@@ -124,6 +124,7 @@ export function publicEventFromStored(stored: StoredEvent): PublicEvent {
     ),
 
     cause: typeof d.cause === "string" && d.cause.trim() ? d.cause.trim() : undefined,
+    formPath: typeof d.formPath === "string" && d.formPath.startsWith("/") ? d.formPath : undefined,
 
     subtitle: stored.subtitle ?? undefined,
     participationTracks: ["speed_scrabble"],

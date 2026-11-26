@@ -277,6 +277,9 @@ export interface PublicEvent {
   /** Where the money goes, in one line, when the event is for a cause. */
   cause?: string;
 
+  /** Where an event with its own form is registered for, instead of the Scrabble form. */
+  formPath?: string;
+
   /**
    * Priority pricing: one price, chosen by coupon, then membership, then the
    * regular fee. Preferred over `rates` where present, because the organizer

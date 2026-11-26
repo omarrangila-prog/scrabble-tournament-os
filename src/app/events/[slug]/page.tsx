@@ -140,6 +140,16 @@ export default function PublicEventPage() {
    */
   const resolved = usePublicEvent(slug);
   const event = resolved.event;
+
+  /*
+   * An event with a form of its own (the Art Activity) has no Scrabble page and no Scrabble form.
+   * Shown here it read "Registration fee PKR 0" above Scrabble categories, because it has no
+   * tournament fee. It is sent to its own form instead.
+   */
+  const ownForm = event?.formPath;
+  React.useEffect(() => {
+    if (ownForm) window.location.replace(ownForm);
+  }, [ownForm]);
   const registrations = event ? selectRegistrations(store, event.id) : [];
 
   /* Say nothing while the answer is still being fetched, rather than "not found". */
